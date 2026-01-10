@@ -1,0 +1,561 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  REGISTRY: ghcr.io
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9.0.0'
+
+jobs:
+  # ═════════════════════════════════════════════════════════════════════════
+  # STAGE 1: CODE QUALITY & TYPE CHECKING
+  # ═════════════════════════════════════════════════════════════════════════
+  
+  quality:
+    name: Code Quality & Types
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint code
+        run: pnpm lint --max-warnings=0
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Build all packages
+        run: pnpm build
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # STAGE 2: UNIT & INTEGRATION TESTS
+  # ═════════════════════════════════════════════════════════════════════════
+
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: midst_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for services
+        run: |
+          timeout 30 bash -c 'until pg_isready -h localhost -p 5432; do sleep 1; done'
+          timeout 30 bash -c 'until redis-cli -p 6379 ping; do sleep 1; done'
+
+      - name: Run unit tests
+        run: pnpm test --coverage
+        env:
+          CI: true
+
+      - name: Run integration tests
+        run: pnpm integration
+        env:
+          INTEGRATION_POSTGRES_URL: postgresql://test:test@localhost:5432/midst_test
+          INTEGRATION_REDIS_URL: redis://localhost:6379/1
+          CI: true
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          fail_ci_if_error: false
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # STAGE 3: SECURITY SCANNING
+  # ═════════════════════════════════════════════════════════════════════════
+
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: quality
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run pnpm audit
+        run: pnpm audit --audit-level moderate
+        continue-on-error: true
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # STAGE 4: BUILD & PUSH DOCKER IMAGES
+  # ═════════════════════════════════════════════════════════════════════════
+
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [quality, test, security]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/')
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        service: [web, api, orchestrator]
+        include:
+          - service: web
+            dockerfile: apps/web/Dockerfile
+            image_name: web
+            port: 3000
+          - service: api
+            dockerfile: apps/api/Dockerfile
+            image_name: api
+            port: 3001
+          - service: orchestrator
+            dockerfile: apps/orchestrator/Dockerfile
+            image_name: orchestrator
+            port: 3002
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image_name }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=${{ github.ref_name }}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Image digest
+        run: echo ${{ steps.build.outputs.digest }}
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # STAGE 5: DEPLOY TO STAGING
+  # ═════════════════════════════════════════════════════════════════════════
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    
+    environment:
+      name: staging
+      url: https://staging.in-midst-my-life.dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Set image tags
+        id: tags
+        run: |
+          echo "web_image=${{ env.REGISTRY }}/${{ github.repository }}/web:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "api_image=${{ env.REGISTRY }}/${{ github.repository }}/api:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "orchestrator_image=${{ env.REGISTRY }}/${{ github.repository }}/orchestrator:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Create namespace
+        run: kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create image pull secret
+        run: |
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-email=${{ github.actor }}@users.noreply.github.com \
+            -n staging --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/web \
+            web=${{ steps.tags.outputs.web_image }} \
+            -n staging --record
+          
+          kubectl set image deployment/api \
+            api=${{ steps.tags.outputs.api_image }} \
+            -n staging --record
+          
+          kubectl set image deployment/orchestrator \
+            orchestrator=${{ steps.tags.outputs.orchestrator_image }} \
+            -n staging --record
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/web -n staging --timeout=5m
+          kubectl rollout status deployment/api -n staging --timeout=5m
+          kubectl rollout status deployment/orchestrator -n staging --timeout=5m
+
+      - name: Verify health
+        run: |
+          kubectl get pods -n staging
+          kubectl get services -n staging
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # STAGE 6: SMOKE TESTS
+  # ═════════════════════════════════════════════════════════════════════════
+
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: Wait for staging deployment
+        run: sleep 30
+
+      - name: Run smoke tests
+        run: |
+          npx playwright test apps/web/__tests__/e2e/smoke.test.ts \
+            --config=playwright.config.ts \
+            --headed=false
+        env:
+          E2E_BASE_URL: https://staging.in-midst-my-life.dev
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: playwright-report/
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # STAGE 7: DEPLOY TO PRODUCTION
+  # ═════════════════════════════════════════════════════════════════════════
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, smoke-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    environment:
+      name: production
+      url: https://in-midst-my-life.dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'production',
+              required_contexts: [],
+              auto_merge: false
+            });
+            console.log('Deployment created:', deployment.data.id);
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Set image tags
+        id: tags
+        run: |
+          echo "web_image=${{ env.REGISTRY }}/${{ github.repository }}/web:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "api_image=${{ env.REGISTRY }}/${{ github.repository }}/api:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "orchestrator_image=${{ env.REGISTRY }}/${{ github.repository }}/orchestrator:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Create namespace
+        run: kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create image pull secret
+        run: |
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-email=${{ github.actor }}@users.noreply.github.com \
+            -n production --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Backup database
+        run: |
+          kubectl exec -n production $(kubectl get pod -n production -l app=postgres -o jsonpath='{.items[0].metadata.name}') \
+            -- pg_dump -U ${{ secrets.POSTGRES_USER }} ${{ secrets.POSTGRES_DB }} \
+            | gzip > db-backup-$(date +%s).sql.gz
+        continue-on-error: true
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/web \
+            web=${{ steps.tags.outputs.web_image }} \
+            -n production --record
+          
+          kubectl set image deployment/api \
+            api=${{ steps.tags.outputs.api_image }} \
+            -n production --record
+          
+          kubectl set image deployment/orchestrator \
+            orchestrator=${{ steps.tags.outputs.orchestrator_image }} \
+            -n production --record
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/web -n production --timeout=5m
+          kubectl rollout status deployment/api -n production --timeout=5m
+          kubectl rollout status deployment/orchestrator -n production --timeout=5m
+
+      - name: Verify health
+        run: |
+          kubectl get pods -n production
+          kubectl get services -n production
+          kubectl get ingress -n production
+
+      - name: Perform health checks
+        run: |
+          API_URL=$(kubectl get service -n production api -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          curl -f https://$API_URL/health || exit 1
+          curl -f https://$API_URL/ready || exit 1
+
+      - name: Notify deployment
+        uses: actions/github-script@v7
+        if: success()
+        with:
+          script: |
+            github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id,
+              state: 'success',
+              environment_url: 'https://in-midst-my-life.dev',
+              description: 'Deployment succeeded'
+            });
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # STAGE 8: NOTIFICATION
+  # ═════════════════════════════════════════════════════════════════════════
+
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [quality, test, security, build, deploy-staging, smoke-tests, deploy-production]
+    
+    steps:
+      - name: Determine workflow status
+        id: status
+        run: |
+          if [[ "${{ needs.quality.result }}" == "failure" || \
+                "${{ needs.test.result }}" == "failure" || \
+                "${{ needs.security.result }}" == "failure" || \
+                "${{ needs.build.result }}" == "failure" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.deploy-staging.result }}" == "failure" || \
+                  "${{ needs.smoke-tests.result }}" == "failure" || \
+                  "${{ needs.deploy-production.result }}" == "failure" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v1.24.0
+        if: always()
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "CI/CD Pipeline: ${{ steps.status.outputs.status }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Actor:*\n${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Test Results:*\n• Quality: ${{ needs.quality.result }}\n• Tests: ${{ needs.test.result }}\n• Security: ${{ needs.security.result }}\n• Build: ${{ needs.build.result }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflow"
+                      },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        continue-on-error: true

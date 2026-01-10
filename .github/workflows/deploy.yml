@@ -1,0 +1,129 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./apps/api
+          file: ./apps/api/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}-api
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-api
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-api,mode=max
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./apps/web
+          file: ./apps/web/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}-web
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-web
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-web,mode=max
+
+      - name: Build and push Orchestrator image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./apps/orchestrator
+          file: ./apps/orchestrator/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}-orchestrator
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-orchestrator
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-orchestrator,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Kubernetes
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+          IMAGE_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "$KUBECONFIG_CONTENT" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+          # Update image tags in Helm values
+          sed -i "s|IMAGE_TAG|${IMAGE_SHA}|g" infra/helm/values.yaml
+
+          # Deploy using Helm
+          helm upgrade --install in-midst-my-life ./infra/helm \
+            --namespace production \
+            --create-namespace \
+            --values infra/helm/values.yaml \
+            --timeout 5m
+
+          # Wait for rollout
+          kubectl -n production rollout status deployment/api --timeout=5m
+          kubectl -n production rollout status deployment/web --timeout=5m
+          kubectl -n production rollout status deployment/orchestrator --timeout=5m
+
+      - name: Verify deployment
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "$KUBECONFIG_CONTENT" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+          # Check pod status
+          kubectl -n production get pods
+
+          # Check service endpoints
+          kubectl -n production get svc
+
+      - name: Notify deployment success
+        if: success()
+        run: echo "Deployment successful!"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: echo "Deployment failed!"
