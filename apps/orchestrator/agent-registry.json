@@ -1,0 +1,72 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "source": "default"
+  },
+  "agents": {
+    "architect": {
+      "id": "architect",
+      "role": "architect",
+      "purpose": "Define system architecture, identify dependencies, and outline implementation steps.",
+      "inputs": ["specs", "architecture", "constraints"],
+      "outputs": ["plans", "diagrams", "tradeoffs"],
+      "capabilities": ["system-design", "dependency-mapping", "architecture-review"]
+    },
+    "implementer": {
+      "id": "implementer",
+      "role": "implementer",
+      "purpose": "Ship production-ready code aligned to specs and acceptance criteria.",
+      "inputs": ["plans", "tasks", "schemas"],
+      "outputs": ["code", "migrations", "tests"],
+      "capabilities": ["implementation", "refactoring", "integration"]
+    },
+    "reviewer": {
+      "id": "reviewer",
+      "role": "reviewer",
+      "purpose": "Validate correctness, identify risks, and enforce quality gates.",
+      "inputs": ["diffs", "tests", "docs"],
+      "outputs": ["review-notes", "risk-report"],
+      "capabilities": ["code-review", "risk-analysis", "quality-control"]
+    },
+    "tester": {
+      "id": "tester",
+      "role": "tester",
+      "purpose": "Design and run tests to ensure functional and integration coverage.",
+      "inputs": ["test-plans", "fixtures", "env"],
+      "outputs": ["test-results", "coverage-report"],
+      "capabilities": ["unit-testing", "integration-testing", "regression"]
+    },
+    "maintainer": {
+      "id": "maintainer",
+      "role": "maintainer",
+      "purpose": "Keep systems healthy, monitor automation, and handle operational runbooks.",
+      "inputs": ["alerts", "metrics", "runbooks"],
+      "outputs": ["ops-notes", "maintenance-plans"],
+      "capabilities": ["ops", "monitoring", "reliability"]
+    },
+    "narrator": {
+      "id": "narrator",
+      "role": "narrator",
+      "purpose": "Generate mask-aligned, context-aware narrative content for professional profiles.",
+      "inputs": ["profile", "mask", "timeline", "template"],
+      "outputs": ["narrative-text"],
+      "capabilities": ["creative-writing", "tone-matching", "synthesis"]
+    },
+    "ingestor": {
+      "id": "ingestor",
+      "role": "ingestor",
+      "purpose": "Synchronize external professional data (GitHub, LinkedIn) into the verifiable ledger.",
+      "inputs": ["source-url", "username", "api-token"],
+      "outputs": ["ledger-entities"],
+      "capabilities": ["data-extraction", "mapping", "normalization"]
+    },
+    "crawler": {
+      "id": "crawler",
+      "role": "crawler",
+      "purpose": "Traverse local and cloud environments to discover, extract, and index project artifacts and documentation.",
+      "inputs": ["base-path", "filters", "depth"],
+      "outputs": ["file-manifest", "content-blocks", "embeddings"],
+      "capabilities": ["recursive-traversal", "text-extraction", "metadata-tagging", "vectorization"]
+    }
+  }
+}

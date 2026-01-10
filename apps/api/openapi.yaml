@@ -1,0 +1,2935 @@
+openapi: 3.0.1
+info:
+  title: In Midst My Life API
+  description: |
+    Dynamic interactive CV/résumé system with mask-based identity filtering and narrative generation.
+
+    ## Key Features
+    - **Profile Management**: CRUD operations for user profiles with temporal epochs and career stages
+    - **Mask System**: Context-specific identity masks with cognitive/expressive/operational ontologies
+    - **CV Components**: Experiences, educations, skills, projects, credentials, and attestations
+    - **Narrative Generation**: AI-powered résumé narrative blocks with weighting and LLM ranking
+    - **Export Formats**: JSON-LD (semantic web), PDF (résumé), Verifiable Credentials (W3C standard)
+    - **GraphQL API**: Unified query interface with subscriptions support
+    - **Authentication**: JWT bearer tokens with role-based access control
+    - **Caching**: Redis-backed (with in-memory fallback) for taxonomy endpoints
+
+    ## Authentication
+
+    Most endpoints require JWT bearer token authentication. Include in request:
+    ```
+    Authorization: Bearer <token>
+    ```
+
+    Tokens include permission claims for fine-grained access control.
+
+  version: 0.2.0
+  contact:
+    name: API Support
+    url: https://github.com/anthropics/in-midst-my-life
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3001
+    description: Local development server
+  - url: https://api.inmidstmylife.com
+    description: Production server
+
+tags:
+  - name: System
+    description: Health checks and metrics
+  - name: Profiles
+    description: User profile management (CRUD, narrative generation)
+  - name: CV Components
+    description: Experiences, educations, skills, projects, credentials, attestations
+  - name: Exports
+    description: Export profile data in various formats (JSON-LD, PDF, VC)
+  - name: Taxonomy
+    description: Masks, epochs, and stages (identity taxonomy with caching)
+  - name: Agent
+    description: AI agent orchestration interface
+  - name: Jobs
+    description: Async task queue and job management
+  - name: Attestations
+    description: Attestation block management
+  - name: GraphQL
+    description: GraphQL API endpoint and schema
+
+paths:
+  # ============ SYSTEM ENDPOINTS ============
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      description: Returns API health status (always succeeds if server is running)
+      operationId: getHealth
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+
+  /ready:
+    get:
+      tags: [System]
+      summary: Readiness probe
+      description: Checks if all dependencies (database, cache, etc.) are healthy
+      operationId: getReady
+      responses:
+        '200':
+          description: All dependencies healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ready]
+        '503':
+          description: One or more dependencies degraded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [degraded]
+
+  /metrics:
+    get:
+      tags: [System]
+      summary: Prometheus metrics
+      description: Returns application metrics in Prometheus format
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Prometheus-format metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  # ============ PROFILE ENDPOINTS ============
+  /profiles:
+    post:
+      tags: [Profiles]
+      summary: Create new profile
+      operationId: createProfile
+      security:
+        - bearerAuth: [WRITE_PROFILE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags: [Profiles]
+      summary: List all profiles
+      operationId: listProfiles
+      security:
+        - bearerAuth: [READ_PROFILE]
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: search
+          in: query
+          description: Search by name or email
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profiles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /profiles/validate:
+    post:
+      tags: [Profiles]
+      summary: Validate profile data
+      description: Validate profile structure without persisting
+      operationId: validateProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      responses:
+        '200':
+          description: Profile is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  valid:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /profiles/{id}:
+    get:
+      tags: [Profiles]
+      summary: Get profile by ID
+      operationId: getProfile
+      security:
+        - bearerAuth: [READ_PROFILE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      tags: [Profiles]
+      summary: Update profile
+      operationId: updateProfile
+      security:
+        - bearerAuth: [WRITE_PROFILE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Profile'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    delete:
+      tags: [Profiles]
+      summary: Delete profile
+      operationId: deleteProfile
+      security:
+        - bearerAuth: [DELETE_PROFILE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Profile deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /profiles/{id}/masks/select:
+    post:
+      tags: [Profiles]
+      summary: Select identity mask for context
+      operationId: selectMask
+      security:
+        - bearerAuth: [READ_PROFILE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contexts, tags]
+              properties:
+                contexts:
+                  type: array
+                  items:
+                    type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Best masks selected for context
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  selectedMasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Mask'
+
+  /profiles/{id}/narrative:
+    post:
+      tags: [Profiles]
+      summary: Generate narrative blocks
+      description: Generate AI-powered résumé narrative blocks with optional mask filtering
+      operationId: generateNarrative
+      security:
+        - bearerAuth: [READ_NARRATIVE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contexts, tags]
+              properties:
+                maskId:
+                  type: string
+                contexts:
+                  type: array
+                  items:
+                    type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                limit:
+                  type: integer
+                  default: 10
+                  minimum: 1
+                  maximum: 50
+                includeMeta:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Narrative blocks generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  blocks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NarrativeBlock'
+                  meta:
+                    $ref: '#/components/schemas/NarrativeMeta'
+
+  /profiles/{id}/narratives:
+    get:
+      tags: [Profiles]
+      summary: Get narrative history
+      operationId: getNarratives
+      security:
+        - bearerAuth: [READ_NARRATIVE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, approved, rejected]
+      responses:
+        '200':
+          description: Narratives retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NarrativeSnapshot'
+
+  /profiles/{id}/narratives/approved:
+    get:
+      tags: [Profiles]
+      summary: Get approved narratives
+      operationId: getApprovedNarratives
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Approved narratives retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NarrativeSnapshot'
+
+  /profiles/{id}/narratives/{narrativeId}:
+    patch:
+      tags: [Profiles]
+      summary: Update narrative
+      operationId: updateNarrative
+      security:
+        - bearerAuth: [WRITE_NARRATIVE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: narrativeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                blocks:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/NarrativeBlock'
+      responses:
+        '200':
+          description: Narrative updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NarrativeSnapshot'
+
+  /profiles/{id}/narratives/{narrativeId}/approve:
+    post:
+      tags: [Profiles]
+      summary: Approve narrative
+      operationId: approveNarrative
+      security:
+        - bearerAuth: [APPROVE_NARRATIVE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: narrativeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Narrative approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NarrativeSnapshot'
+
+  /profiles/{id}/agent-tokens:
+    post:
+      tags: [Profiles]
+      summary: Create agent token
+      operationId: createAgentToken
+      security:
+        - bearerAuth: [WRITE_PROFILE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                expiresIn:
+                  type: integer
+      responses:
+        '201':
+          description: Agent token created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  token:
+                    type: string
+
+    get:
+      tags: [Profiles]
+      summary: List agent tokens
+      operationId: listAgentTokens
+      security:
+        - bearerAuth: [READ_PROFILE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agent tokens retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  tokens:
+                    type: array
+                    items:
+                      type: object
+
+  /profiles/{id}/agent-tokens/{tokenId}:
+    delete:
+      tags: [Profiles]
+      summary: Revoke agent token
+      operationId: deleteAgentToken
+      security:
+        - bearerAuth: [WRITE_PROFILE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token revoked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  # ============ CV COMPONENT ENDPOINTS ============
+  /profiles/{id}/experiences:
+    post:
+      tags: [CV Components]
+      summary: Add work experience
+      operationId: createExperience
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, company, startDate]
+              properties:
+                title:
+                  type: string
+                company:
+                  type: string
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+                isCurrent:
+                  type: boolean
+                description:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Experience created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List experiences
+      operationId: listExperiences
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Experiences retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/experiences/{eid}:
+    get:
+      tags: [CV Components]
+      summary: Get experience by ID
+      operationId: getExperience
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: eid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Experience retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    patch:
+      tags: [CV Components]
+      summary: Update experience
+      operationId: updateExperience
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: eid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Experience updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [CV Components]
+      summary: Delete experience
+      operationId: deleteExperience
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: eid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Experience deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /profiles/{id}/educations:
+    post:
+      tags: [CV Components]
+      summary: Add education entry
+      operationId: createEducation
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [institution, fieldOfStudy]
+              properties:
+                institution:
+                  type: string
+                fieldOfStudy:
+                  type: string
+                degree:
+                  type: string
+                graduationDate:
+                  type: string
+                  format: date-time
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Education created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List educations
+      operationId: listEducations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Educations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/educations/{eid}:
+    get:
+      tags: [CV Components]
+      summary: Get education by ID
+      operationId: getEducation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: eid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Education retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    patch:
+      tags: [CV Components]
+      summary: Update education
+      operationId: updateEducation
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: eid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Education updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [CV Components]
+      summary: Delete education
+      operationId: deleteEducation
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: eid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Education deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /profiles/{id}/skills:
+    post:
+      tags: [CV Components]
+      summary: Add skill
+      operationId: createSkill
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, category]
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                proficiencyLevel:
+                  type: string
+                  enum: [Beginner, Intermediate, Advanced, Expert]
+                endorsements:
+                  type: integer
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Skill created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List skills
+      operationId: listSkills
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: category
+          in: query
+          description: Filter by skill category
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Skills retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/skills/{sid}:
+    get:
+      tags: [CV Components]
+      summary: Get skill by ID
+      operationId: getSkill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Skill retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    patch:
+      tags: [CV Components]
+      summary: Update skill
+      operationId: updateSkill
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Skill updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [CV Components]
+      summary: Delete skill
+      operationId: deleteSkill
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Skill deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /profiles/{id}/projects:
+    post:
+      tags: [CV Components]
+      summary: Add project
+      operationId: createProject
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, url]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                url:
+                  type: string
+                  format: uri
+                technologies:
+                  type: array
+                  items:
+                    type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List projects
+      operationId: listProjects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Projects retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/projects/upsert:
+    post:
+      tags: [CV Components]
+      summary: Create or update project (idempotent)
+      operationId: upsertProject
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, url]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                url:
+                  type: string
+                  format: uri
+                technologies:
+                  type: array
+                  items:
+                    type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Project upserted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+  /profiles/{id}/credentials:
+    post:
+      tags: [CV Components]
+      summary: Add credential
+      operationId: createCredential
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, issuingOrganization]
+              properties:
+                name:
+                  type: string
+                issuingOrganization:
+                  type: string
+                issueDate:
+                  type: string
+                  format: date-time
+                expirationDate:
+                  type: string
+                  format: date-time
+                credentialUrl:
+                  type: string
+                  format: uri
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Credential created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List credentials
+      operationId: listCredentials
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Credentials retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/credentials/{cid}:
+    get:
+      tags: [CV Components]
+      summary: Get credential by ID
+      operationId: getCredential
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Credential retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    patch:
+      tags: [CV Components]
+      summary: Update credential
+      operationId: updateCredential
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Credential updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [CV Components]
+      summary: Delete credential
+      operationId: deleteCredential
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Credential deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /profiles/{id}/attestations:
+    post:
+      tags: [CV Components]
+      summary: Add attestation
+      operationId: createAttestation
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [claimType, issuer, claim]
+              properties:
+                claimType:
+                  type: string
+                issuer:
+                  type: string
+                claim:
+                  type: object
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Attestation created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List attestations
+      operationId: listAttestations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Attestations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/attestations/{aid}:
+    get:
+      tags: [CV Components]
+      summary: Get attestation by ID
+      operationId: getAttestation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: aid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Attestation retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    patch:
+      tags: [CV Components]
+      summary: Update attestation
+      operationId: updateAttestation
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: aid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Attestation updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [CV Components]
+      summary: Delete attestation
+      operationId: deleteAttestation
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: aid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Attestation deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /profiles/{id}/graph/edges:
+    post:
+      tags: [CV Components]
+      summary: Create graph edge
+      operationId: createGraphEdge
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceId, targetId, relationshipType]
+              properties:
+                sourceId:
+                  type: string
+                targetId:
+                  type: string
+                relationshipType:
+                  type: string
+                strength:
+                  type: number
+                metadata:
+                  type: object
+      responses:
+        '201':
+          description: Graph edge created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List graph edges
+      operationId: listGraphEdges
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Graph edges retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/graph/edges/{eid}:
+    get:
+      tags: [CV Components]
+      summary: Get graph edge by ID
+      operationId: getGraphEdge
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: eid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Graph edge retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    patch:
+      tags: [CV Components]
+      summary: Update graph edge
+      operationId: updateGraphEdge
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: eid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Graph edge updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [CV Components]
+      summary: Delete graph edge
+      operationId: deleteGraphEdge
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: eid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Graph edge deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  # ============ EXPORT ENDPOINTS ============
+  /profiles/{id}/export/json-ld:
+    get:
+      tags: [Exports]
+      summary: Export as JSON-LD
+      description: Export profile in Schema.org JSON-LD format for semantic web
+      operationId: exportJsonLd
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: maskId
+          in: query
+          description: Optional mask to apply for filtered view
+          schema:
+            type: string
+      responses:
+        '200':
+          description: JSON-LD export generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Schema.org Person object in JSON-LD format
+
+  /profiles/{id}/export/json-ld/masked/{maskId}:
+    get:
+      tags: [Exports]
+      summary: Export as masked JSON-LD
+      description: Export profile in JSON-LD format with specific mask applied
+      operationId: exportMaskedJsonLd
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: maskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Masked JSON-LD export generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Masked Schema.org Person object
+
+  /profiles/{id}/export/pdf:
+    post:
+      tags: [Exports]
+      summary: Export as PDF résumé
+      description: Generate PDF résumé with customizable formatting and mask filtering
+      operationId: exportPdf
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                maskId:
+                  type: string
+                  description: Optional mask to apply
+                colorScheme:
+                  type: string
+                  enum: [classic, modern, minimal]
+                  default: classic
+      responses:
+        '200':
+          description: PDF résumé generated successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /profiles/{id}/export/vc:
+    get:
+      tags: [Exports]
+      summary: Export as Verifiable Credential
+      description: Export profile as W3C Verifiable Credential for blockchain integration
+      operationId: exportVC
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Verifiable Credential exported successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifiableCredential'
+
+  # ============ TAXONOMY ENDPOINTS (CACHED) ============
+  /taxonomy/masks:
+    get:
+      tags: [Taxonomy]
+      summary: List all identity masks
+      description: Retrieve paginated list of identity masks. Results cached for 1 hour.
+      operationId: listMasks
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: ontology
+          in: query
+          description: Filter by ontology type
+          schema:
+            type: string
+            enum: [cognitive, expressive, operational]
+        - name: tag
+          in: query
+          description: Filter by activation tag
+          schema:
+            type: string
+        - name: search
+          in: query
+          description: Search by name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Masks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Mask'
+                  total:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+
+    post:
+      tags: [Taxonomy]
+      summary: Create new mask
+      operationId: createMask
+      security:
+        - bearerAuth: [WRITE_MASK]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Mask'
+      responses:
+        '201':
+          description: Mask created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Mask'
+
+  /taxonomy/masks/{id}:
+    get:
+      tags: [Taxonomy]
+      summary: Get mask by ID
+      operationId: getMask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Mask retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Mask'
+
+    patch:
+      tags: [Taxonomy]
+      summary: Update mask
+      operationId: updateMask
+      security:
+        - bearerAuth: [WRITE_MASK]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Mask'
+      responses:
+        '200':
+          description: Mask updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Mask'
+
+    delete:
+      tags: [Taxonomy]
+      summary: Delete mask
+      operationId: deleteMask
+      security:
+        - bearerAuth: [DELETE_MASK]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Mask deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /taxonomy/epochs:
+    get:
+      tags: [Taxonomy]
+      summary: List all epochs
+      description: Retrieve paginated list of temporal epochs. Results cached for 1 hour.
+      operationId: listEpochs
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Epochs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Epoch'
+
+    post:
+      tags: [Taxonomy]
+      summary: Create new epoch
+      operationId: createEpoch
+      security:
+        - bearerAuth: [WRITE_MASK]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Epoch'
+      responses:
+        '201':
+          description: Epoch created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Epoch'
+
+  /taxonomy/epochs/{id}:
+    get:
+      tags: [Taxonomy]
+      summary: Get epoch by ID
+      operationId: getEpoch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Epoch retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Epoch'
+
+    patch:
+      tags: [Taxonomy]
+      summary: Update epoch
+      operationId: updateEpoch
+      security:
+        - bearerAuth: [WRITE_MASK]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Epoch'
+      responses:
+        '200':
+          description: Epoch updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Epoch'
+
+    delete:
+      tags: [Taxonomy]
+      summary: Delete epoch
+      operationId: deleteEpoch
+      security:
+        - bearerAuth: [DELETE_MASK]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Epoch deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /taxonomy/stages:
+    get:
+      tags: [Taxonomy]
+      summary: List all stages
+      description: Retrieve paginated list of career stages. Results cached for 1 hour.
+      operationId: listStages
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: epochId
+          in: query
+          description: Filter by epoch ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stages retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Stage'
+
+    post:
+      tags: [Taxonomy]
+      summary: Create new stage
+      operationId: createStage
+      security:
+        - bearerAuth: [WRITE_MASK]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Stage'
+      responses:
+        '201':
+          description: Stage created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Stage'
+
+  /taxonomy/stages/{id}:
+    get:
+      tags: [Taxonomy]
+      summary: Get stage by ID
+      operationId: getStage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stage retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Stage'
+
+    patch:
+      tags: [Taxonomy]
+      summary: Update stage
+      operationId: updateStage
+      security:
+        - bearerAuth: [WRITE_MASK]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Stage'
+      responses:
+        '200':
+          description: Stage updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Stage'
+
+    delete:
+      tags: [Taxonomy]
+      summary: Delete stage
+      operationId: deleteStage
+      security:
+        - bearerAuth: [DELETE_MASK]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stage deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /taxonomy/narrative/generate:
+    post:
+      tags: [Taxonomy]
+      summary: Generate narrative blocks
+      description: Generate AI-powered narrative blocks from timeline data with optional mask filtering
+      operationId: generateNarrativeBlocks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contexts, tags, timeline]
+              properties:
+                maskId:
+                  type: string
+                contexts:
+                  type: array
+                  items:
+                    type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                timeline:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/TimelineEntry'
+                limit:
+                  type: integer
+                  default: 10
+                  minimum: 1
+                  maximum: 50
+                includeMeta:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Narrative blocks generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  blocks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NarrativeBlock'
+                  meta:
+                    $ref: '#/components/schemas/NarrativeMeta'
+
+  # ============ GRAPHQL ENDPOINT ============
+  /graphql:
+    post:
+      tags: [GraphQL]
+      summary: GraphQL query/mutation
+      description: Execute GraphQL queries and mutations against the unified API
+      operationId: graphqlQuery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  description: GraphQL query/mutation string
+                variables:
+                  type: object
+                  description: Query variables
+                operationName:
+                  type: string
+                  description: Operation name (for multi-operation documents)
+      responses:
+        '200':
+          description: GraphQL query executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                  errors:
+                    type: array
+                    items:
+                      type: object
+
+    get:
+      tags: [GraphQL]
+      summary: GraphQL playground
+      description: Interactive GraphQL Playground for query development
+      operationId: graphqlPlayground
+      responses:
+        '200':
+          description: GraphQL Playground HTML
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /graphql/schema:
+    get:
+      tags: [GraphQL]
+      summary: GraphQL schema
+      description: Retrieve full GraphQL schema in SDL format
+      operationId: graphqlSchema
+      responses:
+        '200':
+          description: GraphQL schema in SDL format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  # ============ AGENT ENDPOINTS ============
+  /agent/execute:
+    post:
+      tags: [Agent]
+      summary: Execute agent task
+      description: Execute autonomous AI agent operation on behalf of user
+      operationId: executeAgent
+      security:
+        - agentAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, profileId]
+              properties:
+                action:
+                  type: string
+                  description: Agent action to execute
+                profileId:
+                  type: string
+                  format: uuid
+                params:
+                  type: object
+                  description: Action-specific parameters
+      responses:
+        '202':
+          description: Agent task accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  taskId:
+                    type: string
+                  status:
+                    type: string
+
+  /agent/tasks/{taskId}:
+    get:
+      tags: [Agent]
+      summary: Get agent task status
+      operationId: getAgentTask
+      security:
+        - bearerAuth: [READ_PROFILE]
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent task status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  task:
+                    type: object
+
+  # ============ JOB QUEUE ENDPOINTS ============
+  /jobs:
+    get:
+      tags: [Jobs]
+      summary: List jobs
+      description: Retrieve job queue status and history
+      operationId: listJobs
+      security:
+        - bearerAuth: [ADMIN_ACCESS]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed]
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Jobs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /jobs/{id}:
+    get:
+      tags: [Jobs]
+      summary: Get job by ID
+      operationId: getJob
+      security:
+        - bearerAuth: [ADMIN_ACCESS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+  # ============ ATTESTATION BLOCK ENDPOINTS ============
+  /attestation-blocks:
+    get:
+      tags: [Attestations]
+      summary: List attestation blocks
+      operationId: listAttestationBlocks
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Attestation blocks retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+    post:
+      tags: [Attestations]
+      summary: Create attestation block
+      operationId: createAttestationBlock
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Attestation block created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+components:
+  schemas:
+    Profile:
+      type: object
+      required: [identityId, slug]
+      properties:
+        id:
+          type: string
+          format: uuid
+        identityId:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        displayName:
+          type: string
+        title:
+          type: string
+        headline:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProfileResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Profile'
+
+    ProfileListResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+
+    Mask:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        ontology:
+          type: string
+          enum: [cognitive, expressive, operational]
+        functional_scope:
+          type: string
+        stylistic_parameters:
+          type: object
+        activation_rules:
+          type: object
+        filters:
+          type: object
+        redaction:
+          type: object
+
+    Epoch:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        order:
+          type: integer
+        summary:
+          type: string
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stage'
+
+    Stage:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        epochId:
+          type: string
+        summary:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    NarrativeBlock:
+      type: object
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        weight:
+          type: number
+        templateId:
+          type: string
+
+    NarrativeSnapshot:
+      type: object
+      properties:
+        id:
+          type: string
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/NarrativeBlock'
+        status:
+          type: string
+          enum: [draft, approved, rejected]
+        createdAt:
+          type: string
+          format: date-time
+        approvedAt:
+          type: string
+          format: date-time
+        approvedBy:
+          type: string
+        metadata:
+          type: object
+
+    NarrativeMeta:
+      type: object
+      properties:
+        maskId:
+          type: string
+        mask:
+          type: object
+        contexts:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        timelineCount:
+          type: integer
+        generatedAt:
+          type: string
+          format: date-time
+
+    TimelineEntry:
+      type: object
+      properties:
+        title:
+          type: string
+        start:
+          type: string
+        end:
+          type: string
+        summary:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    VerifiableCredential:
+      type: object
+      properties:
+        '@context':
+          type: array
+          items:
+            type: string
+        type:
+          type: array
+          items:
+            type: string
+        issuer:
+          type: object
+        issuanceDate:
+          type: string
+          format: date-time
+        expirationDate:
+          type: string
+          format: date-time
+        credentialSubject:
+          type: object
+        proof:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        error:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token with permission claims
+
+    agentAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: AI agent token for autonomous operations
+
+security:
+  - bearerAuth: []

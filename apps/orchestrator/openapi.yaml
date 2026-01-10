@@ -1,0 +1,447 @@
+openapi: 3.1.0
+info:
+  title: Orchestrator API
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /ready:
+    get:
+      summary: Readiness check
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        "503":
+          description: Degraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+  /tasks:
+    post:
+      summary: Enqueue a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentTask"
+      responses:
+        "200":
+          description: Enqueued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueResponse"
+    get:
+      summary: List tasks
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [queued, running, completed, failed]
+      responses:
+        "200":
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+  /runs:
+    get:
+      summary: List runs
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [queued, running, completed, failed]
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: Runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunListResponse"
+        "400":
+          description: Invalid status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+  /runs/{id}:
+    get:
+      summary: Get run
+      parameters:
+        - in: path
+          required: true
+          name: id
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+  /runs/{id}/tasks:
+    get:
+      summary: List tasks for a run
+      parameters:
+        - in: path
+          required: true
+          name: id
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Run tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunTasksResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+  /tasks/{id}:
+    get:
+      summary: Get task
+      parameters:
+        - in: path
+          required: true
+          name: id
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+  /tasks/{id}/history:
+    get:
+      summary: Task history
+      parameters:
+        - in: path
+          required: true
+          name: id
+          schema:
+            type: string
+      responses:
+        "200":
+          description: History
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskHistoryResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+  /tasks/{id}/metadata:
+    patch:
+      summary: Update task metadata
+      parameters:
+        - in: path
+          required: true
+          name: id
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+  /tasks/dispatch:
+    post:
+      summary: Dispatch next task
+      responses:
+        "200":
+          description: Dispatch result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DispatchResponse"
+  /webhooks/github:
+    post:
+      summary: Ingest GitHub webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Enqueued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueResponse"
+components:
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        error:
+          type: string
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        queue:
+          type: integer
+        tasks:
+          type: integer
+        worker:
+          type: string
+        llm:
+          type: string
+        registry:
+          type: integer
+    AgentTask:
+      type: object
+      required: [id, role, description, payload]
+      properties:
+        id:
+          type: string
+        runId:
+          type: string
+        role:
+          type: string
+          enum: [architect, implementer, reviewer, tester, maintainer]
+        description:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+    AgentResult:
+      type: object
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+          enum: [completed, failed]
+        notes:
+          type: string
+        output:
+          type: object
+          additionalProperties: true
+        llm:
+          type: object
+          additionalProperties: true
+    TaskHistoryEntry:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        timestamp:
+          type: string
+        notes:
+          type: string
+    TaskResult:
+      type: object
+      properties:
+        notes:
+          type: string
+        output:
+          type: object
+          additionalProperties: true
+        llm:
+          type: object
+          additionalProperties: true
+    TrackedTask:
+      allOf:
+        - $ref: "#/components/schemas/AgentTask"
+        - type: object
+          properties:
+            status:
+              type: string
+              enum: [queued, running, completed, failed]
+            result:
+              $ref: "#/components/schemas/TaskResult"
+            llm:
+              type: object
+              additionalProperties: true
+            attempts:
+              type: integer
+            metadata:
+              type: object
+              additionalProperties: true
+            history:
+              type: array
+              items:
+                $ref: "#/components/schemas/TaskHistoryEntry"
+    TaskResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/TrackedTask"
+    TaskListResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackedTask"
+    TaskHistoryResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskHistoryEntry"
+    QueueResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        queued:
+          type: integer
+        runId:
+          type: string
+    DispatchResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        dispatched:
+          type: boolean
+        result:
+          $ref: "#/components/schemas/AgentResult"
+    RunRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [github, schedule, manual]
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        payload:
+          type: object
+          additionalProperties: true
+        taskIds:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    RunResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/RunRecord"
+    RunListResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunRecord"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+    RunTasksResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackedTask"

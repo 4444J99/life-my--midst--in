@@ -1,0 +1,39 @@
+[
+  {
+    "id": "task-1",
+    "role": "architect",
+    "description": "Design mask selection",
+    "payload": {},
+    "status": "completed",
+    "result": {
+      "notes": "Stub architect handled: Design mask selection"
+    }
+  },
+  {
+    "id": "gh-1766857206045",
+    "role": "architect",
+    "description": "GitHub issues opened",
+    "payload": {
+      "action": "opened"
+    },
+    "status": "queued"
+  },
+  {
+    "id": "gh-1766857247789",
+    "role": "architect",
+    "description": "GitHub issues opened",
+    "payload": {
+      "action": "opened"
+    },
+    "status": "queued"
+  },
+  {
+    "id": "gh-1766857259350",
+    "role": "architect",
+    "description": "GitHub issues opened",
+    "payload": {
+      "action": "opened"
+    },
+    "status": "queued"
+  }
+]
