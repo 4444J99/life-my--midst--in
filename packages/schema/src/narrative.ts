@@ -50,6 +50,7 @@ export const NarrativeBlockSchema = z.object({
     performance_note: z.string().optional().describe("Meta-theatrical commentary acknowledging curation"),
     authentic_caveat: z.string().optional().describe("Transparency about what's emphasized vs. de-emphasized")
   }).optional().describe("Theatrical self-awareness metadata"),
+  templateId: z.string().optional().describe("Template identifier for narrative sequencing (e.g., 'identity-mode', 'stage-arc', 'sequence')"),
   weight: z.number().int().min(0).max(100).optional().describe("Relative importance in mask context (0-100)"),
   priority: z.number().int().min(0).optional().describe("Display priority (higher = appears first)")
 });

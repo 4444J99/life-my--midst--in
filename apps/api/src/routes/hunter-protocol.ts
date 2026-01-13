@@ -5,6 +5,7 @@ import {
   HunterSearchFilterSchema,
 } from "@in-midst-my-life/core";
 import type { Profile } from "@in-midst-my-life/schema";
+import { profileRepo, type ProfileRepo } from "../repositories/profiles";
 
 /**
  * Hunter Protocol API Routes
@@ -18,8 +19,10 @@ import type { Profile } from "@in-midst-my-life/schema";
  */
 
 export async function registerHunterProtocolRoutes(
-  fastify: FastifyInstance
+  fastify: FastifyInstance,
+  deps?: { repo?: ProfileRepo }
 ) {
+  const repo = deps?.repo ?? profileRepo;
   const hunterAgent = createHunterAgent(
     process.env.NODE_ENV === "development"
   );
@@ -145,19 +148,17 @@ export async function registerHunterProtocolRoutes(
       const { job, personaId } = request.body as any;
 
       try {
-        // In production: fetch profile from database
-        const mockProfile: Profile = {
-          id,
-          name: "Test User",
-          email: "test@example.com",
-          summary: "Full-stack engineer with 5+ years experience",
-          created_at: new Date(),
-          updated_at: new Date(),
-        };
+        const profile = await repo.find(id);
+        if (!profile) {
+          return reply.code(404).send({
+            error: "Profile not found",
+            message: `No profile with ID ${id}`,
+          });
+        }
 
         const result = await hunterAgent.analyzeGap({
           job,
-          profile: mockProfile,
+          profile,
           personaId,
         });
 
@@ -212,19 +213,17 @@ export async function registerHunterProtocolRoutes(
       const { jobId, personaId } = request.body as any;
 
       try {
-        // In production: fetch profile from database
-        const mockProfile: Profile = {
-          id,
-          name: "Test User",
-          email: "test@example.com",
-          summary: "Full-stack engineer with 5+ years experience",
-          created_at: new Date(),
-          updated_at: new Date(),
-        };
+        const profile = await repo.find(id);
+        if (!profile) {
+          return reply.code(404).send({
+            error: "Profile not found",
+            message: `No profile with ID ${id}`,
+          });
+        }
 
         const result = await hunterAgent.tailorResume({
           jobId,
-          profile: mockProfile,
+          profile,
           personaId,
         });
 
@@ -281,19 +280,17 @@ export async function registerHunterProtocolRoutes(
       const { job, personaId, tailoredResume } = request.body as any;
 
       try {
-        // In production: fetch profile from database
-        const mockProfile: Profile = {
-          id,
-          name: "Test User",
-          email: "test@example.com",
-          summary: "Full-stack engineer with 5+ years experience",
-          created_at: new Date(),
-          updated_at: new Date(),
-        };
+        const profile = await repo.find(id);
+        if (!profile) {
+          return reply.code(404).send({
+            error: "Profile not found",
+            message: `No profile with ID ${id}`,
+          });
+        }
 
         const result = await hunterAgent.writeCoverLetter({
           job,
-          profile: mockProfile,
+          profile,
           personaId,
           tailoredResume,
         });
@@ -363,18 +360,16 @@ export async function registerHunterProtocolRoutes(
         request.body as any;
 
       try {
-        // In production: fetch profile from database
-        const mockProfile: Profile = {
-          id,
-          name: "Test User",
-          email: "test@example.com",
-          summary: "Full-stack engineer with 5+ years experience",
-          created_at: new Date(),
-          updated_at: new Date(),
-        };
+        const profile = await repo.find(id);
+        if (!profile) {
+          return reply.code(404).send({
+            error: "Profile not found",
+            message: `No profile with ID ${id}`,
+          });
+        }
 
         const result = await hunterAgent.completeApplicationPipeline({
-          profile: mockProfile,
+          profile,
           personaId,
           searchFilter,
           autoApplyThreshold,

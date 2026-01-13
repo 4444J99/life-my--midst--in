@@ -50,24 +50,33 @@ This document outlines the remaining phases to transform the prototype into a pr
 - [x] **Job Board Adapter Interface**: `JobSearchProvider` interface defined in `packages/core`.
 
 ### 2. Job Search Infrastructure
-- [ ] **Search Provider Implementation**:
-    - [ ] Create `packages/core/src/search/google-jobs.ts` implementing `JobSearchProvider` using Serper or Google Custom Search API.
-    - [ ] Add `SERPER_API_KEY` to `.env` and `apps/orchestrator/src/config.ts`.
-- [ ] **Job Ingestion Pipeline**:
-    - [ ] Update `apps/orchestrator/src/agents/ingestor.ts` to handle `ingest_job` task type.
-    - [ ] Implement URL scraper to extract `description`, `company`, `title` from a job link.
+- [x] **Search Provider Implementation**:
+    - [x] Create `packages/core/src/search/google-jobs.ts` implementing `JobSearchProvider` using Serper or Google Custom Search API.
+    - [x] Add `SERPER_API_KEY` to `.env` and `apps/orchestrator/src/config.ts`.
+- [x] **Job Ingestion Pipeline**:
+    - [x] Update `apps/orchestrator/src/agents/ingestor.ts` to handle `ingest_job` task type.
+    - [x] Implement URL scraper to extract `description`, `company`, `title` from a job link.
 
 ### 3. The "Hunter" Agent
-- [ ] **Agent Definition**:
-    - [ ] Create `apps/orchestrator/src/agents/hunter.ts`.
-    - [ ] Register `hunter` role in `agent-registry.json`.
-- [ ] **Tool Implementation**:
-    - [ ] `find_jobs(keywords, location)`: Wraps the Search Provider.
-    - [ ] `analyze_gap(job_description, profile_id)`: Uses RAG to list missing skills.
-    - [ ] `tailor_resume(job_id, profile_id)`: Selects the best Mask and specific Experience blocks.
-    - [ ] `write_cover_letter(job_id, profile_id)`: Generates markdown cover letter.
-- [ ] **Orchestration**:
-    - [ ] Create a "Job Hunt Loop" in `apps/orchestrator/src/scheduler.ts` (optional) or manual trigger via API.
+- [x] **Agent Definition**:
+    - [x] Create `apps/orchestrator/src/agents/hunter.ts`.
+    - [x] Register `hunter` role in `agent-registry.json`.
+- [x] **Tool Implementation**:
+    - [x] `find_jobs(keywords, location)`: Wraps the Search Provider.
+    - [x] `analyze_gap(job_description, profile_id)`: Uses RAG to list missing skills.
+    - [x] `tailor_resume(job_id, profile_id)`: Selects the best Mask and specific Experience blocks.
+    - [x] `write_cover_letter(job_id, profile_id)`: Generates markdown cover letter.
+- [x] **Orchestration**:
+    - [x] Create a "Job Hunt Loop" in `apps/orchestrator/src/scheduler.ts` (implemented in `job-hunt-scheduler.ts`).
+
+### 4. Hunter Protocol Interface (Frontend)
+- [x] **Job Board UI**:
+    - [x] Create `apps/web/src/app/hunter/page.tsx`.
+    - [x] Implement `JobSearchForm` component (Integrated in HunterDashboard).
+    - [x] Implement `JobCard` and `ApplicationStatus` components (Integrated in HunterDashboard).
+- [x] **Agent Controls**:
+    - [x] Add "Run Hunter" button (Manual Search).
+    - [x] Add configuration UI for scheduled hunts (Auto-Pilot tab).
 
 ## Track: Autonomous Growth (Future)
 **Goal:** The system proposes and implements its own features.

@@ -15,8 +15,9 @@
  * - Preview mask-specific narrative
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Mask } from '@in-midst-my-life/schema';
+import { maskApi, ApiError } from '@/lib/api-client';
 
 export interface TabulaPersonarumProps {
   profileId: string;
@@ -41,14 +42,42 @@ export interface MaskFormData {
  */
 export function TabulaPersonarum({
   profileId,
-  masks,
+  masks: initialMasks,
   onMaskCreated,
   onMaskUpdated,
   onMaskDeleted,
 }: TabulaPersonarumProps) {
+  const [masks, setMasks] = useState<Mask[]>(initialMasks);
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [selectedMask, setSelectedMask] = useState<Mask | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load masks on mount
+  useEffect(() => {
+    const loadMasks = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const fetchedMasks = await maskApi.list(profileId);
+        setMasks(fetchedMasks);
+      } catch (err) {
+        const message = err instanceof ApiError
+          ? `API error: ${err.status} ${err.statusText}`
+          : err instanceof Error
+          ? err.message
+          : 'Failed to load masks';
+        setError(message);
+        // Keep initial masks as fallback
+        setMasks(initialMasks);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMasks();
+  }, [profileId, initialMasks]);
 
   return (
     <div className="tabula-personarum">
@@ -204,10 +233,24 @@ export function TabulaPersonarum({
       <div className="masks-list">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <h3 style={{ color: 'rgba(229, 231, 235, 0.9)', margin: 0 }}>Masks ({masks.length})</h3>
-          <button className="button" onClick={() => setIsCreateMode(!isCreateMode)}>
+          <button className="button" onClick={() => setIsCreateMode(!isCreateMode)} disabled={isLoading}>
             {isCreateMode ? '✕ Cancel' : '+ New Mask'}
           </button>
         </div>
+
+        {error && (
+          <div style={{
+            padding: '0.75rem',
+            background: 'rgba(220, 38, 38, 0.15)',
+            border: '1px solid rgba(220, 38, 38, 0.3)',
+            borderRadius: '6px',
+            color: 'rgba(254, 202, 202, 0.9)',
+            fontSize: '0.875rem',
+            marginBottom: '0.75rem',
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
 
         {masks.length === 0 && !isCreateMode && (
           <div className="empty-state">
@@ -245,10 +288,25 @@ export function TabulaPersonarum({
         {isCreateMode && (
           <div className="mask-item" style={{ background: 'rgba(34, 197, 94, 0.15)', borderColor: 'rgba(34, 197, 94, 0.3)' }}>
             <MaskForm
-              onSubmit={(data) => {
-                // TODO: Call API to create mask
-                console.log('Create mask:', data);
-                setIsCreateMode(false);
+              isLoading={isLoading}
+              onSubmit={async (data) => {
+                setIsLoading(true);
+                setError(null);
+                try {
+                  const newMask = await maskApi.create(profileId, data);
+                  setMasks([...masks, newMask]);
+                  onMaskCreated?.(newMask);
+                  setIsCreateMode(false);
+                } catch (err) {
+                  const message = err instanceof ApiError
+                    ? `Failed to create mask: ${err.status}`
+                    : err instanceof Error
+                    ? err.message
+                    : 'Failed to create mask';
+                  setError(message);
+                } finally {
+                  setIsLoading(false);
+                }
               }}
             />
           </div>
@@ -265,10 +323,27 @@ export function TabulaPersonarum({
               </button>
               <button
                 className="button ghost"
-                onClick={() => {
-                  onMaskDeleted?.(selectedMask.id);
-                  setSelectedMask(null);
+                onClick={async () => {
+                  if (!confirm('Are you sure you want to delete this mask?')) return;
+                  setIsLoading(true);
+                  setError(null);
+                  try {
+                    await maskApi.delete(profileId, selectedMask.id);
+                    setMasks(masks.filter(m => m.id !== selectedMask.id));
+                    onMaskDeleted?.(selectedMask.id);
+                    setSelectedMask(null);
+                  } catch (err) {
+                    const message = err instanceof ApiError
+                      ? `Failed to delete mask: ${err.status}`
+                      : err instanceof Error
+                      ? err.message
+                      : 'Failed to delete mask';
+                    setError(message);
+                  } finally {
+                    setIsLoading(false);
+                  }
                 }}
+                disabled={isLoading}
               >
                 🗑 Delete
               </button>
@@ -278,10 +353,26 @@ export function TabulaPersonarum({
           <>
             <MaskForm
               initialData={selectedMask}
-              onSubmit={(data) => {
-                // TODO: Call API to update mask
-                console.log('Update mask:', data);
-                setIsEditing(false);
+              isLoading={isLoading}
+              onSubmit={async (data) => {
+                setIsLoading(true);
+                setError(null);
+                try {
+                  const updatedMask = await maskApi.update(profileId, selectedMask.id, data);
+                  setMasks(masks.map(m => m.id === selectedMask.id ? updatedMask : m));
+                  setSelectedMask(updatedMask);
+                  onMaskUpdated?.(updatedMask);
+                  setIsEditing(false);
+                } catch (err) {
+                  const message = err instanceof ApiError
+                    ? `Failed to update mask: ${err.status}`
+                    : err instanceof Error
+                    ? err.message
+                    : 'Failed to update mask';
+                  setError(message);
+                } finally {
+                  setIsLoading(false);
+                }
               }}
               onCancel={() => setIsEditing(false)}
             />
@@ -350,11 +441,12 @@ function MaskDetail({ mask }: { mask: Mask }) {
  */
 interface MaskFormProps {
   initialData?: Mask;
+  isLoading?: boolean;
   onSubmit: (data: MaskFormData) => void;
   onCancel?: () => void;
 }
 
-function MaskForm({ initialData, onSubmit, onCancel }: MaskFormProps) {
+function MaskForm({ initialData, isLoading, onSubmit, onCancel }: MaskFormProps) {
   const [formData, setFormData] = useState<MaskFormData>({
     name: initialData?.name || '',
     description: initialData?.description || '',
@@ -392,11 +484,11 @@ function MaskForm({ initialData, onSubmit, onCancel }: MaskFormProps) {
       </div>
 
       <div className="button-group">
-        <button className="button" type="submit">
-          {initialData ? '✓ Save' : '+ Create'}
+        <button className="button" type="submit" disabled={isLoading}>
+          {isLoading ? '⏳ Saving...' : initialData ? '✓ Save' : '+ Create'}
         </button>
         {onCancel && (
-          <button className="button ghost" type="button" onClick={onCancel}>
+          <button className="button ghost" type="button" onClick={onCancel} disabled={isLoading}>
             Cancel
           </button>
         )}

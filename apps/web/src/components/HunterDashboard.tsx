@@ -1,17 +1,10 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import type { HunterSearchFilter, JobListing } from "@in-midst-my-life/schema";
+import { NeoCard } from "@in-midst-my-life/design-system";
 
-/**
- * Hunter Dashboard
- * Autonomous job-search interface
- *
- * Solves: Instead of applying to 2000 jobs → Get 0 interviews
- * Now: Search intelligently, analyze compatibility, auto-generate quality applications
- */
-
-interface Job = JobListing;
+type Job = JobListing;
 
 interface CompatibilityResult {
   overall_score: number;
@@ -25,7 +18,15 @@ interface CompatibilityResult {
   }>;
   strengths: string[];
   concerns: string[];
-  negotiation_points: string[];
+}
+
+interface JobHuntConfig {
+  profileId: string;
+  keywords: string[];
+  location?: string;
+  frequency: "daily" | "weekly" | "monthly";
+  autoApply: boolean;
+  lastRun?: string;
 }
 
 export interface HunterDashboardProps {
@@ -39,15 +40,16 @@ export default function HunterDashboard({
   personaId,
   onApplyJob,
 }: HunterDashboardProps) {
+  const [activeTab, setActiveTab] = useState<"search" | "schedule">("search");
+  
+  // Search State
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [compatibilities, setCompatibilities] = useState<
-    Record<string, CompatibilityResult>
-  >({});
+  const [compatibilities, setCompatibilities] = useState<Record<string, CompatibilityResult>>({});
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
 
-  // Filter state
+  // Filter State
   const [keywords, setKeywords] = useState<string>("");
   const [locations, setLocations] = useState<string>("");
   const [minSalary, setMinSalary] = useState<number | undefined>();
@@ -56,40 +58,77 @@ export default function HunterDashboard({
   const [technologies, setTechnologies] = useState<string>("");
   const [sortBy, setSortBy] = useState<"score" | "recency" | "salary">("score");
 
-  const searchRef = useRef<HTMLDivElement>(null);
+  // Scheduler State
+  const [scheduledHunts, setScheduledHunts] = useState<JobHuntConfig[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
 
-  /**
-   * Search jobs with filters
-   */
+  useEffect(() => {
+    if (activeTab === "schedule") {
+      fetchScheduledHunts();
+    }
+  }, [activeTab]);
+
+  const fetchScheduledHunts = async () => {
+    try {
+      setScheduleLoading(true);
+      const res = await fetch("/api/scheduler/job-hunts");
+      const data = await res.json();
+      if (data.ok) {
+        setScheduledHunts(data.data.filter((h: JobHuntConfig) => h.profileId === profileId));
+      }
+    } catch (err) {
+      console.error("Failed to fetch scheduled hunts", err);
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const handleCreateSchedule = async () => {
+    try {
+      await fetch("/api/scheduler/job-hunts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profileId,
+          keywords: keywords.split(",").map(k => k.trim()).filter(Boolean),
+          location: locations,
+          frequency: "daily",
+          autoApply: false
+        })
+      });
+      fetchScheduledHunts();
+      alert("Job hunt scheduled!");
+    } catch (err) {
+      alert("Failed to schedule hunt");
+    }
+  };
+
+  const handleDeleteSchedule = async () => {
+    try {
+      await fetch(`/api/scheduler/job-hunts/${profileId}`, { method: "DELETE" });
+      fetchScheduledHunts();
+    } catch (err) {
+      alert("Failed to delete schedule");
+    }
+  };
+
   const handleSearch = async () => {
     setSearching(true);
     try {
       const filter: HunterSearchFilter = {
-        keywords: keywords
-          .split(",")
-          .map((k) => k.trim())
-          .filter((k) => k.length > 0),
-        locations: locations
-          .split(",")
-          .map((l) => l.trim())
-          .filter((l) => l.length > 0),
+        keywords: keywords.split(",").map((k) => k.trim()).filter(Boolean),
+        locations: locations.split(",").map((l) => l.trim()).filter(Boolean),
         min_salary: minSalary,
         max_salary: maxSalary,
         remote_requirement: remoteType as any,
-        required_technologies: technologies
-          .split(",")
-          .map((t) => t.trim())
-          .filter((t) => t.length > 0),
+        required_technologies: technologies.split(",").map((t) => t.trim()).filter(Boolean),
       };
 
-      const response = await fetch(
-        `/api/profiles/${profileId}/hunter/search`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(filter),
-        }
-      );
+      const response = await fetch(`/api/profiles/${profileId}/hunter/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(filter),
+      });
 
       const data = await response.json();
       setJobs(data.jobs || []);
@@ -102,9 +141,6 @@ export default function HunterDashboard({
     }
   };
 
-  /**
-   * Analyze compatibility for a job
-   */
   const handleAnalyzeJob = async (job: Job) => {
     if (compatibilities[job.id]) {
       setSelectedJob(job);
@@ -113,14 +149,11 @@ export default function HunterDashboard({
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/profiles/${profileId}/hunter/analyze/${job.id}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ job, personaId }),
-        }
-      );
+      const response = await fetch(`/api/profiles/${profileId}/hunter/analyze/${job.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job, personaId }),
+      });
 
       const data = await response.json();
       setCompatibilities((prev) => ({
@@ -135,757 +168,250 @@ export default function HunterDashboard({
     }
   };
 
-  /**
-   * Generate application for job
-   */
-  const handleGenerateApplication = async (job: Job) => {
-    if (!compatibilities[job.id]) {
-      await handleAnalyzeJob(job);
-      return;
-    }
-
-    // Would generate tailored resume + cover letter here
-    const compatibility = compatibilities[job.id];
-
-    if (onApplyJob) {
-      onApplyJob(job, compatibility);
-    }
-  };
-
-  // Sort jobs by selected criteria
+  // Sort logic
   const sortedJobs = [...jobs].sort((a, b) => {
-    if (sortBy === "recency") {
-      return (
-        new Date(b.posted_date).getTime() -
-        new Date(a.posted_date).getTime()
-      );
-    }
-
-    if (sortBy === "salary" && a.salary_max && b.salary_max) {
-      return b.salary_max - a.salary_max;
-    }
-
-    // Score sorting
+    if (sortBy === "recency") return new Date(b.posted_date).getTime() - new Date(a.posted_date).getTime();
+    if (sortBy === "salary" && a.salary_max && b.salary_max) return b.salary_max - a.salary_max;
     const scoreA = compatibilities[a.id]?.overall_score || 0;
     const scoreB = compatibilities[b.id]?.overall_score || 0;
     return scoreB - scoreA;
   });
 
   const selectedCompat = selectedJob ? compatibilities[selectedJob.id] : null;
-  const jobCount = jobs.length;
-  const analyzedCount = Object.keys(compatibilities).length;
-  const strongMatches = Object.values(compatibilities).filter(
-    (c) => c.overall_score >= 80
-  ).length;
 
   return (
-    <div className="hunter-dashboard">
-      <div className="hunter-header">
-        <h1>🎯 Hunter Protocol</h1>
-        <p>Intelligent job search. Quality over quantity.</p>
-      </div>
-
-      {/* Search Section */}
-      <section className="hunter-search" ref={searchRef}>
-        <h2>Search Jobs</h2>
-
-        <div className="search-form">
-          <div className="form-group">
-            <label htmlFor="keywords">Keywords</label>
-            <input
-              id="keywords"
-              type="text"
-              placeholder="e.g., TypeScript, React, Backend"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="locations">Locations</label>
-            <input
-              id="locations"
-              type="text"
-              placeholder="e.g., San Francisco, New York"
-              value={locations}
-              onChange={(e) => setLocations(e.target.value)}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="remote">Remote</label>
-            <select
-              id="remote"
-              value={remoteType}
-              onChange={(e) => setRemoteType(e.target.value)}
-            >
-              <option value="any">Any</option>
-              <option value="fully">Fully Remote</option>
-              <option value="hybrid">Hybrid</option>
-              <option value="onsite">Onsite</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="min-salary">Min Salary ($)</label>
-            <input
-              id="min-salary"
-              type="number"
-              placeholder="e.g., 120000"
-              value={minSalary || ""}
-              onChange={(e) =>
-                setMinSalary(e.target.value ? parseInt(e.target.value) : undefined)
-              }
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="max-salary">Max Salary ($)</label>
-            <input
-              id="max-salary"
-              type="number"
-              placeholder="e.g., 200000"
-              value={maxSalary || ""}
-              onChange={(e) =>
-                setMaxSalary(e.target.value ? parseInt(e.target.value) : undefined)
-              }
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="technologies">Technologies</label>
-            <input
-              id="technologies"
-              type="text"
-              placeholder="e.g., TypeScript, PostgreSQL"
-              value={technologies}
-              onChange={(e) => setTechnologies(e.target.value)}
-            />
-          </div>
-
+    <div className="max-w-7xl mx-auto p-6 text-white min-h-screen">
+      <header className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">
+            Hunter Protocol
+          </h1>
+          <p className="text-gray-400">Autonomous Job Search Engine</p>
+        </div>
+        <div className="flex gap-4">
           <button
-            className="btn btn-primary"
-            onClick={handleSearch}
-            disabled={searching}
+            onClick={() => setActiveTab("search")}
+            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === "search" ? "bg-cyan-600 text-white" : "bg-gray-800 text-gray-400"}`}
           >
-            {searching ? "Searching..." : "Search Jobs"}
+            Manual Search
+          </button>
+          <button
+            onClick={() => setActiveTab("schedule")}
+            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === "schedule" ? "bg-cyan-600 text-white" : "bg-gray-800 text-gray-400"}`}
+          >
+            Auto-Pilot
           </button>
         </div>
-      </section>
+      </header>
 
-      {/* Results Section */}
-      {jobs.length > 0 && (
-        <section className="hunter-results">
-          <div className="results-header">
-            <h2>Results</h2>
-            <div className="stats">
-              <div className="stat">
-                <span className="stat-value">{jobCount}</span>
-                <span className="stat-label">Jobs Found</span>
+      {activeTab === "schedule" ? (
+        <section>
+          <NeoCard variant="cyber" className="mb-6">
+            <h2 className="text-xl font-semibold mb-4">Scheduled Hunts</h2>
+            {scheduledHunts.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400 mb-4">No active job hunts scheduled.</p>
+                <p className="text-sm text-gray-500">Configure search parameters in the "Manual Search" tab and save them here.</p>
               </div>
-              <div className="stat">
-                <span className="stat-value">{analyzedCount}</span>
-                <span className="stat-label">Analyzed</span>
-              </div>
-              <div className="stat">
-                <span className="stat-value">{strongMatches}</span>
-                <span className="stat-label">Strong Matches</span>
-              </div>
-            </div>
-
-            <div className="sort-controls">
-              <label htmlFor="sort">Sort by:</label>
-              <select
-                id="sort"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-              >
-                <option value="score">Compatibility Score</option>
-                <option value="recency">Recency</option>
-                <option value="salary">Salary</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="jobs-list">
-            {sortedJobs.map((job) => {
-              const compat = compatibilities[job.id];
-              const score = compat?.overall_score || 0;
-              const scoreColor =
-                score >= 80
-                  ? "score-green"
-                  : score >= 70
-                    ? "score-yellow"
-                    : score >= 50
-                      ? "score-orange"
-                      : "score-red";
-
-              return (
-                <div
-                  key={job.id}
-                  className={`job-card ${
-                    selectedJob?.id === job.id ? "selected" : ""
-                  }`}
-                  onClick={() => handleAnalyzeJob(job)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAnalyzeJob(job);
-                  }}
-                >
-                  <div className="job-header">
-                    <div className="job-title">
-                      <h3>{job.title}</h3>
-                      <span className="company">{job.company}</span>
+            ) : (
+              <div className="space-y-4">
+                {scheduledHunts.map((hunt, idx) => (
+                  <div key={idx} className="bg-gray-900 p-4 rounded border border-gray-700 flex justify-between items-center">
+                    <div>
+                      <h3 className="font-bold text-cyan-400">{hunt.keywords.join(", ")}</h3>
+                      <p className="text-sm text-gray-400">{hunt.location || "Remote"} • {hunt.frequency} • {hunt.autoApply ? "Auto-Apply" : "Notify Only"}</p>
+                      <p className="text-xs text-gray-500 mt-1">Last run: {hunt.lastRun ? new Date(hunt.lastRun).toLocaleString() : "Never"}</p>
                     </div>
+                    <button
+                      onClick={handleDeleteSchedule}
+                      className="px-3 py-1 bg-red-900/50 text-red-400 border border-red-900 hover:bg-red-900 rounded"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </NeoCard>
+          
+          <NeoCard variant="obsidian">
+            <h3 className="text-lg font-semibold mb-4">Create New Schedule</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Use the filters below to define your hunt criteria, then click "Schedule Hunt" to have the agent run daily.
+            </p>
+            {/* Reusing search form inputs for scheduling would be ideal, simpler UI for now */}
+            <div className="bg-gray-800 p-4 rounded text-sm text-gray-300">
+              <p>Current configuration in Search tab:</p>
+              <ul className="list-disc ml-5 mt-2">
+                <li>Keywords: {keywords || "(none)"}</li>
+                <li>Location: {locations || "(none)"}</li>
+              </ul>
+              <button 
+                onClick={handleCreateSchedule}
+                disabled={!keywords}
+                className="mt-4 w-full bg-cyan-700 hover:bg-cyan-600 text-white py-2 rounded font-semibold disabled:opacity-50"
+              >
+                Activate Daily Hunt
+              </button>
+            </div>
+          </NeoCard>
+        </section>
+      ) : (
+        <>
+          <NeoCard variant="obsidian" className="mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <input
+                className="bg-gray-800 border-gray-700 rounded p-2 text-white"
+                placeholder="Keywords (e.g. TypeScript, Rust)"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+              />
+              <input
+                className="bg-gray-800 border-gray-700 rounded p-2 text-white"
+                placeholder="Location (e.g. Remote, NYC)"
+                value={locations}
+                onChange={(e) => setLocations(e.target.value)}
+              />
+              <select
+                className="bg-gray-800 border-gray-700 rounded p-2 text-white"
+                value={remoteType}
+                onChange={(e) => setRemoteType(e.target.value)}
+              >
+                <option value="any">Remote: Any</option>
+                <option value="fully">Fully Remote</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="onsite">Onsite</option>
+              </select>
+              <button
+                onClick={handleSearch}
+                disabled={searching}
+                className="col-span-full md:col-span-1 bg-cyan-700 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+              >
+                {searching ? "Hunting..." : "Search"}
+              </button>
+            </div>
+          </NeoCard>
 
-                    {compat && (
-                      <div className={`score ${scoreColor}`}>
-                        <span className="score-number">{score}%</span>
-                        <span className="score-label">
-                          {compat.recommendation === "apply_now" && "Apply Now"}
-                          {compat.recommendation === "strong_candidate" &&
-                            "Strong"}
-                          {compat.recommendation === "moderate_fit" && "Moderate"}
-                          {compat.recommendation === "stretch_goal" && "Stretch"}
-                          {compat.recommendation === "skip" && "Skip"}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Job List */}
+            <div className="lg:col-span-1 space-y-4 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
+              <h2 className="text-xl font-semibold mb-2">Results ({jobs.length})</h2>
+              {jobs.map((job) => {
+                const compat = compatibilities[job.id];
+                const score = compat?.overall_score || 0;
+                return (
+                  <div
+                    key={job.id}
+                    onClick={() => handleAnalyzeJob(job)}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                      selectedJob?.id === job.id
+                        ? "bg-cyan-900/30 border-cyan-500"
+                        : "bg-gray-900 border-gray-700 hover:border-gray-500"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-bold text-gray-200">{job.title}</h3>
+                      {compat && (
+                        <span className={`text-xs font-bold px-2 py-1 rounded ${
+                          score >= 80 ? "bg-green-900 text-green-300" : 
+                          score >= 50 ? "bg-yellow-900 text-yellow-300" : "bg-red-900 text-red-300"
+                        }`}>
+                          {score}%
                         </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400">{job.company}</p>
+                    <p className="text-xs text-gray-500 mt-1">{job.location}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Detail View */}
+            <div className="lg:col-span-2">
+              {selectedJob ? (
+                <NeoCard variant="cyber" className="h-full">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">{selectedJob.title}</h2>
+                      <p className="text-cyan-400 text-lg">{selectedJob.company}</p>
+                      <div className="flex gap-2 mt-2 text-sm text-gray-400">
+                        <span>{selectedJob.location}</span>
+                        <span>•</span>
+                        <span>{selectedJob.salary_min ? `$${selectedJob.salary_min / 1000}k` : "Salary N/A"}</span>
+                      </div>
+                    </div>
+                    {selectedCompat && (
+                      <div className="text-center bg-black/50 p-4 rounded border border-cyan-900">
+                        <div className="text-3xl font-bold text-cyan-400">{selectedCompat.overall_score}%</div>
+                        <div className="text-xs text-cyan-600 uppercase tracking-wider">Match</div>
                       </div>
                     )}
                   </div>
 
-                  <div className="job-details">
-                    <span className="detail">
-                      📍 {job.location}
-                      {job.remote === "fully" && " (Remote)"}
-                    </span>
-                    <span className="detail">
-                      💼 {job.company_size || "Unknown"} company
-                    </span>
-                    {job.salary_min && job.salary_max && (
-                      <span className="detail">
-                        💰 ${job.salary_min.toLocaleString()} - $
-                        {job.salary_max.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
+                  {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+                    </div>
+                  ) : selectedCompat ? (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-900/50 p-4 rounded">
+                          <h4 className="text-green-400 font-bold mb-2">Strengths</h4>
+                          <ul className="text-sm space-y-1 text-gray-300">
+                            {selectedCompat.strengths.map((s, i) => <li key={i}>✓ {s}</li>)}
+                          </ul>
+                        </div>
+                        <div className="bg-gray-900/50 p-4 rounded">
+                          <h4 className="text-yellow-400 font-bold mb-2">Gaps</h4>
+                          <ul className="text-sm space-y-1 text-gray-300">
+                            {selectedCompat.skill_gaps.map((g, i) => (
+                              <li key={i} className="flex justify-between">
+                                <span>{g.skill}</span>
+                                {g.learnable && <span className="text-xs bg-gray-800 px-1 rounded text-gray-500">Learnable</span>}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
 
-                  {job.technologies && job.technologies.length > 0 && (
-                    <div className="technologies">
-                      {job.technologies.slice(0, 3).map((tech) => (
-                        <span key={tech} className="tech-tag">
-                          {tech}
-                        </span>
-                      ))}
-                      {job.technologies.length > 3 && (
-                        <span className="tech-tag">
-                          +{job.technologies.length - 3}
-                        </span>
-                      )}
+                      <div>
+                        <h4 className="font-bold text-white mb-2">Recommendation</h4>
+                        <p className="text-gray-300">{selectedCompat.recommendation.replace("_", " ").toUpperCase()}</p>
+                      </div>
+
+                      <div className="pt-6 border-t border-gray-800 flex gap-4">
+                        <button 
+                          className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded transition-colors"
+                          onClick={() => onApplyJob?.(selectedJob, selectedCompat)}
+                        >
+                          Generate Application
+                        </button>
+                        <a 
+                          href={selectedJob.job_url} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="px-6 py-3 border border-gray-600 hover:border-gray-400 text-gray-300 rounded transition-colors"
+                        >
+                          View Original
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      Select "Analyze" to see compatibility report
                     </div>
                   )}
-
-                  {compat && (
-                    <div className="quick-stats">
-                      <span className="skill-match">
-                        Skills: {compat.skill_match}%
-                      </span>
-                      <span className="cultural-match">
-                        Culture: {compat.cultural_match}%
-                      </span>
-                    </div>
-                  )}
-
-                  {!compat && (
-                    <button
-                      className="btn btn-secondary btn-small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAnalyzeJob(job);
-                      }}
-                      disabled={loading}
-                    >
-                      {loading ? "Analyzing..." : "Analyze"}
-                    </button>
-                  )}
+                </NeoCard>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-800 rounded-lg">
+                  Select a job to view details
                 </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Detail Section */}
-      {selectedJob && selectedCompat && (
-        <section className="job-detail">
-          <h2>{selectedJob.title}</h2>
-
-          <div className="detail-grid">
-            <div className="detail-section">
-              <h3>Compatibility Analysis</h3>
-
-              <div className="score-breakdown">
-                <div className="score-item">
-                  <span className="label">Overall</span>
-                  <div className="bar">
-                    <div
-                      className="fill"
-                      style={{ width: `${selectedCompat.overall_score}%` }}
-                    ></div>
-                  </div>
-                  <span className="value">{selectedCompat.overall_score}%</span>
-                </div>
-
-                <div className="score-item">
-                  <span className="label">Skill Match</span>
-                  <div className="bar">
-                    <div
-                      className="fill"
-                      style={{ width: `${selectedCompat.skill_match}%` }}
-                    ></div>
-                  </div>
-                  <span className="value">{selectedCompat.skill_match}%</span>
-                </div>
-
-                <div className="score-item">
-                  <span className="label">Cultural Fit</span>
-                  <div className="bar">
-                    <div
-                      className="fill"
-                      style={{ width: `${selectedCompat.cultural_match}%` }}
-                    ></div>
-                  </div>
-                  <span className="value">{selectedCompat.cultural_match}%</span>
-                </div>
-
-                <div className="score-item">
-                  <span className="label">Growth Potential</span>
-                  <div className="bar">
-                    <div
-                      className="fill"
-                      style={{ width: `${selectedCompat.cultural_match}%` }}
-                    ></div>
-                  </div>
-                  <span className="value">{selectedCompat.cultural_match}%</span>
-                </div>
-              </div>
+              )}
             </div>
-
-            {selectedCompat.strengths.length > 0 && (
-              <div className="detail-section strengths">
-                <h3>✓ Your Strengths</h3>
-                <ul>
-                  {selectedCompat.strengths.map((strength, idx) => (
-                    <li key={idx}>{strength}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {selectedCompat.skill_gaps.length > 0 && (
-              <div className="detail-section gaps">
-                <h3>⚠ Skill Gaps</h3>
-                <ul>
-                  {selectedCompat.skill_gaps.map((gap, idx) => (
-                    <li key={idx}>
-                      <span className={`gap-${gap.gap_severity}`}>
-                        {gap.skill}
-                      </span>
-                      {gap.learnable && <span className="learnable">Learnable</span>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {selectedCompat.concerns.length > 0 && (
-              <div className="detail-section concerns">
-                <h3>⚠ Concerns</h3>
-                <ul>
-                  {selectedCompat.concerns.map((concern, idx) => (
-                    <li key={idx}>{concern}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
-
-          <div className="actions">
-            <button
-              className="btn btn-primary"
-              onClick={() => handleGenerateApplication(selectedJob)}
-            >
-              Generate Application
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setSelectedJob(null)}
-            >
-              Close
-            </button>
-          </div>
-        </section>
+        </>
       )}
-
-      <style jsx>{`
-        .hunter-dashboard {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 2rem;
-        }
-
-        .hunter-header {
-          text-align: center;
-          margin-bottom: 3rem;
-        }
-
-        .hunter-header h1 {
-          font-size: 2rem;
-          margin-bottom: 0.5rem;
-        }
-
-        .hunter-header p {
-          color: #666;
-          font-size: 1.1rem;
-        }
-
-        .hunter-search {
-          background: #f5f5f5;
-          padding: 2rem;
-          border-radius: 8px;
-          margin-bottom: 2rem;
-        }
-
-        .search-form {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1rem;
-          margin-top: 1.5rem;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .form-group label {
-          font-weight: 600;
-          margin-bottom: 0.5rem;
-          font-size: 0.9rem;
-        }
-
-        .form-group input,
-        .form-group select {
-          padding: 0.75rem;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 1rem;
-        }
-
-        .btn {
-          padding: 0.75rem 1.5rem;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-weight: 600;
-          transition: all 0.2s;
-        }
-
-        .btn-primary {
-          background: #0066cc;
-          color: white;
-          grid-column: 1 / -1;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: #0052a3;
-        }
-
-        .btn-primary:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .btn-secondary {
-          background: #e0e0e0;
-          color: #333;
-        }
-
-        .btn-secondary:hover {
-          background: #d0d0d0;
-        }
-
-        .btn-small {
-          padding: 0.5rem 1rem;
-          font-size: 0.9rem;
-        }
-
-        .hunter-results {
-          margin-bottom: 2rem;
-        }
-
-        .results-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-
-        .stats {
-          display: flex;
-          gap: 2rem;
-        }
-
-        .stat {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-
-        .stat-value {
-          font-size: 1.5rem;
-          font-weight: bold;
-          color: #0066cc;
-        }
-
-        .stat-label {
-          font-size: 0.85rem;
-          color: #666;
-        }
-
-        .sort-controls {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .sort-controls select {
-          padding: 0.5rem;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-        }
-
-        .jobs-list {
-          display: grid;
-          gap: 1rem;
-        }
-
-        .job-card {
-          background: white;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 1.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .job-card:hover {
-          border-color: #0066cc;
-          box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
-        }
-
-        .job-card.selected {
-          border-color: #0066cc;
-          background: #f0f7ff;
-        }
-
-        .job-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 1rem;
-        }
-
-        .job-title h3 {
-          margin: 0 0 0.25rem 0;
-          font-size: 1.2rem;
-        }
-
-        .company {
-          color: #666;
-          font-size: 0.9rem;
-        }
-
-        .score {
-          text-align: center;
-          padding: 0.75rem;
-          border-radius: 4px;
-          min-width: 80px;
-        }
-
-        .score-green {
-          background: #e6f7ed;
-          color: #2d6a4f;
-        }
-
-        .score-yellow {
-          background: #fff8e1;
-          color: #f57f17;
-        }
-
-        .score-orange {
-          background: #ffe8d6;
-          color: #e65100;
-        }
-
-        .score-red {
-          background: #ffebee;
-          color: #c62828;
-        }
-
-        .score-number {
-          display: block;
-          font-size: 1.5rem;
-          font-weight: bold;
-        }
-
-        .score-label {
-          display: block;
-          font-size: 0.75rem;
-          margin-top: 0.25rem;
-        }
-
-        .job-details {
-          display: flex;
-          gap: 1.5rem;
-          margin-bottom: 1rem;
-          font-size: 0.9rem;
-          color: #666;
-          flex-wrap: wrap;
-        }
-
-        .detail {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .technologies {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-          margin-bottom: 1rem;
-        }
-
-        .tech-tag {
-          background: #f0f0f0;
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          font-size: 0.8rem;
-        }
-
-        .quick-stats {
-          display: flex;
-          gap: 1rem;
-          font-size: 0.85rem;
-          padding-top: 1rem;
-          border-top: 1px solid #eee;
-        }
-
-        .job-detail {
-          background: white;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 2rem;
-        }
-
-        .detail-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 2rem;
-          margin: 2rem 0;
-        }
-
-        .detail-section {
-          background: #f9f9f9;
-          padding: 1.5rem;
-          border-radius: 6px;
-        }
-
-        .detail-section h3 {
-          margin: 0 0 1rem 0;
-          font-size: 1.1rem;
-        }
-
-        .score-breakdown {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .score-item {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .score-item .label {
-          font-size: 0.9rem;
-          font-weight: 600;
-        }
-
-        .bar {
-          background: #ddd;
-          height: 8px;
-          border-radius: 4px;
-          overflow: hidden;
-        }
-
-        .bar .fill {
-          background: #0066cc;
-          height: 100%;
-          transition: width 0.3s;
-        }
-
-        .score-item .value {
-          font-size: 0.85rem;
-          color: #666;
-        }
-
-        .detail-section ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .detail-section li {
-          padding: 0.5rem 0;
-          font-size: 0.95rem;
-        }
-
-        .gap-critical {
-          color: #d32f2f;
-          font-weight: 600;
-        }
-
-        .gap-high {
-          color: #f57c00;
-          font-weight: 600;
-        }
-
-        .learnable {
-          background: #e8f5e9;
-          color: #2e7d32;
-          padding: 0.2rem 0.6rem;
-          border-radius: 3px;
-          font-size: 0.8rem;
-          margin-left: 0.5rem;
-        }
-
-        .actions {
-          display: flex;
-          gap: 1rem;
-          margin-top: 2rem;
-          padding-top: 2rem;
-          border-top: 1px solid #ddd;
-        }
-
-        .actions .btn {
-          flex: 1;
-        }
-      `}</style>
     </div>
   );
 }

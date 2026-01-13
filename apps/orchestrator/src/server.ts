@@ -13,6 +13,7 @@ import { getLLMMetricsSnapshot } from "./llm-metrics";
 import type { TaskStatus, TrackedTask } from "./tasks";
 import { TaskWorker, WorkerMetrics, createWorkerMetrics } from "./worker";
 import { createRateLimiter } from "./rate-limit";
+import type { JobHuntScheduler } from "./job-hunt-scheduler";
 
 const OPENAPI_PATH = join(process.cwd(), "apps", "orchestrator", "openapi.yaml");
 const OPENAPI_SPEC = (() => {
@@ -31,6 +32,7 @@ export interface OrchestratorOptions {
   pollIntervalMs?: number;
   maxRetries?: number;
   backoffMs?: number;
+  jobHuntScheduler?: JobHuntScheduler;
 }
 
 export function buildOrchestrator(agents: Agent[], options: OrchestratorOptions = {}) {
@@ -52,6 +54,8 @@ export function buildOrchestrator(agents: Agent[], options: OrchestratorOptions 
         runStore
       })
     : undefined;
+  
+  const jobHuntScheduler = options.jobHuntScheduler;
 
   if (worker) worker.start();
 
@@ -342,6 +346,40 @@ export function buildOrchestrator(agents: Agent[], options: OrchestratorOptions 
     metrics.enqueued += 1;
     return { ok: true, queued: await queue.size(), runId };
   });
+
+  // --- SCHEDULER ROUTES ---
+
+  if (jobHuntScheduler) {
+    fastify.get("/scheduler/job-hunts", async () => {
+      return { ok: true, data: jobHuntScheduler.listJobHunts() };
+    });
+
+    fastify.post("/scheduler/job-hunts", async (request, reply) => {
+      const body = request.body as any;
+      if (!body.profileId || !body.keywords) {
+        return reply.code(400).send({ ok: false, error: "missing_fields" });
+      }
+      jobHuntScheduler.addJobHunt({
+        profileId: body.profileId,
+        keywords: body.keywords,
+        location: body.location,
+        frequency: body.frequency,
+        autoApply: body.autoApply
+      });
+      return { ok: true };
+    });
+
+    fastify.delete("/scheduler/job-hunts/:profileId", async (request) => {
+      const { profileId } = request.params as { profileId: string };
+      jobHuntScheduler.removeJobHunt(profileId);
+      return { ok: true };
+    });
+    
+    fastify.post("/scheduler/job-hunts/trigger", async () => {
+        await jobHuntScheduler.tickOnce();
+        return { ok: true, message: "triggered" };
+    });
+  }
 
   return fastify;
 }

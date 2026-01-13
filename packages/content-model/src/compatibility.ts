@@ -1,4 +1,4 @@
-import type { Profile, Skill, Experience } from "@in-midst-my-life/schema";
+import type { Profile, Skill } from "@in-midst-my-life/schema";
 
 export interface JobRequirement {
   skill: string;
@@ -188,14 +188,14 @@ export class CompatibilityAnalyzer {
   private extractCandidateValues(candidate: Profile): string[] {
     const values: string[] = [];
 
-    if (candidate.personalThesis?.summary) {
-      const summary = candidate.personalThesis.summary.toLowerCase();
-      if (summary.includes("autonomous") || summary.includes("independent")) values.push("autonomy");
-      if (summary.includes("impact") || summary.includes("mission")) values.push("impact");
-      if (summary.includes("learning") || summary.includes("growth")) values.push("learning");
-      if (summary.includes("structured") || summary.includes("organized")) values.push("structure");
-      if (summary.includes("team") || summary.includes("collaborate")) values.push("collaboration");
-      if (summary.includes("innovate") || summary.includes("novel")) values.push("innovation");
+    if (candidate.personalThesis?.thesis) {
+      const thesis = candidate.personalThesis.thesis.toLowerCase();
+      if (thesis.includes("autonomous") || thesis.includes("independent")) values.push("autonomy");
+      if (thesis.includes("impact") || thesis.includes("mission")) values.push("impact");
+      if (thesis.includes("learning") || thesis.includes("growth")) values.push("learning");
+      if (thesis.includes("structured") || thesis.includes("organized")) values.push("structure");
+      if (thesis.includes("team") || thesis.includes("collaborate")) values.push("collaboration");
+      if (thesis.includes("innovate") || thesis.includes("novel")) values.push("innovation");
     }
 
     return values.length > 0 ? values : ["learning", "growth"];
@@ -246,10 +246,8 @@ export class CompatibilityAnalyzer {
 
     // Analyze experience progression
     const experiences = candidate.experiences ?? [];
-    if (experiences.length > 1) {
-      const recent = experiences[0];
-      const previous = experiences[1];
-
+    const recent = experiences[0];
+    if (recent) {
       if (recent.roleTitle.toLowerCase().includes("lead") || recent.roleTitle.toLowerCase().includes("manager")) {
         trajectory.push("leadership");
       } else if (
@@ -267,7 +265,7 @@ export class CompatibilityAnalyzer {
    * Analyze sustainability (can they sustain the role's demands?)
    */
   private analyzeSustainability(candidate: Profile, interviewer: InterviewerProfile): number {
-    const kpis = interviewer.kpis ?? [];
+    // Note: interviewer.kpis could be used for more sophisticated analysis in future enhancements
     let score = 75; // Assume sustainable unless evidence otherwise
 
     const answerText = Object.values(interviewer.answers).join(" ").toLowerCase();
@@ -386,7 +384,7 @@ export class CompatibilityAnalyzer {
   /**
    * Analyze which masks resonate with this opportunity
    */
-  private analyzeMaskResonance(candidate: Profile, interviewer: InterviewerProfile): Array<{
+  private analyzeMaskResonance(_candidate: Profile, interviewer: InterviewerProfile): Array<{
     maskName: string;
     fitScore: number;
     reasoning: string;

@@ -6,6 +6,7 @@ import { createTaskQueue } from "./queue";
 import { createTaskStore } from "./persistence";
 import { createRunStore } from "./runs";
 import { TaskScheduler } from "./scheduler";
+import { JobHuntScheduler } from "./job-hunt-scheduler";
 
 async function bootstrap() {
   const executor = resolveAgentExecutor();
@@ -14,6 +15,7 @@ async function bootstrap() {
   const runStore = createRunStore();
   const workerConfig = loadWorkerConfig();
   const schedulerConfig = loadSchedulerConfig();
+  
   const scheduler = schedulerConfig.enabled
     ? new TaskScheduler(queue, store, runStore, {
         intervalMs: schedulerConfig.intervalMs,
@@ -22,6 +24,11 @@ async function bootstrap() {
       })
     : undefined;
 
+  const jobHuntScheduler = new JobHuntScheduler(queue, store, runStore, {
+    jobs: [], // Start empty, populate via API
+    apiBaseUrl: process.env["API_URL"] ?? "http://localhost:3001"
+  });
+
   const fastify = buildOrchestrator(executor ? defaultAgents(executor) : defaultAgents(), {
     queue,
     store,
@@ -29,11 +36,15 @@ async function bootstrap() {
     worker: workerConfig.enabled,
     pollIntervalMs: workerConfig.pollIntervalMs,
     maxRetries: workerConfig.maxRetries,
-    backoffMs: workerConfig.backoffMs
+    backoffMs: workerConfig.backoffMs,
+    jobHuntScheduler
   });
+  
   const serverConfig = loadServerConfig();
   try {
     if (scheduler) scheduler.start();
+    if (schedulerConfig.enabled) jobHuntScheduler.start();
+    
     await fastify.listen({ port: serverConfig.port, host: serverConfig.host });
   } catch (err) {
     fastify.log.error(err);

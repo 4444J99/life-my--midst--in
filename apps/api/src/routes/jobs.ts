@@ -6,22 +6,29 @@ import {
   type JobApplication 
 } from "@in-midst-my-life/schema";
 import { NotFoundError } from "@in-midst-my-life/core";
-
-// Mock in-memory storage for now
-const postings = new Map<string, JobPosting>();
-const applications = new Map<string, JobApplication>();
+import { jobRepo } from "../repositories/jobs";
+import { randomUUID } from "crypto";
 
 export const jobRoutes: FastifyPluginAsync = async (server) => {
   // --- JOB POSTINGS ---
 
   server.post("/postings", async (req, reply) => {
+    // Check if ID is provided in body (e.g. from IngestorAgent)
+    // If not, rely on schema parsing without ID and generate one.
+    const bodyAny = req.body as any;
+    const providedId = bodyAny.id;
+
+    // We allow passing the ID if it's valid UUID, otherwise generate
+    const id = providedId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(providedId) 
+      ? providedId 
+      : randomUUID();
+
     const body = JobPostingSchema.omit({ 
       id: true, 
       createdAt: true, 
       updatedAt: true 
     }).parse(req.body);
 
-    const id = crypto.randomUUID();
     const now = new Date().toISOString();
     
     const posting: JobPosting = {
@@ -31,17 +38,17 @@ export const jobRoutes: FastifyPluginAsync = async (server) => {
       updatedAt: now
     };
 
-    postings.set(id, posting);
-    return reply.status(201).send(posting);
+    const saved = await jobRepo.addPosting(posting);
+    return reply.status(201).send(saved);
   });
 
   server.get("/postings", async (_req, _reply) => {
-    return Array.from(postings.values());
+    return jobRepo.listPostings();
   });
 
   server.get("/postings/:id", async (req, _reply) => {
     const { id } = req.params as { id: string };
-    const posting = postings.get(id);
+    const posting = await jobRepo.findPosting(id);
     if (!posting) throw new NotFoundError(`Job posting ${id} not found`);
     return posting;
   });
@@ -55,7 +62,7 @@ export const jobRoutes: FastifyPluginAsync = async (server) => {
       updatedAt: true 
     }).parse(req.body);
 
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     const now = new Date().toISOString();
 
     const application: JobApplication = {
@@ -65,11 +72,11 @@ export const jobRoutes: FastifyPluginAsync = async (server) => {
       updatedAt: now
     };
 
-    applications.set(id, application);
-    return reply.status(201).send(application);
+    const saved = await jobRepo.addApplication(application);
+    return reply.status(201).send(saved);
   });
 
   server.get("/applications", async (_req, _reply) => {
-    return Array.from(applications.values());
+    return jobRepo.listApplications();
   });
 };

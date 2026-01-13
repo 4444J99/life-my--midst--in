@@ -1,5 +1,5 @@
 {
-  "name": "@4jp/design-system",
+  "name": "@in-midst-my-life/design-system",
   "version": "0.0.1",
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",

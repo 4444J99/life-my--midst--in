@@ -22,7 +22,61 @@ import { z } from "zod";
 import { EpochSchema } from "@in-midst-my-life/schema";
 import { StageSchema } from "@in-midst-my-life/schema";
 
-/**\n * Base pagination parameters for list endpoints.\n * All taxonomy list endpoints support offset/limit.\n */\nexport const PaginationSchema = z.object({\n  offset: z.coerce.number().min(0).default(0),\n  limit: z.coerce.number().min(1).max(100).default(20)\n});\n\n/**\n * Query parameters for mask listing.\n * Supports pagination, filtering by ontology/tags, and text search.\n */\nexport const MaskQuerySchema = PaginationSchema.extend({\n  /** Filter by mask ontology (cognitive, expressive, operational) */\n  ontology: z.string().optional(),\n  /** Filter by mask tag (e.g., \"leadership\", \"analysis\") */\n  tag: z.string().optional(),\n  /** Full-text search on mask name and functional_scope */\n  search: z.string().optional(),\n  /** Sort field: \"name\", \"ontology\", or \"functional_scope\" (default: \"name\") */\n  sortBy: z.enum([\"name\", \"ontology\", \"functional_scope\"]).optional(),\n  /** Sort order: \"asc\" or \"desc\" (default: \"asc\") */\n  sortOrder: z.enum([\"asc\", \"desc\"]).default(\"asc\")\n});\n\n/**\n * Query parameters for epoch listing.\n * Supports pagination and filtering by stage count/order.\n */\nexport const EpochQuerySchema = PaginationSchema.extend({\n  /** Filter epochs that contain a specific stage ID */\n  stageId: z.string().optional(),\n  /** Sort field: \"order\", \"name\" (default: \"order\") */\n  sortBy: z.enum([\"order\", \"name\"]).default(\"order\"),\n  /** Sort order: \"asc\" or \"desc\" (default: \"asc\") */\n  sortOrder: z.enum([\"asc\", \"desc\"]).default(\"asc\")\n});\n\n/**\n * Query parameters for stage listing.\n * Supports pagination, filtering by epoch, and text search.\n */\nexport const StageQuerySchema = PaginationSchema.extend({\n  /** Filter stages belonging to a specific epoch ID */\n  epochId: z.string().optional(),\n  /** Filter stages by tag */\n  tag: z.string().optional(),\n  /** Full-text search on stage title and summary */\n  search: z.string().optional(),\n  /** Sort field: \"order\", \"title\" (default: \"order\") */\n  sortBy: z.enum([\"order\", \"title\"]).default(\"order\"),\n  /** Sort order: \"asc\" or \"desc\" (default: \"asc\") */\n  sortOrder: z.enum([\"asc\", \"desc\"]).default(\"asc\")\n});
+/**
+ * Base pagination parameters for list endpoints.
+ * All taxonomy list endpoints support offset/limit.
+ */
+export const PaginationSchema = z.object({
+  offset: z.coerce.number().min(0).default(0),
+  limit: z.coerce.number().min(1).max(100).default(20)
+});
+
+/**
+ * Query parameters for mask listing.
+ * Supports pagination, filtering by ontology/tags, and text search.
+ */
+export const MaskQuerySchema = PaginationSchema.extend({
+  /** Filter by mask ontology (cognitive, expressive, operational) */
+  ontology: z.string().optional(),
+  /** Filter by mask tag (e.g., "leadership", "analysis") */
+  tag: z.string().optional(),
+  /** Full-text search on mask name and functional_scope */
+  search: z.string().optional(),
+  /** Sort field: "name", "ontology", or "functional_scope" (default: "name") */
+  sortBy: z.enum(["name", "ontology", "functional_scope"]).optional(),
+  /** Sort order: "asc" or "desc" (default: "asc") */
+  sortOrder: z.enum(["asc", "desc"]).default("asc")
+});
+
+/**
+ * Query parameters for epoch listing.
+ * Supports pagination and filtering by stage count/order.
+ */
+export const EpochQuerySchema = PaginationSchema.extend({
+  /** Filter epochs that contain a specific stage ID */
+  stageId: z.string().optional(),
+  /** Sort field: "order", "name" (default: "order") */
+  sortBy: z.enum(["order", "name"]).default("order"),
+  /** Sort order: "asc" or "desc" (default: "asc") */
+  sortOrder: z.enum(["asc", "desc"]).default("asc")
+});
+
+/**
+ * Query parameters for stage listing.
+ * Supports pagination, filtering by epoch, and text search.
+ */
+export const StageQuerySchema = PaginationSchema.extend({
+  /** Filter stages belonging to a specific epoch ID */
+  epochId: z.string().optional(),
+  /** Filter stages by tag */
+  tag: z.string().optional(),
+  /** Full-text search on stage title and summary */
+  search: z.string().optional(),
+  /** Sort field: "order", "title" (default: "order") */
+  sortBy: z.enum(["order", "title"]).default("order"),
+  /** Sort order: "asc" or "desc" (default: "asc") */
+  sortOrder: z.enum(["asc", "desc"]).default("asc")
+});
 
 export const MaskCreateSchema = MaskSchema;
 export const MaskUpdateSchema = MaskSchema.partial();

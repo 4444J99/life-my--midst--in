@@ -18,7 +18,7 @@
  * - Animated transitions between views
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 
 export interface Epoch {
   id: string;
@@ -51,21 +51,59 @@ export function AetasTimeline({
   animated = true,
 }: AetasTimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const [hoveredEpoch, setHoveredEpoch] = useState<string | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(900);
 
-  // TODO: Implement D3.js visualization
-  // Steps:
-  // 1. Create SVG container
-  // 2. Calculate timeline scale (min/max dates)
-  // 3. Render epoch blocks with:
-  //    - Start/end dates
-  //    - Color-coded by epoch type
-  //    - Hover tooltips showing milestones
-  //    - Click to select
-  // 4. Render inflection points as markers
-  // 5. Render mask activity indicators
-  // 6. Add animations on transition
-  // 7. Make responsive to container width
+  // Set up responsive width tracking
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Initial measurement
+    setContainerWidth(containerRef.current.offsetWidth - 48); // Subtract padding
+
+    // Watch for resize
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width - 48; // Subtract padding
+        setContainerWidth(Math.max(width, 300)); // Minimum 300px
+      }
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Calculate timeline dimensions based on dates
+  const timelineMetrics = useMemo(() => {
+    if (epochs.length === 0) return { minDate: new Date(), maxDate: new Date(), svgWidth: containerWidth };
+
+    const dates = epochs.flatMap(e => [e.startDate, e.endDate || new Date()]);
+    const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+
+    // Add padding (10% on each side)
+    const timespan = maxDate.getTime() - minDate.getTime();
+    const padding = timespan * 0.1;
+    const paddedMinDate = new Date(minDate.getTime() - padding);
+    const paddedMaxDate = new Date(maxDate.getTime() + padding);
+
+    const pixelsPerDay = Math.max(1, (containerWidth - 100) / ((paddedMaxDate.getTime() - paddedMinDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+    return {
+      minDate: paddedMinDate,
+      maxDate: paddedMaxDate,
+      svgWidth: containerWidth,
+      pixelsPerDay,
+    };
+  }, [epochs, containerWidth]);
+
+  // Helper function to convert date to x position
+  const dateToX = (date: Date): number => {
+    const timespan = timelineMetrics.maxDate.getTime() - timelineMetrics.minDate.getTime();
+    const elapsed = date.getTime() - timelineMetrics.minDate.getTime();
+    return 50 + (elapsed / timespan) * (timelineMetrics.svgWidth - 100);
+  };
 
   if (epochs.length === 0) {
     return (
@@ -217,8 +255,14 @@ export function AetasTimeline({
 
       <h2 className="timeline-title">📅 Professional Epochs (Aetas)</h2>
 
-      {/* Placeholder SVG - TODO: Replace with D3 visualization */}
-      <svg className="timeline-svg" height={height} viewBox={`0 0 ${epochs.length * 150} ${height}`}>
+      {/* Interactive Timeline SVG */}
+      <svg
+        ref={svgRef}
+        className="timeline-svg"
+        height={height}
+        viewBox={`0 0 ${timelineMetrics.svgWidth} ${height}`}
+        preserveAspectRatio="none"
+      >
         {/* Background grid */}
         <defs>
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -227,11 +271,15 @@ export function AetasTimeline({
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" />
 
-        {/* Epoch blocks - simplified placeholder rendering */}
+        {/* Epoch blocks - date-based positioning */}
         {epochs.map((epoch, index) => {
-          const x = index * 150 + 20;
+          const x1 = dateToX(epoch.startDate);
+          const x2 = dateToX(epoch.endDate || new Date());
+          const width = Math.max(x2 - x1, 60); // Minimum 60px width for visibility
+          const x = x1;
           const y = height / 2 - 30;
           const isSelected = selectedEpoch === epoch.id;
+          const isHovered = hoveredEpoch === epoch.id;
           const color = epoch.color || `hsl(${index * 45}, 70%, 55%)`;
 
           return (
@@ -241,34 +289,77 @@ export function AetasTimeline({
               onClick={() => onEpochSelected?.(epoch.id)}
               onMouseEnter={() => setHoveredEpoch(epoch.id)}
               onMouseLeave={() => setHoveredEpoch(null)}
+              style={{
+                cursor: 'pointer',
+                opacity: isHovered || isSelected ? 1 : 0.7,
+                transition: animated ? 'all 0.2s ease' : 'none',
+              }}
             >
-              {/* Epoch rectangle */}
+              {/* Epoch rectangle - sized by actual date range */}
               <rect
                 x={x}
                 y={y}
-                width="120"
+                width={width}
                 height="60"
                 fill={color}
-                opacity="0.6"
+                opacity={isHovered ? 0.8 : 0.6}
                 rx="4"
                 stroke={isSelected ? 'rgba(59, 130, 246, 0.8)' : 'rgba(107, 114, 128, 0.4)'}
                 strokeWidth={isSelected ? 3 : 1}
+                style={{
+                  transition: animated ? 'all 0.2s ease' : 'none',
+                  filter: isHovered ? 'brightness(1.2)' : 'brightness(1)',
+                }}
               />
 
               {/* Epoch label */}
-              <text x={x + 60} y={y + 25} textAnchor="middle" className="epoch-label">
-                {epoch.name}
+              <text
+                x={x + width / 2}
+                y={y + 25}
+                textAnchor="middle"
+                className="epoch-label"
+                style={{
+                  fontSize: width < 80 ? '0.7rem' : '0.85rem',
+                  pointerEvents: 'none',
+                }}
+              >
+                {width > 60 ? epoch.name : epoch.name.substring(0, 3)}
               </text>
 
               {/* Date range */}
-              <text x={x + 60} y={y + 45} textAnchor="middle" className="epoch-date">
-                {epoch.startDate.getFullYear()}
-                {epoch.endDate && ` - ${epoch.endDate.getFullYear()}`}
-              </text>
+              {width > 80 && (
+                <text
+                  x={x + width / 2}
+                  y={y + 45}
+                  textAnchor="middle"
+                  className="epoch-date"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {epoch.startDate.getFullYear()}
+                  {epoch.endDate && ` - ${epoch.endDate.getFullYear()}`}
+                </text>
+              )}
 
               {/* Milestone count indicator */}
               {epoch.milestones.length > 0 && (
-                <circle cx={x + 110} cy={y} r="5" className="milestone-marker" />
+                <circle
+                  cx={x + width - 8}
+                  cy={y}
+                  r="5"
+                  className="milestone-marker"
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
+
+              {/* Inflection point indicators */}
+              {epoch.inflectionPoints.length > 0 && (
+                <circle
+                  cx={x + width - 20}
+                  cy={y}
+                  r="4"
+                  className="inflection-marker"
+                  style={{ pointerEvents: 'none' }}
+                />
               )}
             </g>
           );

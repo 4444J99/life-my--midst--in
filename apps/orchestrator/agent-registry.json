@@ -67,6 +67,14 @@
       "inputs": ["base-path", "filters", "depth"],
       "outputs": ["file-manifest", "content-blocks", "embeddings"],
       "capabilities": ["recursive-traversal", "text-extraction", "metadata-tagging", "vectorization"]
+    },
+    "hunter": {
+      "id": "hunter",
+      "role": "hunter",
+      "purpose": "Autonomously search for jobs, analyze compatibility, and tailor applications.",
+      "inputs": ["profile-id", "keywords", "location", "job-description"],
+      "outputs": ["job-postings", "gap-analysis", "tailored-resume", "cover-letter"],
+      "capabilities": ["job-search", "gap-analysis", "resume-tailoring", "cover-letter-writing"]
     }
   }
 }

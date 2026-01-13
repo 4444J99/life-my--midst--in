@@ -14,6 +14,7 @@
   "dependencies": {
     "@in-midst-my-life/content-model": "workspace:*",
     "@in-midst-my-life/core": "workspace:*",
+    "@in-midst-my-life/design-system": "workspace:*",
     "@in-midst-my-life/schema": "workspace:*",
     "d3-force": "^3.0.0",
     "jose": "^6.1.3",

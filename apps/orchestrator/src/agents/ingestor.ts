@@ -9,11 +9,11 @@ import {
   type GitHubEvent,
   type GitHubRepo
 } from "../repositories/ingestion";
-import type { Education, Experience, Project, Skill } from "@in-midst-my-life/schema";
+import type { Education, Experience, JobPosting, Project, Skill } from "@in-midst-my-life/schema";
 
 const DEFAULT_API_BASE_URL = process.env["ORCH_API_BASE_URL"] ?? process.env["API_BASE_URL"] ?? "http://localhost:3001";
 
-type IngestSource = "github" | "resume" | "linkedin";
+type IngestSource = "github" | "resume" | "linkedin" | "job";
 
 type IngestPayload = {
   source?: IngestSource;
@@ -25,6 +25,8 @@ type IngestPayload = {
   resumeTitle?: string;
   resumeJson?: unknown;
   resumeFormat?: "text" | "json" | "linkedin";
+  jobUrl?: string;
+  jobText?: string;
 };
 
 type ResumeParseOutput = {
@@ -34,14 +36,14 @@ type ResumeParseOutput = {
   skills?: Array<Partial<Skill> | string>;
 };
 
-const extractJson = (value: string): ResumeParseOutput | null => {
+const extractJson = (value: string): any | null => {
   const fenced = value.match(/```json\s*([\s\S]*?)```/i) ?? value.match(/```([\s\S]*?)```/);
   const candidate = fenced?.[1] ?? value;
   const start = candidate.indexOf("{");
   const end = candidate.lastIndexOf("}");
   if (start < 0 || end <= start) return null;
   try {
-    return JSON.parse(candidate.slice(start, end + 1)) as ResumeParseOutput;
+    return JSON.parse(candidate.slice(start, end + 1));
   } catch {
     return null;
   }
@@ -529,6 +531,24 @@ const buildProject = (profileId: string, entry: Partial<Project>): Project => {
   };
 };
 
+const buildJobPosting = (profileId: string, entry: Partial<JobPosting>): JobPosting => {
+  const now = new Date().toISOString();
+  return {
+    id: randomUUID(),
+    profileId,
+    title: entry.title ?? "Unknown Job",
+    company: entry.company ?? "Unknown Company",
+    descriptionMarkdown: entry.descriptionMarkdown,
+    url: entry.url,
+    salaryRange: entry.salaryRange,
+    location: entry.location,
+    vectors: entry.vectors,
+    status: entry.status ?? "active",
+    createdAt: now,
+    updatedAt: now
+  };
+};
+
 const describeRepoWithEvents = (repo: GitHubRepo, events: GitHubEvent[]) => {
   const related = events.filter((event) => event.repo?.name === repo.full_name);
   const messages = related
@@ -568,9 +588,319 @@ export class IngestorAgent implements Agent {
     if (source === "linkedin") {
       return this.ingestResume(task, payload, "linkedin");
     }
+    if (source === "job") {
+      return this.ingestJob(task, payload);
+    }
 
     return { taskId: task.id, status: "failed", notes: `unsupported_source:${source}` };
   }
+
+  private async ingestGitHub(task: AgentTask, payload: IngestPayload): Promise<AgentResult> {
+    const username = payload.username;
+    const profileId = payload.profileId;
+    const apiBaseUrl = payload.apiBaseUrl ?? DEFAULT_API_BASE_URL;
+    if (!username || !profileId) {
+      return { taskId: task.id, status: "failed", notes: "missing_username_or_profile" };
+    }
+
+    try {
+      const mode = payload.mode ?? "repos";
+      const repos =
+        mode === "events"
+          ? await this.fetchReposFromEvents(username)
+          : await fetchGitHubRepos(username);
+      const events = mode === "events" ? await fetchGitHubEvents(username) : [];
+      const summaries = await this.generateRepoSummaries(repos);
+      const created: Project[] = [];
+
+      for (const repo of repos) {
+        const externalId = `github_repo_${repo.id}`;
+        const summary = summaries.get(repo.id) ?? describeRepoWithEvents(repo, events);
+        const tags = [repo.language, ...(repo.description?.includes("tool") ? ["tooling"] : [])].filter(Boolean) as string[];
+        const project = mapRepoToProject(repo, profileId, { summary, tags });
+        const upserted = await upsertProjectByExternalId(apiBaseUrl, profileId, project, externalId);
+        created.push(upserted);
+      }
+
+      return {
+        taskId: task.id,
+        status: "completed",
+        notes: `Ingested ${created.length} GitHub repositories for ${username}.`,
+        output: { projects: created }
+      };
+    } catch (err) {
+      return { taskId: task.id, status: "failed", notes: `ingest_error:${String(err)}` };
+    }
+  }
+
+  private async fetchReposFromEvents(username: string): Promise<GitHubRepo[]> {
+    const events = await fetchGitHubEvents(username);
+    const relevant = events.filter((event) => event.type === "PushEvent" || event.type === "PullRequestEvent");
+    const repoNames = Array.from(new Set(relevant.map((event) => event.repo?.name).filter(Boolean))) as string[];
+    const repos: GitHubRepo[] = [];
+    for (const name of repoNames) {
+      const repo = await fetchGitHubRepoByFullName(name);
+      if (repo) repos.push(repo);
+    }
+    return repos;
+  }
+
+  private async generateRepoSummaries(repos: GitHubRepo[]) {
+    const summaries = new Map<number, string>();
+    if (!this.executor) return summaries;
+
+    for (const repo of repos) {
+      try {
+        const result = await this.executor.invoke({
+          id: `summary-${repo.id}`,
+          role: "implementer",
+          description: `Summarize repository ${repo.name}`,
+          payload: {
+            context: {
+              summary: "Summarize the repository into a one-sentence project description.",
+              notes: [
+                `Repository: ${repo.name}`,
+                `Description: ${repo.description ?? "none"}`,
+                `Language: ${repo.language ?? "unknown"}`,
+                `Stars: ${repo.stargazers_count}`
+              ],
+              constraints: ["Keep it under 200 characters.", "No bullet points."]
+            }
+          }
+        });
+        if (result.status === "completed" && result.notes && !result.notes.startsWith("Stub executor handled")) {
+          summaries.set(repo.id, result.notes.replace(/^\"|\"$/g, ""));
+        }
+      } catch {
+        // Ignore summary errors.
+      }
+    }
+
+    return summaries;
+  }
+
+  private async ingestResume(
+    task: AgentTask,
+    payload: IngestPayload,
+    source: "resume" | "linkedin" = "resume"
+  ): Promise<AgentResult> {
+    const resumeText = payload.resumeText;
+    const profileId = payload.profileId;
+    const apiBaseUrl = payload.apiBaseUrl ?? DEFAULT_API_BASE_URL;
+    const format = payload.resumeFormat ?? source;
+    const jsonFromPayload = coerceJsonObject(payload.resumeJson);
+    const trimmedResume = resumeText?.trim();
+    const jsonFromText =
+      trimmedResume && (trimmedResume.startsWith("{") || trimmedResume.startsWith("["))
+        ? coerceJsonObject(trimmedResume)
+        : null;
+    const structured = jsonFromPayload ?? jsonFromText;
+
+    if (!profileId || (!resumeText && !structured)) {
+      return { taskId: task.id, status: "failed", notes: "missing_resume_or_profile" };
+    }
+
+    let parsed: ResumeParseOutput | null = null;
+    if (structured) {
+      parsed = parseStructuredResume(structured);
+    }
+
+    if (!parsed && resumeText && format !== "json") {
+      if (this.executor) {
+        try {
+          const result = await this.executor.invoke({
+            id: `resume-${task.id}`,
+            role: "ingestor",
+            description: "Parse resume into experience, education, projects, and skills.",
+            payload: {
+              context: {
+                summary: "Return JSON with experiences, educations, projects, skills.",
+                notes: [
+                  "Output keys: experiences, educations, projects, skills.",
+                  "Each experience should include roleTitle, organization, startDate, endDate, descriptionMarkdown, tags.",
+                  "Each education should include institution, degree, fieldOfStudy, startDate, endDate, descriptionMarkdown.",
+                  "Each project should include name, descriptionMarkdown, tags.",
+                  "Skills can be string list or objects with name and optional category.",
+                  `Resume title: ${payload.resumeTitle ?? "Resume"}`,
+                  `Resume source: ${format}`
+                ],
+                constraints: ["Return JSON only.", "No markdown or commentary."]
+              },
+              rawResume: resumeText.slice(0, 8000)
+            }
+          });
+          if (result.notes?.startsWith("Stub executor handled")) {
+            parsed = null;
+          } else {
+            parsed = result.output ? (result.output as ResumeParseOutput) : extractJson(result.notes ?? "");
+          }
+        } catch {
+          parsed = null;
+        }
+      }
+    }
+
+    if (!parsed && resumeText) {
+      parsed = parseResumeFallback(resumeText);
+    }
+
+    if (!parsed) {
+      return { taskId: task.id, status: "failed", notes: "resume_parse_failed" };
+    }
+
+    const experiences = (parsed.experiences ?? []).map((entry) => buildExperience(profileId, entry));
+    const educations = (parsed.educations ?? []).map((entry) => buildEducation(profileId, entry));
+    const projects = (parsed.projects ?? []).map((entry) => buildProject(profileId, entry));
+    const skills = (parsed.skills ?? []).map((entry) => buildSkill(profileId, entry));
+
+    try {
+      await Promise.all(
+        experiences.map((entry) =>
+          fetch(`${apiBaseUrl}/profiles/${profileId}/experiences`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(entry)
+          })
+        )
+      );
+      await Promise.all(
+        educations.map((entry) =>
+          fetch(`${apiBaseUrl}/profiles/${profileId}/educations`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(entry)
+          })
+        )
+      );
+      await Promise.all(
+        projects.map((entry) =>
+          fetch(`${apiBaseUrl}/profiles/${profileId}/projects`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(entry)
+          })
+        )
+      );
+      await Promise.all(
+        skills.map((entry) =>
+          fetch(`${apiBaseUrl}/profiles/${profileId}/skills`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(entry)
+          })
+        )
+      );
+    } catch (err) {
+      return { taskId: task.id, status: "failed", notes: `resume_ingest_failed:${String(err)}` };
+    }
+
+    return {
+      taskId: task.id,
+      status: "completed",
+      notes: `Parsed resume into ${experiences.length} experiences, ${educations.length} educations, ${projects.length} projects.`,
+      output: { experiences, educations, projects, skills }
+    };
+  }
+
+  private async ingestJob(task: AgentTask, payload: IngestPayload): Promise<AgentResult> {
+    const profileId = payload.profileId;
+    const apiBaseUrl = payload.apiBaseUrl ?? DEFAULT_API_BASE_URL;
+    let jobText = payload.jobText;
+    const jobUrl = payload.jobUrl;
+
+    if (!profileId) {
+      return { taskId: task.id, status: "failed", notes: "missing_profile_id" };
+    }
+
+    if (!jobText && jobUrl) {
+      try {
+        const response = await fetch(jobUrl);
+        if (response.ok) {
+          jobText = await response.text();
+          // Extremely basic HTML stripping if it's HTML
+          jobText = jobText.replace(/<[^>]*>/g, " ").slice(0, 10000);
+        }
+      } catch {
+        // Failed to fetch, continue if jobText provided, else fail
+      }
+    }
+
+    if (!jobText) {
+      return { taskId: task.id, status: "failed", notes: "missing_job_text_or_url" };
+    }
+
+    let parsedJob: Partial<JobPosting> | null = null;
+
+    if (this.executor) {
+      try {
+        const result = await this.executor.invoke({
+          id: `job-parse-${task.id}`,
+          role: "ingestor",
+          description: "Parse job posting into structured data.",
+          payload: {
+            context: {
+              summary: "Return JSON with title, company, location, salaryRange, descriptionMarkdown.",
+              notes: [
+                "Extract job title, company name, location, salary if available.",
+                "Format description as markdown.",
+                `Job URL: ${jobUrl ?? "N/A"}`
+              ],
+              constraints: ["Return JSON only."]
+            },
+            rawJob: jobText.slice(0, 5000)
+          }
+        });
+        
+        if (result.output) {
+          parsedJob = result.output as Partial<JobPosting>;
+        } else if (result.notes) {
+          parsedJob = extractJson(result.notes);
+        }
+      } catch {
+        parsedJob = null;
+      }
+    }
+
+    if (!parsedJob) {
+      // Fallback: very basic regex
+      const titleMatch = jobText.match(/(?:title|role):?\s*([^\n]+)/i);
+      const companyMatch = jobText.match(/(?:company|at):?\s*([^\n]+)/i);
+      parsedJob = {
+        title: titleMatch?.[1] ?? "Unknown Job",
+        company: companyMatch?.[1] ?? "Unknown Company",
+        descriptionMarkdown: jobText.slice(0, 2000)
+      };
+    }
+
+    const jobPosting = buildJobPosting(profileId, {
+      ...parsedJob,
+      url: jobUrl,
+    });
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/jobs/postings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(jobPosting)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const created = await response.json() as JobPosting;
+      
+      return {
+        taskId: task.id,
+        status: "completed",
+        notes: `Ingested job posting: ${created.title} at ${created.company}`,
+        output: { jobPosting: created }
+      };
+    } catch (err) {
+      return { taskId: task.id, status: "failed", notes: `job_ingest_failed:${String(err)}` };
+    }
+  }
+}
 
   private async ingestGitHub(task: AgentTask, payload: IngestPayload): Promise<AgentResult> {
     const username = payload.username;

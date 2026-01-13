@@ -343,7 +343,6 @@ export async function registerCurriculumVitaeMultiplexRoutes(
       }
     };
   });
-}
 
   /**
    * POST /profiles/:id/cv/generate-resume/batch
@@ -370,91 +369,80 @@ export async function registerCurriculumVitaeMultiplexRoutes(
    *   generated_at: ISO8601 timestamp
    * }
    */
-  fastify.post(
-    "/:id/cv/generate-resume/batch",
-    async (request, reply) => {
-      const profileId = (request.params as { id: string }).id;
-      const profile = await profileRepo.find(profileId);
-      if (!profile)
-        return reply
-          .code(404)
-          .send({ ok: false, error: "profile_not_found" });
+  /**
+   * POST /profiles/:id/cv/generate-resume/batch
+   * Generate resumes for all active personas
+   */
+  fastify.post("/:id/cv/generate-resume/batch", async (request, reply) => {
+    const profileId = (request.params as { id: string }).id;
+    const profile = await profileRepo.find(profileId);
+    if (!profile) {
+      return reply.code(404).send({ ok: false, error: "profile_not_found" });
+    }
 
-      // Parse query parameters
-      const activeOnly =
-        (request.query as any)?.activeOnly !== "false" ? true : false;
+    // Parse query parameters
+    const activeOnly = (request.query as any)?.activeOnly !== "false" ? true : false;
 
-      // Fetch all personas for this profile
-      let personas = await tabulaRepo.listPersonae(profileId, activeOnly);
+    // Fetch all personas for this profile
+    const personas = await tabulaRepo.listPersonae(profileId, activeOnly);
 
-      // If no personas, return empty batch
-      if (personas.length === 0) {
-        return {
-          ok: true,
-          profile_id: profileId,
-          resumes: [],
-          total_resumes: 0,
-          total_entries_across_all: 0,
-          generated_at: new Date().toISOString(),
-          warning: "No active personas found for profile",
-        };
-      }
-
-      // Generate resume for each persona
-      const resumes = await Promise.all(
-        personas.map(async (persona) => {
-          // Filter CV by this persona's visibility scope
-          const filtered = await cvRepo.filterByMultipleDimensions(
-            profileId,
-            {
-              includePersonae: [persona.id],
-              includeScaenae: persona.visibility_scope,
-            }
-          );
-
-          // Sort by priority
-          const sorted = filtered.data.sort(
-            (a, b) => (b.priority ?? 0) - (a.priority ?? 0)
-          );
-
-          // Generate theatrical preamble
-          const theatricalPreamble = `This resume is presented through the lens of ${persona.everyday_name} (${persona.nomen} in theatrical terms). The following emphasizes: ${persona.role_vector}. This persona is suited for ${persona.visibility_scope.join(", ")} contexts.`;
-
-          return {
-            persona: {
-              id: persona.id,
-              nomen: persona.nomen,
-              everyday_name: persona.everyday_name,
-              role_vector: persona.role_vector,
-              tone_register: persona.tone_register,
-              motto: persona.motto,
-            },
-            entries: sorted,
-            entry_count: sorted.length,
-            theatrical_preamble: theatricalPreamble,
-            scaena_focus: persona.visibility_scope,
-          };
-        })
-      );
-
-      // Calculate total entries across all resumes
-      const totalEntriesAcrossAll = resumes.reduce(
-        (sum, r) => sum + r.entry_count,
-        0
-      );
-
+    // If no personas, return empty batch
+    if (personas.length === 0) {
       return {
         ok: true,
         profile_id: profileId,
-        resumes,
-        total_resumes: resumes.length,
-        total_entries_across_all: totalEntriesAcrossAll,
-        average_entries_per_resume:
-          Math.round(
-            (totalEntriesAcrossAll / resumes.length) * 100
-          ) / 100,
+        resumes: [],
+        total_resumes: 0,
+        total_entries_across_all: 0,
         generated_at: new Date().toISOString(),
+        warning: "No active personas found for profile"
       };
     }
-  );
+
+    // Generate resume for each persona
+    const resumes = await Promise.all(
+      personas.map(async (persona) => {
+        // Filter CV by this persona's visibility scope
+        const filtered = await cvRepo.filterByMultipleDimensions(profileId, {
+          includePersonae: [persona.id],
+          includeScaenae: persona.visibility_scope
+        });
+
+        // Sort by priority
+        const sorted = filtered.data.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+
+        // Generate theatrical preamble
+        const theatricalPreamble = `This resume is presented through the lens of ${persona.everyday_name} (${persona.nomen} in theatrical terms). The following emphasizes: ${persona.role_vector}. This persona is suited for ${persona.visibility_scope.join(", ")} contexts.`;
+
+        return {
+          persona: {
+            id: persona.id,
+            nomen: persona.nomen,
+            everyday_name: persona.everyday_name,
+            role_vector: persona.role_vector,
+            tone_register: persona.tone_register,
+            motto: persona.motto
+          },
+          entries: sorted,
+          entry_count: sorted.length,
+          theatrical_preamble: theatricalPreamble,
+          scaena_focus: persona.visibility_scope
+        };
+      })
+    );
+
+    // Calculate total entries across all resumes
+    const totalEntriesAcrossAll = resumes.reduce((sum, r) => sum + r.entry_count, 0);
+
+    return {
+      ok: true,
+      profile_id: profileId,
+      resumes,
+      total_resumes: resumes.length,
+      total_entries_across_all: totalEntriesAcrossAll,
+      average_entries_per_resume: Math.round((totalEntriesAcrossAll / resumes.length) * 100) / 100,
+      generated_at: new Date().toISOString()
+    };
+  });
 }
+

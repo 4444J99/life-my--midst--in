@@ -7,7 +7,8 @@ import {
   StageUpdateSchema,
   StageQuerySchema,
   EpochCreateSchema,
-  EpochUpdateSchema
+  EpochUpdateSchema,
+  NarrativeGenerateRequestSchema
 } from "../validation";
 import type { MaskRepo, EpochRepo, StageRepo } from "../repositories/masks";
 import { createMaskRepo } from "../repositories/masks";
@@ -140,9 +141,13 @@ export async function registerMaskRoutes(fastify: FastifyInstance, deps?: MaskRo
     if (!removed) return reply.code(404).send({ ok: false, error: "not_found" });
     return { ok: true };
   });
-}
 
-  // Narrative Generation Endpoint
+  /**
+   * POST /narrative/generate
+   *
+   * Generates narrative blocks from timeline entries and optional mask context.
+   * Uses the mask taxonomy to filter and weight narrative content.
+   */
   fastify.post("/narrative/generate", async (request, reply) => {
     const parsed = NarrativeGenerateRequestSchema.safeParse(request.body);
     if (!parsed.success) {

@@ -42,16 +42,16 @@ const JsonLdExportRequestSchema = z.object({
 export async function registerExportRoutes(fastify: FastifyInstance, _deps?: ExportRouteDeps) {
   /**
    * POST /export/json-ld
-   * 
+   *
    * Generates a JSON-LD export of a profile in schema.org format.
-   * 
+   *
    * Features:
    * - Full semantic structure compatible with Google, LinkedIn, etc.
    * - Optional mask-based filtering for context-specific exports
    * - Minimal mode for web sharing
    * - HTML script tag embedding for SEO
    * - Breadcrumb navigation context
-   * 
+   *
    * Example request:
    * ```json
    * {
@@ -61,10 +61,157 @@ export async function registerExportRoutes(fastify: FastifyInstance, _deps?: Exp
    *   "includeScript": true
    * }
    * ```
-   * 
+   *
    * Returns:
    * ```json
-   * {\n   "ok": true,\n   "data": {\n     "@context": "https://schema.org",\n     "@type": "Person",\n     "name": "Jane Doe",\n     ...\n   },\n   "scriptTag": "<script type=\"application/ld+json\">...</script>"  // if includeScript=true\n * }\n * ```\n */\n  fastify.post(\"/json-ld\", async (request, reply) => {\n    const parsed = JsonLdExportRequestSchema.safeParse(request.body);\n    if (!parsed.success) {\n      return reply.code(400).send({\n        ok: false,\n        error: \"invalid_request\",\n        details: parsed.error.flatten()\n      });\n    }\n\n    const { profile, mask, experiences, educations, skills, minimal, includeScript, breadcrumbs } = parsed.data;\n\n    let jsonLd: Record<string, unknown>;\n\n    if (minimal) {\n      // Minimal export for web sharing\n      jsonLd = generateMinimalJsonLd(profile as Profile);\n    } else if (mask) {\n      // Mask-filtered export\n      jsonLd = generateMaskedJsonLd(\n        profile as Profile,\n        mask as Mask,\n        experiences as Experience[],\n        educations as Education[],\n        skills as Skill[]\n      );\n    } else {\n      // Full export\n      jsonLd = generateProfileJsonLd({\n        profile: profile as Profile,\n        experiences: experiences as Experience[],\n        educations: educations as Education[],\n        skills: skills as Skill[]\n      });\n    }\n\n    // Add breadcrumb context if provided\n    if (breadcrumbs && breadcrumbs.length > 0) {\n      jsonLd = addBreadcrumbContext(\n        jsonLd as any,\n        breadcrumbs as Array<{ name: string; url: string }>\n      );\n    }\n\n    const response: Record<string, unknown> = {\n      ok: true,\n      data: jsonLd,\n      format: \"application/ld+json\",\n      context: mask ? \"masked\" : minimal ? \"minimal\" : \"full\"\n    };\n\n    if (includeScript) {\n      response.scriptTag = jsonLdToScriptTag(jsonLd);\n    }\n\n    return response;\n  });\n\n  /**\n   * GET /export/json-ld/:profileId\n   * \n   * Retrieves a JSON-LD export of an existing profile by ID.\n   * (Requires database integration - returns placeholder for now)\n   */\n  fastify.get(\"/json-ld/:profileId\", async (request, reply) => {\n    const { profileId } = request.params as { profileId: string };\n\n    // TODO: Fetch profile from database using profileId\n    // For now, return placeholder error\n    return reply.code(501).send({\n      ok: false,\n      error: \"not_implemented\",\n      message: \"Profile lookup requires database integration\",\n      hint: \"Use POST /export/json-ld with profile data instead\"\n    });\n  });\n\n  /**\n   * GET /export/json-ld/:profileId/masked/:maskId\n   * \n   * Retrieves a masked JSON-LD export of a profile.\n   * (Requires database integration)\n   */\n  fastify.get(\"/json-ld/:profileId/masked/:maskId\", async (request, reply) => {\n    const { profileId, maskId } = request.params as { profileId: string; maskId: string };\n\n    // TODO: Fetch profile and mask from database\n    return reply.code(501).send({\n      ok: false,\n      error: \"not_implemented\",\n      message: \"Masked profile lookup requires database integration\",\n      context: { profileId, maskId }\n    });\n  });\n\n  /**\n   * POST /export/sitemap-entry\n   * \n   * Generates a sitemap entry for a profile in JSON format.\n   * Useful for SEO and search engine indexing.\n   */\n  fastify.post(\"/sitemap-entry\", async (request, reply) => {\n    const schema = z.object({\n      url: z.string().url(),\n      lastModified: z.string().datetime().optional(),\n      priority: z.number().min(0).max(1).default(0.8),\n      changeFrequency: z.enum([\"always\", \"hourly\", \"daily\", \"weekly\", \"monthly\", \"yearly\", \"never\"]).default(\"weekly\")\n    });\n\n    const parsed = schema.safeParse(request.body);\n    if (!parsed.success) {\n      return reply.code(400).send({\n        ok: false,\n        error: \"invalid_request\",\n        details: parsed.error.flatten()\n      });\n    }\n\n    const { url, lastModified, priority, changeFrequency } = parsed.data;\n\n    return {\n      ok: true,\n      data: {\n        url,\n        lastModified: lastModified || new Date().toISOString(),\n        priority,\n        changeFrequency\n      },\n      xmlFormat: `<url>\n  <loc>${url}</loc>\n  <lastmod>${lastModified || new Date().toISOString().split(\"T\")[0]}</lastmod>\n  <priority>${priority}</priority>\n  <changefreq>${changeFrequency}</changefreq>\n</url>`\n    };\n  });\n}\n
+   * {
+   *   "ok": true,
+   *   "data": {
+   *     "@context": "https://schema.org",
+   *     "@type": "Person",
+   *     "name": "Jane Doe",
+   *     ...
+   *   },
+   *   "scriptTag": "<script type=\"application/ld+json\">...</script>"
+   * }
+   * ```
+   */
+  fastify.post("/json-ld", async (request, reply) => {
+    const parsed = JsonLdExportRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        ok: false,
+        error: "invalid_request",
+        details: parsed.error.flatten()
+      });
+    }
+
+    const { profile, mask, experiences, educations, skills, minimal, includeScript, breadcrumbs } = parsed.data;
+
+    let jsonLd: Record<string, unknown>;
+
+    if (minimal) {
+      // Minimal export for web sharing
+      jsonLd = generateMinimalJsonLd(profile as Profile);
+    } else if (mask) {
+      // Mask-filtered export
+      jsonLd = generateMaskedJsonLd(
+        profile as Profile,
+        mask as Mask,
+        experiences as Experience[],
+        educations as Education[],
+        skills as Skill[]
+      );
+    } else {
+      // Full export
+      jsonLd = generateProfileJsonLd({
+        profile: profile as Profile,
+        experiences: experiences as Experience[],
+        educations: educations as Education[],
+        skills: skills as Skill[]
+      });
+    }
+
+    // Add breadcrumb context if provided
+    if (breadcrumbs && breadcrumbs.length > 0) {
+      jsonLd = addBreadcrumbContext(
+        jsonLd as any,
+        breadcrumbs as Array<{ name: string; url: string }>
+      );
+    }
+
+    const response: Record<string, unknown> = {
+      ok: true,
+      data: jsonLd,
+      format: "application/ld+json",
+      context: mask ? "masked" : minimal ? "minimal" : "full"
+    };
+
+    if (includeScript) {
+      response.scriptTag = jsonLdToScriptTag(jsonLd);
+    }
+
+    return response;
+  });
+
+  /**
+   * GET /export/json-ld/:profileId
+   *
+   * Retrieves a JSON-LD export of an existing profile by ID.
+   * (Requires database integration - returns placeholder for now)
+   */
+  fastify.get("/json-ld/:profileId", async (request, reply) => {
+    const { profileId } = request.params as { profileId: string };
+
+    // TODO: Fetch profile from database using profileId
+    // For now, return placeholder error
+    return reply.code(501).send({
+      ok: false,
+      error: "not_implemented",
+      message: "Profile lookup requires database integration",
+      hint: "Use POST /export/json-ld with profile data instead"
+    });
+  });
+
+  /**
+   * GET /export/json-ld/:profileId/masked/:maskId
+   *
+   * Retrieves a masked JSON-LD export of a profile.
+   * (Requires database integration)
+   */
+  fastify.get("/json-ld/:profileId/masked/:maskId", async (request, reply) => {
+    const { profileId, maskId } = request.params as { profileId: string; maskId: string };
+
+    // TODO: Fetch profile and mask from database
+    return reply.code(501).send({
+      ok: false,
+      error: "not_implemented",
+      message: "Masked profile lookup requires database integration",
+      context: { profileId, maskId }
+    });
+  });
+
+  /**
+   * POST /export/sitemap-entry
+   *
+   * Generates a sitemap entry for a profile in JSON format.
+   * Useful for SEO and search engine indexing.
+   */
+  fastify.post("/sitemap-entry", async (request, reply) => {
+    const schema = z.object({
+      url: z.string().url(),
+      lastModified: z.string().datetime().optional(),
+      priority: z.number().min(0).max(1).default(0.8),
+      changeFrequency: z.enum(["always", "hourly", "daily", "weekly", "monthly", "yearly", "never"]).default("weekly")
+    });
+
+    const parsed = schema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        ok: false,
+        error: "invalid_request",
+        details: parsed.error.flatten()
+      });
+    }
+
+    const { url, lastModified, priority, changeFrequency } = parsed.data;
+
+    return {
+      ok: true,
+      data: {
+        url,
+        lastModified: lastModified || new Date().toISOString(),
+        priority,
+        changeFrequency
+      },
+      xmlFormat: `<url>
+  <loc>${url}</loc>
+  <lastmod>${lastModified || new Date().toISOString().split("T")[0]}</lastmod>
+  <priority>${priority}</priority>
+  <changefreq>${changeFrequency}</changefreq>
+</url>`
+    };
+  });
 
   /**
    * POST /export/pdf

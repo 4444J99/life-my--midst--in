@@ -63,10 +63,10 @@ export const MaskSchema = z.object({
   id: z.string(),
   name: z.string(),
   // Theatrical metadata (explicit self-awareness of performance)
-  nomen: z.string().describe("Latin name of this theatrical persona"),
-  role_vector: z.string().describe("Functional vector: what this mask does and enables"),
-  tone_register: z.string().describe("Tonal register: how this mask speaks and presents"),
-  visibility_scope: z.array(z.string()).describe("Scaenae (theatrical stages) where this mask is visible and appropriate"),
+  nomen: z.string().optional().describe("Latin name of this theatrical persona"),
+  role_vector: z.string().optional().describe("Functional vector: what this mask does and enables"),
+  tone_register: z.string().optional().describe("Tonal register: how this mask speaks and presents"),
+  visibility_scope: z.array(z.string()).optional().describe("Scaenae (theatrical stages) where this mask is visible and appropriate"),
   motto: z.string().optional().describe("Latin epigraph or guiding principle for this persona"),
   
   // Existing functional parameters

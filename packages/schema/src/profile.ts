@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { ExternalIdSchema } from "./identity";
+import { ExternalIdSchema, IdentityCoreSchema } from "./identity";
+import { SkillSchema, ExperienceSchema } from "./cv";
 
 /**
  * Enumeration of profile visibility levels.
@@ -163,6 +164,10 @@ export const ProfileSchema = z.object({
   coverImageUrl: z.string().url().optional(),
   locationText: z.string().optional(),
   externalIds: z.array(ExternalIdSchema).optional(),
+  // CV-related properties (optional - for compatibility with content-model)
+  skills: z.array(SkillSchema).optional().describe("Professional skills and competencies"),
+  experiences: z.array(ExperienceSchema).optional().describe("Work experiences and roles"),
+  personalThesis: IdentityCoreSchema.optional().describe("Personal identity core and guiding philosophy"),
   settings: ProfileSettingsSchema.optional(),
   isActive: z.boolean().default(true),
   createdAt: z.string().datetime(),
