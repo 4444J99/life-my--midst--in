@@ -40,8 +40,8 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     const skillMatch = this.analyzeSkillMatch(job, profile);
     const culturalMatch = this.analyzeCulturalFit(job, profile);
     const growthPotential = this.analyzeGrowthPotential(job, profile);
-    const compensationFit = this.analyzeCompensationFit(job, profile);
-    const locationSuitability = this.analyzeLocationSuitability(job, profile);
+    const compensationFit = this.analyzeCompensationFit(job);
+    const locationSuitability = this.analyzeLocationSuitability(job);
 
     // Calculate overall score (weighted average)
     const overallScore = Math.round(
@@ -59,10 +59,10 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     const strengths = this.identifyStrengths(job, profile);
 
     // Identify concerns
-    const concerns = this.identifyConcerns(job, profile, skillGaps);
+    const concerns = this.identifyConcerns(job, skillGaps);
 
     // Negotiation points
-    const negotiationPoints = this.identifyNegotiationPoints(job, profile);
+    const negotiationPoints = this.identifyNegotiationPoints(job);
 
     return {
       job_id,
@@ -79,7 +79,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
       strengths,
       concerns,
       negotiation_points: negotiationPoints,
-      suggested_mask: this.selectBestMask(job, profile),
+      suggested_mask: this.selectBestMask(job),
       key_points_to_emphasize: strengths,
       areas_to_de_emphasize: skillGaps.map((gap) => gap.skill),
       analysis_date: new Date(),
@@ -98,7 +98,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
 
     // Count matching technologies
     const profileText = (
-      profile.summary || ""
+      profile.summaryMarkdown || ""
     ).toLowerCase();
 
     const matchCount = job.technologies.filter((tech) =>
@@ -130,10 +130,10 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     let score = 50; // Neutral baseline
 
     // Company size preference
-    if (job.company_size === "startup" && profile.summary?.includes("startup")) {
+    if (job.company_size === "startup" && profile.summaryMarkdown?.includes("startup")) {
       score += 15;
     }
-    if (job.company_size === "enterprise" && profile.summary?.includes("enterprise")) {
+    if (job.company_size === "enterprise" && profile.summaryMarkdown?.includes("enterprise")) {
       score += 10;
     }
 
@@ -143,7 +143,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     }
 
     // Industry alignment (look for keywords)
-    if (job.company_industry && profile.summary?.includes(job.company_industry)) {
+    if (job.company_industry && profile.summaryMarkdown?.includes(job.company_industry)) {
       score += 15;
     }
 
@@ -175,7 +175,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     // New technologies
     if (
       job.technologies?.some(
-        (tech) => !profile.summary?.includes(tech.toLowerCase())
+        (tech) => !profile.summaryMarkdown?.includes(tech.toLowerCase())
       )
     ) {
       score += 10;
@@ -188,7 +188,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    * Compensation Fit (0-100)
    * Analyzes salary alignment
    */
-  private analyzeCompensationFit(job: JobListing, profile: Profile): number {
+  private analyzeCompensationFit(job: JobListing): number {
     // Without profile salary info, estimate based on role level
     let estimatedSalary = 120000; // Base estimate
 
@@ -219,7 +219,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    * Location Suitability (0-100)
    * Analyzes location fit
    */
-  private analyzeLocationSuitability(job: JobListing, profile: Profile): number {
+  private analyzeLocationSuitability(job: JobListing): number {
     // Without profile location, assume flexibility
     let score = 50;
 
@@ -238,7 +238,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    * Returns specific missing skills with severity
    */
   private identifySkillGaps(job: JobListing, profile: Profile): SkillGap[] {
-    const profileText = (profile.summary || "").toLowerCase();
+    const profileText = (profile.summaryMarkdown || "").toLowerCase();
     const gaps: SkillGap[] = [];
 
     // Parse job requirements (simple keyword matching for MVP)
@@ -289,7 +289,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    * Returns matching strengths vs job requirements
    */
   private identifyStrengths(job: JobListing, profile: Profile): string[] {
-    const profileText = profile.summary || "";
+    const profileText = profile.summaryMarkdown || "";
     const strengths: string[] = [];
 
     // Check technology matches
@@ -323,7 +323,6 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    */
   private identifyConcerns(
     job: JobListing,
-    profile: Profile,
     gaps: SkillGap[]
   ): string[] {
     const concerns: string[] = [];
@@ -356,7 +355,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    * Identify Negotiation Points
    * Returns things to negotiate in offer/contract
    */
-  private identifyNegotiationPoints(job: JobListing, profile: Profile): string[] {
+  private identifyNegotiationPoints(job: JobListing): string[] {
     const points: string[] = [];
 
     // Salary negotiation if it's in range
@@ -386,7 +385,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    * Select Best Mask
    * Returns which persona to use for this job
    */
-  private selectBestMask(job: JobListing, profile: Profile): string {
+  private selectBestMask(job: JobListing): string {
     // Default mask selection logic
     // In production: would analyze which mask best matches job requirements
 

@@ -21,7 +21,7 @@ export class DefaultResumeTailor implements ResumeTailor {
   async generateForJob(
     profile: Profile,
     personaId: string,
-    jobId: string
+    _jobId: string
   ): Promise<{
     resume: string;
     emphasize: string[];
@@ -56,13 +56,12 @@ export class DefaultResumeTailor implements ResumeTailor {
     let resume = "";
 
     // Header
-    resume += `# ${profile.name}\n`;
-    resume += `${profile.email} | ${profile.phone || "Phone"}\n\n`;
+    resume += `# ${profile.displayName}\n`;
+    resume += `[Contact Info Provided Upon Request] | ${profile.locationText || "Remote"}\n\n`;
 
-    // Professional Summary (persona-specific)
-    resume += `## Professional Summary\n`;
-    resume += this.generateSummary(profile, personaId);
-    resume += `\n\n`;
+    // Summary
+    resume += `## Professional Summary\n\n`;
+    resume += `${this.generateSummary(profile, personaId)}\n\n`;
 
     // Experience (filtered and ordered by emphasis)
     resume += `## Experience\n`;
@@ -86,7 +85,7 @@ export class DefaultResumeTailor implements ResumeTailor {
     return resume;
   }
 
-  private generateSummary(profile: Profile, personaId: string): string {
+  private generateSummary(_profile: Profile, personaId: string): string {
     // Persona-specific summary
     const summaries: Record<string, string> = {
       Architect:
@@ -103,10 +102,10 @@ export class DefaultResumeTailor implements ResumeTailor {
         "Versatile engineer comfortable across the full stack. Adaptable to diverse technical challenges and strong at learning new domains quickly.",
     };
 
-    return summaries[personaId] || summaries["Engineer"];
+    return summaries[personaId] || summaries["Engineer"] || "";
   }
 
-  private generateExperience(profile: Profile, emphasize: string[]): string {
+  private generateExperience(_profile: Profile, emphasize: string[]): string {
     // In production: filter CV entries by persona
     // For MVP: generate mock experience
 
@@ -133,7 +132,7 @@ export class DefaultResumeTailor implements ResumeTailor {
     return experience;
   }
 
-  private generateSkills(profile: Profile, personaId: string): string {
+  private generateSkills(_profile: Profile, personaId: string): string {
     const skillsByPersona: Record<string, string[]> = {
       Architect: [
         "System Design",
@@ -146,7 +145,7 @@ export class DefaultResumeTailor implements ResumeTailor {
         "PostgreSQL",
       ],
       Engineer: [
-        "Full-Stack Development",
+        "Full-stack development",
         "TypeScript",
         "React",
         "Node.js",
@@ -192,11 +191,11 @@ export class DefaultResumeTailor implements ResumeTailor {
       ],
     };
 
-    const skills = skillsByPersona[personaId] || skillsByPersona["Engineer"];
+    const skills = skillsByPersona[personaId] || skillsByPersona["Engineer"] || [];
     return skills.map((skill) => `- ${skill}`).join("\n");
   }
 
-  private generateEducation(profile: Profile): string {
+  private generateEducation(_profile: Profile): string {
     return `
 ### Bachelor of Science, Computer Science
 University Name | 2019
@@ -205,7 +204,7 @@ Relevant Coursework: Algorithms, Databases, Distributed Systems
     `.trim();
   }
 
-  private generateAchievements(profile: Profile, emphasize: string[]): string {
+  private generateAchievements(_profile: Profile, emphasize: string[]): string {
     return `
 - ${emphasize[0] || "Major project delivery with significant business impact"}
 - ${emphasize[1] || "Industry recognition or awards"}
@@ -248,7 +247,7 @@ Relevant Coursework: Algorithms, Databases, Distributed Systems
       ],
     };
 
-    return emphasisMap[personaId] || emphasisMap["Engineer"];
+    return emphasisMap[personaId] || emphasisMap["Engineer"] || [];
   }
 
   private getDeEmphasisPoints(personaId: string): string[] {
@@ -294,7 +293,7 @@ export class DefaultCoverLetterGenerator implements CoverLetterGenerator {
     personalized: string[];
     tone: "formal" | "conversational" | "enthusiastic";
   }> {
-    const { job, profile, personaId, tailoredResume } = input;
+    const { job, profile, personaId, tailoredResume: _tailoredResume } = input;
 
     const tone = this.selectTone(job);
     const personalizedElements = this.identifyPersonalizedElements(job, profile);
@@ -327,7 +326,7 @@ export class DefaultCoverLetterGenerator implements CoverLetterGenerator {
   /**
    * Identify personalized elements from job description
    */
-  private identifyPersonalizedElements(job: JobListing, profile: Profile): string[] {
+  private identifyPersonalizedElements(job: JobListing, _profile: Profile): string[] {
     const elements: string[] = [];
 
     // Company mission/values
@@ -360,21 +359,26 @@ export class DefaultCoverLetterGenerator implements CoverLetterGenerator {
   private buildCoverLetter(
     job: JobListing,
     profile: Profile,
-    personaId: string,
+    _personaId: string,
     personalizedElements: string[],
     tone: "formal" | "conversational" | "enthusiastic"
   ): string {
     const letterHeader = this.generateHeader(profile);
     const opening = this.generateOpening(job, tone);
     const middleBody = this.generateMiddleBody(job, profile, personalizedElements);
-    const closing = this.generateClosing(tone);
+    const closing = `
+Sincerely,
+
+${profile.displayName}
+[Contact Info Provided Upon Request]
+`;
 
     return [letterHeader, opening, middleBody, closing].join("\n\n");
   }
 
   private generateHeader(profile: Profile): string {
-    return `${profile.name}
-${profile.email}
+    return `${profile.displayName}
+[Email Address]
 ${new Date().toLocaleDateString()}
 
 [Company Name]
@@ -401,7 +405,7 @@ I'm excited about the opportunity to join your team as a ${job.title}.`;
 
   private generateMiddleBody(
     job: JobListing,
-    profile: Profile,
+    _profile: Profile,
     personalizedElements: string[]
   ): string {
     let body = "In my current/recent role, I've developed strong expertise in ";
@@ -435,27 +439,6 @@ I'm excited about the opportunity to join your team as a ${job.title}.`;
     return "the challenge and growth opportunity";
   }
 
-  private generateClosing(tone: string): string {
-    if (tone === "formal") {
-      return `I would welcome the opportunity to discuss how my experience aligns with your needs.
 
-Thank you for considering my application. I look forward to hearing from you.
 
-Sincerely,
-[Your Name]`;
-    }
-
-    if (tone === "conversational") {
-      return `I'd love to chat more about how I can contribute to the team.
-
-Looking forward to connecting!
-
-[Your Name]`;
-    }
-
-    return `I'm excited about the possibility of joining your team and would love to discuss this further.
-
-Best regards,
-[Your Name]`;
-  }
 }

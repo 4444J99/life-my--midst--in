@@ -1,5 +1,4 @@
 import { CID } from 'multiformats/cid';
-import * as json from 'multiformats/codecs/json';
 import { sha256 } from 'multiformats/hashes/sha2';
 import { type KeyPair } from './crypto';
 import * as jose from 'jose';
@@ -28,9 +27,9 @@ export class VC {
    * Uses JSON codec and SHA-256 hash.
    */
   static async calculateCID(data: unknown): Promise<string> {
-    const bytes = json.encode(data);
+    const bytes = Buffer.from(JSON.stringify(data), 'utf-8');
     const hash = await sha256.digest(bytes);
-    const cid = CID.create(1, json.code, hash);
+    const cid = CID.create(1, 0x71, hash); // 0x71 is the JSON codec code
     return cid.toString();
   }
 

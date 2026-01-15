@@ -316,10 +316,8 @@ export class LinkedInIntegrationService {
       const titleLower = exp.title.toLowerCase();
       Object.entries(titleTags).forEach(([keyword, personas]) => {
         if (titleLower.includes(keyword)) {
-          if (!personaMapping[exp.company]) {
-            personaMapping[exp.company] = [];
-          }
-          personaMapping[exp.company] = [...new Set([...personaMapping[exp.company], ...personas])];
+          const current = personaMapping[exp.company] || [];
+          personaMapping[exp.company] = [...new Set([...current, ...personas])];
         }
       });
     });
@@ -329,9 +327,9 @@ export class LinkedInIntegrationService {
 }
 
 export function createLinkedInIntegrationService(): LinkedInIntegrationService {
-  const clientId = process.env.LINKEDIN_CLIENT_ID || '';
-  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET || '';
-  const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 'http://localhost:3000/integrations/linkedin/callback';
+  const clientId = process.env['LINKEDIN_CLIENT_ID'] || '';
+  const clientSecret = process.env['LINKEDIN_CLIENT_SECRET'] || '';
+  const redirectUri = process.env['LINKEDIN_REDIRECT_URI'] || 'http://localhost:3000/integrations/linkedin/callback';
 
   return new LinkedInIntegrationService(clientId, clientSecret, redirectUri);
 }

@@ -17,8 +17,10 @@ export * from "./timeline";
 export * from "./verification";
 export * from "./narrative";
 export * from "./jobs";
+export * from "./hunter-protocol";
 export * from "./collaboration";
 export * from "./messaging";
+export * from "./billing";
 
 // Re-export zod for convenience
 export { z } from "zod";

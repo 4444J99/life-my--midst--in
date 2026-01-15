@@ -45,6 +45,7 @@ export const UserEventSchema = z.object({
     source: z.enum(['email', 'oauth', 'direct']).optional(),
     invitationCode: z.string().optional(),
     referralSource: z.string().optional(),
+    properties: z.record(z.any()).optional(),
   }).optional(),
   timestamp: z.date(),
 });
@@ -291,25 +292,28 @@ export const FeedbackEventSchema = z.object({
 // UNIFIED EVENT SCHEMA
 // ═════════════════════════════════════════════════════════════════════════
 
-export const EventSchema = z.union([
-  UserEventSchema,
-  ProfileEventSchema,
-  CVEventSchema,
-  HunterEventSchema,
-  InterviewEventSchema,
-  FeatureEventSchema,
-  ErrorEventSchema,
-  PerformanceEventSchema,
-  EngagementEventSchema,
-  FeedbackEventSchema,
-]).extend({
-  eventId: z.string().uuid(),
-  category: EventCategorySchema,
-  environment: z.enum(['development', 'staging', 'production']),
-  userAgent: z.string().optional(),
-  ipAddress: z.string().optional(),
-  sessionId: z.string().uuid().optional(),
-});
+export const EventSchema = z.intersection(
+  z.union([
+    UserEventSchema,
+    ProfileEventSchema,
+    CVEventSchema,
+    HunterEventSchema,
+    InterviewEventSchema,
+    FeatureEventSchema,
+    ErrorEventSchema,
+    PerformanceEventSchema,
+    EngagementEventSchema,
+    FeedbackEventSchema,
+  ]),
+  z.object({
+    eventId: z.string().uuid(),
+    category: EventCategorySchema,
+    environment: z.enum(['development', 'staging', 'production']),
+    userAgent: z.string().optional(),
+    ipAddress: z.string().optional(),
+    sessionId: z.string().uuid().optional(),
+  })
+);
 
 export type AnalyticsEvent = z.infer<typeof EventSchema>;
 
@@ -322,13 +326,13 @@ export interface AnalyticsService {
    * Track an event
    * @param event Event to track
    */
-  trackEvent(event: Omit<AnalyticsEvent, 'eventId' | 'timestamp'>): Promise<void>;
+  trackEvent(event: Omit<AnalyticsEvent, 'eventId' | 'timestamp' | 'environment'>): Promise<void>;
 
   /**
    * Batch track multiple events
    * @param events Array of events
    */
-  trackEvents(events: Omit<AnalyticsEvent, 'eventId' | 'timestamp'>[]): Promise<void>;
+  trackEvents(events: Omit<AnalyticsEvent, 'eventId' | 'timestamp' | 'environment'>[]): Promise<void>;
 
   /**
    * Identify a user
@@ -377,7 +381,7 @@ export function createEvent(
     eventId: crypto.randomUUID(),
     timestamp: new Date(),
     environment,
-  };
+  } as AnalyticsEvent;
 }
 
 /**

@@ -31,14 +31,14 @@ export class DefaultAnalyticsService implements AnalyticsService {
   /**
    * Track a single event
    */
-  async trackEvent(event: Omit<AnalyticsEvent, 'eventId' | 'timestamp'>): Promise<void> {
-    const fullEvent: AnalyticsEvent = {
+  async trackEvent(event: Omit<AnalyticsEvent, 'eventId' | 'timestamp' | 'environment'>): Promise<void> {
+    const fullEvent = {
       ...event,
       eventId: uuid(),
       timestamp: new Date(),
       environment: this.environment,
       sessionId: this.sessionId,
-    };
+    } as any;
 
     this.eventBuffer.push(fullEvent);
 
@@ -51,7 +51,7 @@ export class DefaultAnalyticsService implements AnalyticsService {
   /**
    * Track multiple events
    */
-  async trackEvents(events: Omit<AnalyticsEvent, 'eventId' | 'timestamp'>[]): Promise<void> {
+  async trackEvents(events: Omit<AnalyticsEvent, 'eventId' | 'timestamp' | 'environment'>[]): Promise<void> {
     for (const event of events) {
       await this.trackEvent(event);
     }
@@ -61,7 +61,7 @@ export class DefaultAnalyticsService implements AnalyticsService {
    * Identify a user with properties
    */
   async identify(userId: string, properties: Record<string, any>): Promise<void> {
-    const event: Omit<AnalyticsEvent, 'eventId' | 'timestamp'> = {
+    const event: any = {
       name: 'user_profile_identified' as any,
       category: 'user',
       userId,
@@ -87,7 +87,7 @@ export class DefaultAnalyticsService implements AnalyticsService {
       metadata: {
         ...metadata,
       },
-    }).catch((err) => {
+    } as any).catch((err) => {
       console.error('Failed to track session creation:', err);
     });
 
@@ -192,7 +192,7 @@ export class DefaultAnalyticsService implements AnalyticsService {
    */
   async shutdown(): Promise<void> {
     if (this.flushInterval) {
-      clearInterval(this.flushInterval);
+      clearInterval(this.flushInterval as unknown as number);
     }
     await this.flush();
   }
@@ -206,20 +206,20 @@ export class MockAnalyticsService implements AnalyticsService {
   private events: AnalyticsEvent[] = [];
   private sessionId: string = uuid();
 
-  async trackEvent(event: Omit<AnalyticsEvent, 'eventId' | 'timestamp'>): Promise<void> {
-    const fullEvent: AnalyticsEvent = {
+  async trackEvent(event: Omit<AnalyticsEvent, 'eventId' | 'timestamp' | 'environment'>): Promise<void> {
+    const fullEvent = {
       ...event,
       eventId: uuid(),
       timestamp: new Date(),
       environment: 'development',
       sessionId: this.sessionId,
-    };
+    } as AnalyticsEvent;
 
     this.events.push(fullEvent);
     console.log('[Mock Analytics] Event tracked:', fullEvent);
   }
 
-  async trackEvents(events: Omit<AnalyticsEvent, 'eventId' | 'timestamp'>[]): Promise<void> {
+  async trackEvents(events: Omit<AnalyticsEvent, 'eventId' | 'timestamp' | 'environment'>[]): Promise<void> {
     for (const event of events) {
       await this.trackEvent(event);
     }
@@ -296,8 +296,8 @@ export function createAnalyticsService(
     return new MockAnalyticsService();
   }
 
-  const endpoint = process.env.ANALYTICS_ENDPOINT;
-  const apiKey = process.env.ANALYTICS_API_KEY; // allow-secret
+  const endpoint = process.env['ANALYTICS_ENDPOINT'];
+  const apiKey = process.env['ANALYTICS_API_KEY']; // allow-secret
 
   return new DefaultAnalyticsService(environment, endpoint, apiKey);
 }
@@ -310,7 +310,7 @@ export function createAnalyticsService(
  * Track event (convenience wrapper)
  */
 export async function trackEvent(
-  event: Omit<AnalyticsEvent, 'eventId' | 'timestamp'>
+  event: Omit<AnalyticsEvent, 'eventId' | 'timestamp' | 'environment'>
 ): Promise<void> {
   return getAnalyticsService().trackEvent(event);
 }
@@ -319,7 +319,7 @@ export async function trackEvent(
  * Track multiple events
  */
 export async function trackEvents(
-  events: Omit<AnalyticsEvent, 'eventId' | 'timestamp'>[]
+  events: Omit<AnalyticsEvent, 'eventId' | 'timestamp' | 'environment'>[]
 ): Promise<void> {
   return getAnalyticsService().trackEvents(events);
 }

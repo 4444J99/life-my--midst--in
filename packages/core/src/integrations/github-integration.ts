@@ -216,7 +216,7 @@ export class GitHubIntegrationService {
     Object.entries(frameworkPatterns).forEach(([framework, patterns]) => {
       if (
         patterns.some((pattern) => repoText.includes(pattern)) ||
-        languages.some((lang) => pattern.includes(lang.toLowerCase()))
+        languages.some((lang) => patterns.includes(lang.toLowerCase()))
       ) {
         frameworks.add(framework);
       }
@@ -265,7 +265,7 @@ export class GitHubIntegrationService {
         repositories: repositories.slice(0, 10).map((repo) => ({
           name: repo.name,
           description: repo.description || undefined,
-          url: repo.html_url,
+          url: repo.url,
           stars: repo.stargazers_count,
           language: repo.language || undefined,
           topics: repo.topics || [],
@@ -310,9 +310,10 @@ export class GitHubIntegrationService {
 }
 
 export function createGitHubIntegrationService(): GitHubIntegrationService {
-  const clientId = process.env.GITHUB_CLIENT_ID || '';
-  const clientSecret = process.env.GITHUB_CLIENT_SECRET || '';
-  const redirectUri = process.env.GITHUB_REDIRECT_URI || 'http://localhost:3000/integrations/github/callback';
+  const clientId = process.env['GITHUB_CLIENT_ID'] || '';
+  const clientSecret = process.env['GITHUB_CLIENT_SECRET'] || '';
+  const redirectUri = process.env['GITHUB_REDIRECT_URI'] || 'http://localhost:3000/integrations/github/callback';
 
   return new GitHubIntegrationService(clientId, clientSecret, redirectUri);
 }
+// Force rebuild

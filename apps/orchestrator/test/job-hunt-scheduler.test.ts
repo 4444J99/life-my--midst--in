@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { JobHuntScheduler } from "../src/job-hunt-scheduler";
 import type { TaskQueue } from "../src/queue";
 import type { TaskStore } from "../src/persistence";
@@ -9,7 +9,11 @@ import type { JobHuntConfig } from "../src/job-hunt-scheduler";
 class MockTaskQueue implements TaskQueue {
   async enqueue() {}
   async dequeue() {
-    return null;
+    return undefined;
+  }
+
+  async size() {
+    return 0;
   }
   async length() {
     return 0;
@@ -19,22 +23,26 @@ class MockTaskQueue implements TaskQueue {
 class MockTaskStore implements TaskStore {
   async add() {}
   async get() {
-    return null;
+    return undefined;
   }
-  async update() {}
   async list() {
-    return [];
+    return { data: [], total: 0 };
   }
+  async setStatus() {}
+  async updateMetadata() {}
+  async all() { return []; }
 }
 
 class MockRunStore implements RunStore {
   async add() {}
   async get() {
-    return null;
+    return undefined;
   }
   async list() {
-    return [];
+    return { data: [], total: 0 };
   }
+  async updateStatus() {}
+  async appendTask() {}
 }
 
 describe("JobHuntScheduler", () => {
@@ -74,7 +82,7 @@ describe("JobHuntScheduler", () => {
   it("should create scheduler with job configs", () => {
     const hunts = scheduler.listJobHunts();
     expect(hunts).toHaveLength(2);
-    expect(hunts[0].profileId).toBe("profile-1");
+    expect(hunts[0]!.profileId).toBe("profile-1");
   });
 
   it("should add new job hunt config", () => {
@@ -88,7 +96,7 @@ describe("JobHuntScheduler", () => {
     const hunts = scheduler.listJobHunts();
 
     expect(hunts).toHaveLength(3);
-    expect(hunts[2].profileId).toBe("profile-3");
+    expect(hunts[2]!.profileId).toBe("profile-3");
   });
 
   it("should remove job hunt config", () => {
@@ -96,7 +104,7 @@ describe("JobHuntScheduler", () => {
     const hunts = scheduler.listJobHunts();
 
     expect(hunts).toHaveLength(1);
-    expect(hunts[0].profileId).toBe("profile-2");
+    expect(hunts[0]!.profileId).toBe("profile-2");
   });
 
   it("should get status of job hunt", () => {

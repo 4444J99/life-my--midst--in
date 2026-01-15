@@ -274,19 +274,19 @@ export class ProductionJobSearchProvider implements JobSearchService {
     );
   }
 
-  private async searchLinkedIn(filter: HunterSearchFilter): Promise<JobListing[]> {
+  private async searchLinkedIn(_filter: HunterSearchFilter): Promise<JobListing[]> {
     // Implementation would call LinkedIn Jobs API
     // For now, return empty array
     return [];
   }
 
-  private async searchIndeed(filter: HunterSearchFilter): Promise<JobListing[]> {
+  private async searchIndeed(_filter: HunterSearchFilter): Promise<JobListing[]> {
     // Implementation would call Indeed API
     // For now, return empty array
     return [];
   }
 
-  private async searchAngelList(filter: HunterSearchFilter): Promise<JobListing[]> {
+  private async searchAngelList(_filter: HunterSearchFilter): Promise<JobListing[]> {
     // Implementation would call AngelList/Wellfound API
     // For now, return empty array
     return [];
@@ -299,9 +299,9 @@ export class ProductionJobSearchProvider implements JobSearchService {
 export function createJobSearchProvider(useProduction = false): JobSearchService {
   if (useProduction) {
     return new ProductionJobSearchProvider(
-      process.env.LINKEDIN_API_KEY,
-      process.env.INDEED_API_KEY,
-      process.env.ANGELLIST_API_KEY
+      process.env['LINKEDIN_API_KEY'],
+      process.env['INDEED_API_KEY'],
+      process.env['ANGELLIST_API_KEY']
     );
   }
 

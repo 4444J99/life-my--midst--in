@@ -1,4 +1,5 @@
 import type { JobPosting } from "@in-midst-my-life/schema";
+export type { JobPosting };
 
 export interface JobSearchQuery {
   keywords: string[];

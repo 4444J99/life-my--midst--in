@@ -1,5 +1,4 @@
 import * as jose from 'jose';
-import * as json from 'multiformats/codecs/json';
 import { sha256 } from 'multiformats/hashes/sha2';
 import type { IntegrityProof } from '@in-midst-my-life/schema';
 
@@ -35,7 +34,7 @@ const canonicalize = (value: unknown): unknown => {
 
 export const hashPayload = async (payload: Record<string, unknown>): Promise<string> => {
   const normalized = canonicalize(payload);
-  const bytes = json.encode(normalized);
+  const bytes = Buffer.from(JSON.stringify(normalized), 'utf-8');
   const digest = await sha256.digest(bytes);
   return Array.from(digest.bytes)
     .map((b) => b.toString(16).padStart(2, '0'))

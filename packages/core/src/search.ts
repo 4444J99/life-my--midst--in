@@ -1,4 +1,5 @@
-import type { JobPosting, JobSearchQuery, JobSearchProvider } from "./jobs";
+import type { JobPosting } from "@in-midst-my-life/schema";
+import type { JobSearchQuery, JobSearchProvider } from "./jobs";
 
 export interface SerperApiResponse {
   searchParameters: {
@@ -83,7 +84,7 @@ export class SerperJobSearchProvider implements JobSearchProvider {
     }
   }
 
-  async getById(id: string): Promise<JobPosting | null> {
+  async getById(_id: string): Promise<JobPosting | null> {
     // Serper doesn't provide a way to fetch individual jobs by ID
     // This would need to be fetched from the database instead
     return null;
@@ -105,6 +106,7 @@ export class MockJobSearchProvider implements JobSearchProvider {
         title: "Senior TypeScript Engineer",
         company: "TechCorp",
         location: query.location ?? "Remote",
+        remote: "fully",
         salaryRange: "$150k - $200k",
         descriptionMarkdown: `We're looking for a senior TypeScript engineer to join our team.
           
@@ -127,6 +129,7 @@ export class MockJobSearchProvider implements JobSearchProvider {
         title: "Full Stack Engineer",
         company: "StartupXYZ",
         location: query.location ?? "San Francisco, CA",
+        remote: "hybrid",
         salaryRange: "$120k - $160k",
         descriptionMarkdown: `Join our growing startup as a full stack engineer.
           
@@ -149,6 +152,7 @@ export class MockJobSearchProvider implements JobSearchProvider {
         title: "Solutions Architect",
         company: "EnterpriseInc",
         location: query.location ?? "New York, NY",
+        remote: "onsite",
         salaryRange: "$180k - $240k",
         descriptionMarkdown: `Lead technical architecture for enterprise clients.
           
@@ -174,7 +178,7 @@ export class MockJobSearchProvider implements JobSearchProvider {
       .slice(0, query.limit ?? 10);
   }
 
-  async getById(id: string): Promise<JobPosting | null> {
+  async getById(_id: string): Promise<JobPosting | null> {
     return null;
   }
 }

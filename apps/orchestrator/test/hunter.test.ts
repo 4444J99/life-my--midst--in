@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { HunterAgent } from "../src/agents/hunter";
 import { MockJobSearchProvider } from "@in-midst-my-life/core";
 import type { AgentTask } from "../src/agents";
@@ -36,7 +36,7 @@ describe("HunterAgent", () => {
       expect(result.taskId).toBe("test-find-jobs");
       expect(result.status).toBe("completed");
       expect(result.output).toBeDefined();
-      expect(result.output?.count).toBeGreaterThanOrEqual(0);
+      expect((result.output as any)?.count).toBeGreaterThanOrEqual(0);
     });
 
     it("should fail without keywords", async () => {

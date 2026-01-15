@@ -288,7 +288,7 @@ export class HunterAgent {
   }
 
   // Private helper methods
-  private rankJobs(jobs: JobListing[], filter: HunterSearchFilter): JobListing[] {
+  private rankJobs(jobs: JobListing[], _filter: HunterSearchFilter): JobListing[] {
     return jobs.sort((a, b) => {
       // Rank by posting recency
       const aDate = a.posted_date.getTime();

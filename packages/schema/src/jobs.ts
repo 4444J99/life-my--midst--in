@@ -9,6 +9,7 @@ export const JobPostingSchema = z.object({
   url: z.string().url().optional(),
   salaryRange: z.string().optional(),
   location: z.string().optional(),
+  remote: z.enum(["fully", "hybrid", "onsite", "any"]).optional(),
   vectors: z.array(z.number()).optional(),
   status: z.enum(["active", "closed", "applied", "ignored"]).default("active"),
   createdAt: z.string().datetime(),

@@ -5,3 +5,6 @@ export * from './vc';
 export * from './errors';
 export * from './jobs';
 export * from './search';
+export * from './hunter';
+export * from './licensing/licensing-service';
+export * from './billing/billing-service';

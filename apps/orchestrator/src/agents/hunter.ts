@@ -1,7 +1,5 @@
-import { randomUUID } from "node:crypto";
 import type { Agent, AgentExecutor, AgentResult, AgentTask } from "../agents";
 import {
-  SerperJobSearchProvider,
   MockJobSearchProvider,
   type JobSearchQuery,
   type JobSearchProvider
@@ -42,7 +40,7 @@ export class HunterAgent implements Agent {
   }
 
   async execute(task: AgentTask): Promise<AgentResult> {
-    const payload = task.payload as HunterPayload;
+    const payload = task.payload as unknown as HunterPayload;
     const { action } = payload;
 
     try {
@@ -221,7 +219,7 @@ export class HunterAgent implements Agent {
         taskId: task.id,
         status: "completed",
         notes: `Skill gap analysis: ${missing.length} of ${required.length} skills missing (${importance})`,
-        output: gap
+        output: gap as unknown as Record<string, unknown>
       };
     } catch (error) {
       return {
