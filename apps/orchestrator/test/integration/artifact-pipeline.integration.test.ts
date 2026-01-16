@@ -139,7 +139,9 @@ describe("Artifact Pipeline Integration Test", () => {
       },
       accessTokenEncrypted: encrypt("dummy-token"), // Required for auth check pass
       refreshTokenEncrypted: encrypt("dummy-refresh"),
-      metadata: { rootPath: fixturesDir }
+      metadata: { rootPath: fixturesDir },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
 
     // 4. Create Profile Keys
@@ -166,7 +168,7 @@ describe("Artifact Pipeline Integration Test", () => {
     const result = await agent.execute(task);
     
     expect(result.status).toBe("completed");
-    expect(result.output?.newArtifacts).toBe(6);
+    expect(result.output?.['newArtifacts']).toBe(6);
 
     // (3) Verify Artifacts Created
     const artifacts = await artifactRepo.listByProfile(profileId);
@@ -204,10 +206,13 @@ describe("Artifact Pipeline Integration Test", () => {
 
     // (8) Approve Artifacts
     const toApprove = artifacts.data[0];
-    await agent['artifactRepo'].updateStatus(toApprove.id, profileId, "approved");
-    
-    const approved = await artifactRepo.findById(toApprove.id, profileId);
-    expect(approved?.status).toBe("approved");
+    expect(toApprove).toBeDefined();
+    if (toApprove) {
+      await agent['artifactRepo'].updateStatus(toApprove.id, profileId, "approved");
+
+      const approved = await artifactRepo.findById(toApprove.id, profileId);
+      expect(approved?.status).toBe("approved");
+    }
 
     // (9) Test Delta Sync (Modification)
     // Modify timestamp of paper2.pdf

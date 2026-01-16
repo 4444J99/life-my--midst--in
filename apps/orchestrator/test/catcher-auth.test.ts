@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CatcherAgent } from "../src/agents/catcher";
-import { createCloudIntegrationRepo } from "../src/repositories/cloud-integrations";
 import { createArtifactRepo } from "../src/repositories/artifacts";
 import { createSyncStateRepo } from "../src/repositories/sync-state";
-import { encrypt } from "@in-midst-my-life/core";
 
 // Mock the core package
 vi.mock("@in-midst-my-life/core", async (importOriginal) => {
@@ -145,7 +143,8 @@ describe("CatcherAgent Authentication", () => {
       payload: { profileId: "prof-123" }
     };
 
-    const result = await agent.execute(task as any);
+    // Execute but don't check result; side effects are what we validate
+    void (await agent.execute(task as any));
 
     // Should return failed or complete with error notes?
     // Current implementation: catches error, logs it, and returns failed task
