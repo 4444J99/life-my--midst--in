@@ -280,6 +280,19 @@ export class DropboxProvider implements CloudStorageProvider {
             continue;
           }
 
+          // Apply maxFileSize filter
+          if (options?.filters?.maxFileSize && entry.size && entry.size > options.filters.maxFileSize) {
+            continue;
+          }
+
+          // Apply excludePatterns filter
+          if (options?.filters?.excludePatterns) {
+            const shouldExclude = options.filters.excludePatterns.some(pattern => {
+              return this.matchesPattern(entry.path_display, pattern);
+            });
+            if (shouldExclude) continue;
+          }
+
           yield this.mapDropboxFileToCloudFile(entry);
         }
 
@@ -350,13 +363,40 @@ export class DropboxProvider implements CloudStorageProvider {
       }
 
       // Stream to filesystem
-      // TODO: Implement streaming write in Phase 3
-      const buffer = await response.arrayBuffer();
+      const { createWriteStream } = await import("node:fs");
+      const { pipeline } = await import("node:stream/promises");
+      const { Readable } = await import("node:stream");
 
-      console.log(`Downloaded ${buffer.byteLength} bytes to ${destinationPath}`);
-      if (onProgress) {
-        onProgress(buffer.byteLength);
+      const writeStream = createWriteStream(destinationPath);
+      let downloadedBytes = 0;
+
+      // Convert web ReadableStream to Node.js Readable
+      if (!response.body) {
+        throw new Error("Dropbox: No response body");
       }
+
+      const reader = response.body.getReader();
+      const nodeStream = new Readable({
+        async read() {
+          try {
+            const { done, value } = await reader.read();
+            if (done) {
+              this.push(null);
+            } else {
+              downloadedBytes += value.length;
+              if (onProgress) {
+                onProgress(downloadedBytes);
+              }
+              this.push(Buffer.from(value));
+            }
+          } catch (err) {
+            this.destroy(err as Error);
+          }
+        }
+      });
+
+      await pipeline(nodeStream, writeStream);
+      console.log(`Downloaded ${downloadedBytes} bytes to ${destinationPath}`);
     } catch (err) {
       throw new Error(`Dropbox: Download error: ${String(err)}`);
     }
@@ -422,16 +462,71 @@ export class DropboxProvider implements CloudStorageProvider {
     // Use client_modified (creation time) if available, else server_modified
     const createdTime = file.client_modified || file.server_modified;
 
+    // Guess MIME type from file extension
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const mimeType = this.guessMimeType(ext);
+
     return {
       fileId: file.id,
       name: file.name,
       path: file.path_display,
-      mimeType: "application/octet-stream", // Dropbox doesn't provide MIME type in list response
+      mimeType,
       size: file.size || 0,
       createdTime, // CRUCIAL: Original creation date
       modifiedTime: file.server_modified,
       checksum: file.content_hash,
       isFolder: file[".tag"] === "folder"
     };
+  }
+
+  /**
+   * Private helper: Match file path against glob pattern.
+   */
+  private matchesPattern(path: string, pattern: string): boolean {
+    // Simple glob matching (same as LocalFilesystemProvider)
+    if (pattern === "*/**" || pattern === "**" || path.includes(pattern)) {
+      return true;
+    }
+
+    // Handle simple wildcards
+    const regex = new RegExp(
+      "^" + pattern.replace(/\*/g, ".*").replace(/\?/g, ".") + "$"
+    );
+    return regex.test(path);
+  }
+
+  /**
+   * Private helper: Guess MIME type from file extension.
+   */
+  private guessMimeType(ext: string): string {
+    const mimeTypes: Record<string, string> = {
+      pdf: "application/pdf",
+      doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      xls: "application/vnd.ms-excel",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ppt: "application/vnd.ms-powerpoint",
+      pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      txt: "text/plain",
+      md: "text/markdown",
+      json: "application/json",
+      xml: "application/xml",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+      svg: "image/svg+xml",
+      mp3: "audio/mpeg",
+      wav: "audio/wav",
+      m4a: "audio/mp4",
+      flac: "audio/flac",
+      mp4: "video/mp4",
+      mkv: "video/x-matroska",
+      mov: "video/quicktime",
+      webm: "video/webm"
+    };
+
+    return mimeTypes[ext] || "application/octet-stream";
   }
 }
