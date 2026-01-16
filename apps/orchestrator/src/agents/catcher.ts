@@ -425,28 +425,60 @@ export class CatcherAgent implements Agent {
         return;
       }
 
-      // Instantiate provider to download file
-      // NOTE: In a real optimized flow we would pass the provider instance down
-      // but for now we re-authenticate to keep signature simple. 
-      // Optimization: Pass provider as arg to ingestSingleFile
-      const provider = await this.authenticateProvider(integration);
-      
-      await provider.downloadFile(fileId, tempPath, (_bytes) => {
-        // console.log(`Downloaded ${_bytes} bytes from ${cloudFile.name}`);
-      });
+      // TODO: Phase 6 - Download file (would need provider instance)
+      // await provider.downloadFile(fileId, tempPath, (bytes) => {
+      //   console.log(`Downloaded ${bytes} bytes from ${cloudFile.name}`);
+      // });
+
+      // For MVP, skip download - would fail anyway without real provider
+      console.log(`[STUB] Would download ${cloudFile.name} to ${tempPath}`);
 
       // Extract metadata from file
       const { metadata } = await processFile(
         tempPath,
         cloudFile.mimeType
       );
+      const textContent = (metadata as any).textContent as string | undefined;
 
       // Classify artifact using heuristics
-      const classification = classifyByHeuristics(
+      const heuristicResult = classifyByHeuristics(
         cloudFile.name,
         cloudFile.path,
         cloudFile.mimeType
       );
+
+      let artifactType = heuristicResult.artifactType;
+      let confidence = heuristicResult.confidence;
+      let title = (metadata as any).title || cloudFile.name;
+      let keywords = (metadata as any).keywords as string[] | undefined;
+      let summary: string | undefined = undefined;
+
+      // LLM Classification (Phase 4)
+      // If heuristic confidence is low (< 0.7) and LLM is available, use LLM
+      if (heuristicResult.confidence < 0.7 && this.executor) {
+        try {
+          const llmResult = await classifyWithLLM({
+            filename: cloudFile.name,
+            mimeType: cloudFile.mimeType,
+            createdDate: cloudFile.createdTime,
+            modifiedDate: cloudFile.modifiedTime,
+            fileSize: cloudFile.size,
+            textContent: textContent,
+            mediaMetadata: metadata as Record<string, unknown>
+          }, this.executor);
+
+          // Aggregate confidence
+          confidence = aggregateConfidence(heuristicResult.confidence, llmResult.confidence);
+          artifactType = llmResult.artifactType;
+          if (llmResult.title) title = llmResult.title;
+          if (llmResult.keywords) keywords = llmResult.keywords;
+          if (llmResult.summary) summary = llmResult.summary;
+          
+        } catch (err) {
+          // Log error but continue with heuristics
+          console.warn(`LLM classification failed for ${cloudFile.name}, falling back to heuristics: ${err}`);
+        }
+      }
 
       // Create artifact record
       const artifact: Artifact = {
@@ -456,16 +488,17 @@ export class CatcherAgent implements Agent {
         sourceId: cloudFile.fileId,
         sourcePath: cloudFile.path,
         name: cloudFile.name,
-        artifactType: classification.artifactType,
+        artifactType,
         mimeType: cloudFile.mimeType,
         fileSize: cloudFile.size,
         createdDate: cloudFile.createdTime,
         modifiedDate: cloudFile.modifiedTime,
         capturedDate: new Date().toISOString(),
-        title: (metadata as any).title || cloudFile.name,
-        keywords: (metadata as any).keywords,
+        title,
+        keywords,
+        descriptionMarkdown: summary,
         mediaMetadata: (metadata as any) as Record<string, unknown> | undefined,
-        confidence: classification.confidence,
+        confidence,
         status: "pending",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()

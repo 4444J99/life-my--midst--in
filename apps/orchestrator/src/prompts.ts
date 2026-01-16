@@ -257,7 +257,12 @@ export const buildUserPrompt = (task: AgentTask, options?: PromptOptions): strin
   return sections.join("\n\n");
 };
 
-export const buildPromptMessages = (task: AgentTask, options?: PromptOptions): ChatMessage[] => [
-  { role: "system", content: buildSystemPrompt(task.role, options) },
-  { role: "user", content: buildUserPrompt(task, options) }
-];
+export const buildPromptMessages = (task: AgentTask, options?: PromptOptions): ChatMessage[] => {
+  const payload = task.payload as Record<string, unknown> | undefined;
+  const systemPrompt = (payload?.['systemPromptOverride'] as string) ?? buildSystemPrompt(task.role, options);
+  const userPrompt = (payload?.['userPromptOverride'] as string) ?? buildUserPrompt(task, options);
+  return [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt }
+  ];
+};
