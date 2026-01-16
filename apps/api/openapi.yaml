@@ -2682,6 +2682,593 @@ paths:
                   data:
                     type: object
 
+  # ============ ARTIFACT ENDPOINTS ============
+  /profiles/{id}/artifacts:
+    get:
+      tags: [Artifacts]
+      summary: List artifacts
+      operationId: listArtifacts
+      security:
+        - bearerAuth: [READ_ARTIFACTS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected, archived]
+        - name: type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Artifacts retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                  pagination:
+                    type: object
+
+  /profiles/{id}/artifacts/pending:
+    get:
+      tags: [Artifacts]
+      summary: List pending artifacts
+      operationId: listPendingArtifacts
+      security:
+        - bearerAuth: [READ_ARTIFACTS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Pending artifacts retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                  pagination:
+                    type: object
+
+  /profiles/{id}/artifacts/{artifactId}:
+    get:
+      tags: [Artifacts]
+      summary: Get artifact details
+      operationId: getArtifact
+      security:
+        - bearerAuth: [READ_ARTIFACTS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Artifact retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Artifacts]
+      summary: Update artifact
+      operationId: updateArtifact
+      security:
+        - bearerAuth: [WRITE_ARTIFACTS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                descriptionMarkdown:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Artifact updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [Artifacts]
+      summary: Archive artifact
+      operationId: deleteArtifact
+      security:
+        - bearerAuth: [WRITE_ARTIFACTS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Artifact archived
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /profiles/{id}/artifacts/{artifactId}/approve:
+    post:
+      tags: [Artifacts]
+      summary: Approve artifact
+      operationId: approveArtifact
+      security:
+        - bearerAuth: [WRITE_ARTIFACTS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Artifact approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+  /profiles/{id}/artifacts/{artifactId}/reject:
+    post:
+      tags: [Artifacts]
+      summary: Reject artifact
+      operationId: rejectArtifact
+      security:
+        - bearerAuth: [WRITE_ARTIFACTS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Artifact rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+  /profiles/{id}/artifacts/{artifactId}/links:
+    post:
+      tags: [Artifacts]
+      summary: Link artifact
+      operationId: linkArtifact
+      security:
+        - bearerAuth: [WRITE_ARTIFACTS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetType, targetId]
+              properties:
+                targetType:
+                  type: string
+                  enum: [project, publication]
+                targetId:
+                  type: string
+                relationshipType:
+                  type: string
+                  default: related_to
+      responses:
+        '200':
+          description: Artifact linked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+
+  # ============ INTEGRATION ENDPOINTS ============
+  /integrations/cloud-storage/connect:
+    post:
+      tags: [Integrations]
+      summary: Connect integration
+      operationId: connectIntegration
+      security:
+        - bearerAuth: [WRITE_INTEGRATIONS]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, profileId]
+              properties:
+                provider:
+                  type: string
+                  enum: [google_drive, dropbox, icloud]
+                profileId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Auth URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  authorizationUrl:
+                    type: string
+                  state:
+                    type: string
+
+  /integrations/cloud-storage/callback:
+    get:
+      tags: [Integrations]
+      summary: OAuth callback
+      operationId: integrationCallback
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Integration connected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  integration:
+                    type: object
+
+  /profiles/{id}/integrations:
+    get:
+      tags: [Integrations]
+      summary: List integrations
+      operationId: listIntegrations
+      security:
+        - bearerAuth: [READ_INTEGRATIONS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Integrations retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/integrations/{integrationId}:
+    get:
+      tags: [Integrations]
+      summary: Get integration details
+      operationId: getIntegration
+      security:
+        - bearerAuth: [READ_INTEGRATIONS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Integration retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Integrations]
+      summary: Update integration
+      operationId: updateIntegration
+      security:
+        - bearerAuth: [WRITE_INTEGRATIONS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                folderConfig:
+                  type: object
+                status:
+                  type: string
+      responses:
+        '200':
+          description: Integration updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [Integrations]
+      summary: Disconnect integration
+      operationId: deleteIntegration
+      security:
+        - bearerAuth: [WRITE_INTEGRATIONS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Integration disconnected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /profiles/{id}/integrations/{integrationId}/sync:
+    post:
+      tags: [Integrations]
+      summary: Trigger sync
+      operationId: syncIntegration
+      security:
+        - bearerAuth: [WRITE_INTEGRATIONS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  enum: [full, incremental]
+                  default: incremental
+      responses:
+        '200':
+          description: Sync triggered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  taskId:
+                    type: string
+
+  /profiles/{id}/integrations/{integrationId}/refresh:
+    post:
+      tags: [Integrations]
+      summary: Refresh token
+      operationId: refreshIntegrationToken
+      security:
+        - bearerAuth: [WRITE_INTEGRATIONS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
 components:
   schemas:
     Profile:

@@ -16,8 +16,32 @@
 
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { ArtifactSchema, ArtifactStatusSchema } from "@in-midst-my-life/schema";
+import { ArtifactSchema, ArtifactStatusSchema, ArtifactTypeSchema } from "@in-midst-my-life/schema";
 import { artifactService } from "../services/artifact-service";
+import { z } from "zod";
+
+// Schema for updating artifact
+const ArtifactUpdateSchema = z.object({
+  title: z.string().max(200).optional(),
+  descriptionMarkdown: z.string().max(5000).optional(),
+  tags: z.array(z.string().regex(/^[a-z0-9-]+$/)).optional(),
+  categories: z.array(z.string()).optional(),
+  authors: z.array(z.string()).optional(),
+  keywords: z.array(z.string()).optional(),
+  type: ArtifactTypeSchema.optional()
+});
+
+// Schema for linking artifact
+const ArtifactLinkSchema = z.object({
+  targetType: z.enum(["project", "publication"]),
+  targetId: z.string().uuid(),
+  relationshipType: z.string().default("related_to")
+});
+
+// Schema for rejection
+const RejectionSchema = z.object({
+  reason: z.string().max(500).optional()
+});
 
 /**
  * Register artifact routes.
@@ -29,16 +53,6 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
    * GET /profiles/:profileId/artifacts
    *
    * List artifacts with optional filtering and pagination.
-   *
-   * Query parameters:
-   * - status: Filter by status (pending, approved, rejected, archived)
-   * - type: Filter by artifact type
-   * - tags: Filter by tags (comma-separated)
-   * - offset: Pagination offset (default: 0)
-   * - limit: Pagination limit (default: 20)
-   *
-   * @example
-   * GET /profiles/123/artifacts?status=pending&type=academic_paper&limit=10
    */
   fastify.get(
     "/profiles/:profileId/artifacts",
@@ -48,17 +62,28 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
 
       // Parse filters
       const filters: any = {};
-      if (query['status']) filters.status = query['status'];
-      if (query['type']) filters.type = query['type'];
+      
+      try {
+        if (query['status']) {
+          filters.status = ArtifactStatusSchema.parse(query['status']);
+        }
+        if (query['type']) {
+          filters.type = ArtifactTypeSchema.parse(query['type']);
+        }
+      } catch (e) {
+        reply.code(400);
+        return { ok: false, error: "invalid_filter_param" };
+      }
+      
       if (query['tags']) {
         const tagsStr = String(query['tags']);
         filters.tags = tagsStr.split(",").map((t) => t.trim());
       }
-      if (query['sourceProvider']) filters.sourceProvider = query['sourceProvider'];
+      if (query['sourceProvider']) filters.sourceProvider = String(query['sourceProvider']);
 
       // Parse pagination
       const offset = Number(query['offset'] ?? 0);
-      const limit = Math.min(Number(query['limit'] ?? 20), 100); // Max 100 items per page
+      const limit = Math.min(Number(query['limit'] ?? 20), 100);
 
       try {
         const result = await artifactService.listArtifacts(profileId, filters, {
@@ -76,6 +101,7 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
           }
         };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_list_artifacts" };
       }
@@ -86,9 +112,6 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
    * GET /profiles/:profileId/artifacts/pending
    *
    * List artifacts awaiting approval.
-   *
-   * @example
-   * GET /profiles/123/artifacts/pending
    */
   fastify.get(
     "/profiles/:profileId/artifacts/pending",
@@ -96,9 +119,8 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
       const { profileId } = request.params as { profileId: string };
       const query = request.query as Record<string, unknown>;
 
-      // Parse pagination
       const offset = Number(query['offset'] ?? 0);
-      const limit = Math.min(Number(query['limit'] ?? 20), 100); // Max 100 items per page
+      const limit = Math.min(Number(query['limit'] ?? 20), 100);
 
       try {
         const result = await artifactService.listArtifacts(
@@ -117,6 +139,7 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
           }
         };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_list_pending_artifacts" };
       }
@@ -127,9 +150,6 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
    * GET /profiles/:profileId/artifacts/:artifactId
    *
    * Get a single artifact's details.
-   *
-   * @example
-   * GET /profiles/123/artifacts/artifact-uuid
    */
   fastify.get(
     "/profiles/:profileId/artifacts/:artifactId",
@@ -149,6 +169,7 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
 
         return { ok: true, data: artifact };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_get_artifact" };
       }
@@ -159,23 +180,6 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
    * PATCH /profiles/:profileId/artifacts/:artifactId
    *
    * Update artifact metadata (manual curation).
-   *
-   * Allows user to update:
-   * - title, descriptionMarkdown
-   * - tags, categories
-   * - authors, keywords
-   *
-   * Prevents updating:
-   * - source fields (sourceProvider, sourceId, sourcePath)
-   * - temporal fields (createdDate, modifiedDate, capturedDate)
-   * - approval status (use approve/reject endpoints)
-   *
-   * @example
-   * PATCH /profiles/123/artifacts/artifact-uuid
-   * {
-   *   "title": "Updated Title",
-   *   "tags": ["updated", "research"]
-   * }
    */
   fastify.patch(
     "/profiles/:profileId/artifacts/:artifactId",
@@ -184,45 +188,30 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
         profileId: string;
         artifactId: string;
       };
-      const updates = request.body as Record<string, unknown>;
-
-      // Prevent updating protected fields
-      const protectedFields = [
-        "id",
-        "profileId",
-        "sourceProvider",
-        "sourceId",
-        "sourcePath",
-        "createdDate",
-        "modifiedDate",
-        "capturedDate",
-        "status",
-        "integrity",
-        "createdAt",
-        "updatedAt"
-      ];
-
-      const safeUpdates: any = {};
-      for (const [key, value] of Object.entries(updates)) {
-        if (!protectedFields.includes(key)) {
-          safeUpdates[key] = value;
-        }
-      }
-
+      
       try {
-        const updated = await artifactService.updateArtifact(
-          artifactId,
-          profileId,
-          safeUpdates
-        );
-
-        if (!updated) {
+        const updates = ArtifactUpdateSchema.parse(request.body);
+        
+        // Ensure artifact exists
+        const existing = await artifactService.getArtifact(artifactId, profileId);
+        if (!existing) {
           reply.code(404);
           return { ok: false, error: "artifact_not_found" };
         }
 
+        const updated = await artifactService.updateArtifact(
+          artifactId,
+          profileId,
+          updates as any
+        );
+
         return { ok: true, data: updated };
       } catch (err) {
+        if (err instanceof z.ZodError) {
+          reply.code(400);
+          return { ok: false, error: "validation_error", details: err.errors };
+        }
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_update_artifact" };
       }
@@ -233,11 +222,6 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
    * POST /profiles/:profileId/artifacts/:artifactId/approve
    *
    * Approve an artifact for inclusion in CV.
-   *
-   * Changes status from "pending" to "approved".
-   *
-   * @example
-   * POST /profiles/123/artifacts/artifact-uuid/approve
    */
   fastify.post(
     "/profiles/:profileId/artifacts/:artifactId/approve",
@@ -248,15 +232,17 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
       };
 
       try {
-        const approved = await artifactService.approveArtifact(artifactId, profileId);
-
-        if (!approved) {
+        const existing = await artifactService.getArtifact(artifactId, profileId);
+        if (!existing) {
           reply.code(404);
           return { ok: false, error: "artifact_not_found" };
         }
 
+        const approved = await artifactService.approveArtifact(artifactId, profileId);
+
         return { ok: true, data: approved };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_approve_artifact" };
       }
@@ -267,15 +253,6 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
    * POST /profiles/:profileId/artifacts/:artifactId/reject
    *
    * Reject an artifact (exclude from CV).
-   *
-   * Changes status from "pending" to "rejected".
-   * Optionally stores rejection reason.
-   *
-   * @example
-   * POST /profiles/123/artifacts/artifact-uuid/reject
-   * {
-   *   "reason": "Not relevant to current focus"
-   * }
    */
   fastify.post(
     "/profiles/:profileId/artifacts/:artifactId/reject",
@@ -284,22 +261,29 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
         profileId: string;
         artifactId: string;
       };
-      const { reason } = request.body as { reason?: string };
-
+      
       try {
+        const { reason } = RejectionSchema.parse(request.body || {});
+        
+        const existing = await artifactService.getArtifact(artifactId, profileId);
+        if (!existing) {
+          reply.code(404);
+          return { ok: false, error: "artifact_not_found" };
+        }
+
         const rejected = await artifactService.rejectArtifact(
           artifactId,
           profileId,
           reason
         );
 
-        if (!rejected) {
-          reply.code(404);
-          return { ok: false, error: "artifact_not_found" };
-        }
-
         return { ok: true, data: rejected };
       } catch (err) {
+        if (err instanceof z.ZodError) {
+          reply.code(400);
+          return { ok: false, error: "validation_error", details: err.errors };
+        }
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_reject_artifact" };
       }
@@ -310,11 +294,6 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
    * DELETE /profiles/:profileId/artifacts/:artifactId
    *
    * Delete an artifact (soft delete - archive).
-   *
-   * Marks the artifact as archived rather than permanently deleting.
-   *
-   * @example
-   * DELETE /profiles/123/artifacts/artifact-uuid
    */
   fastify.delete(
     "/profiles/:profileId/artifacts/:artifactId",
@@ -325,20 +304,22 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
       };
 
       try {
+        const existing = await artifactService.getArtifact(artifactId, profileId);
+        if (!existing) {
+          reply.code(404);
+          return { ok: false, error: "artifact_not_found" };
+        }
+
         // Soft delete by archiving
-        const archived = await artifactService.updateArtifact(
+        await artifactService.updateArtifact(
           artifactId,
           profileId,
           { status: "archived" }
         );
 
-        if (!archived) {
-          reply.code(404);
-          return { ok: false, error: "artifact_not_found" };
-        }
-
         return { ok: true };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_delete_artifact" };
       }
@@ -349,19 +330,6 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
    * POST /profiles/:profileId/artifacts/:artifactId/links
    *
    * Link artifact to a project or publication.
-   *
-   * Creates a ContentEdge relationship between artifact and target entity.
-   * Useful for connecting discovered work to existing CV entries.
-   *
-   * TODO: Implement ContentEdge linking in Phase 6+
-   *
-   * @example
-   * POST /profiles/123/artifacts/artifact-uuid/links
-   * {
-   *   "targetType": "project",
-   *   "targetId": "project-uuid",
-   *   "relationshipType": "derived_from"
-   * }
    */
   fastify.post(
     "/profiles/:profileId/artifacts/:artifactId/links",
@@ -370,10 +338,11 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
         profileId: string;
         artifactId: string;
       };
-      const { targetType, targetId, relationshipType } = request.body as any;
-
-      // Validate artifact exists
+      
       try {
+        const { targetType, targetId, relationshipType } = ArtifactLinkSchema.parse(request.body);
+
+        // Validate artifact exists
         const artifact = await artifactService.getArtifact(artifactId, profileId);
         if (!artifact) {
           reply.code(404);
@@ -392,11 +361,16 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
             targetId,
             sourceType: "artifact",
             targetType,
-            relationshipType: relationshipType ?? "related_to",
+            relationshipType,
             context: {}
           }
         };
       } catch (err) {
+        if (err instanceof z.ZodError) {
+          reply.code(400);
+          return { ok: false, error: "validation_error", details: err.errors };
+        }
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_create_link" };
       }

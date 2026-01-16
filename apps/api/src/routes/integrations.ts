@@ -24,6 +24,31 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { artifactService } from "../services/artifact-service";
+import { ArtifactSourceProviderSchema } from "@in-midst-my-life/schema";
+import { z } from "zod";
+
+/**
+ * Validation schemas
+ */
+const ConnectSchema = z.object({
+  provider: ArtifactSourceProviderSchema.exclude(["manual"]),
+  profileId: z.string().uuid()
+});
+
+const IntegrationUpdateSchema = z.object({
+  folderConfig: z.object({
+    includedFolders: z.array(z.string()).optional(),
+    excludedPatterns: z.array(z.string()).optional(),
+    maxFileSizeMB: z.number().positive().optional(),
+    allowedMimeTypes: z.array(z.string()).optional()
+  }).optional(),
+  status: z.enum(["active", "expired", "revoked", "error"]).optional(),
+  metadata: z.record(z.unknown()).optional()
+});
+
+const SyncSchema = z.object({
+  mode: z.enum(["full", "incremental"]).default("incremental")
+});
 
 /**
  * OAuth provider configuration.
@@ -97,49 +122,23 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
    * POST /integrations/cloud-storage/connect
    *
    * Initiate OAuth flow for a cloud storage provider.
-   *
-   * Returns:
-   * - authorizationUrl: URL to redirect user to for OAuth consent
-   * - state: CSRF protection token (user's session should store this)
-   *
-   * @example
-   * POST /integrations/cloud-storage/connect
-   * {
-   *   "provider": "google_drive",
-   *   "profileId": "profile-uuid"
-   * }
-   *
-   * Response:
-   * {
-   *   "ok": true,
-   *   "authorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth?...",
-   *   "state": "base64-encoded-state"
-   * }
    */
   fastify.post(
     "/integrations/cloud-storage/connect",
     async (request, reply) => {
-      const { provider, profileId } = request.body as {
-        provider: string;
-        profileId: string;
-      };
-
-      if (!provider || !profileId) {
-        reply.code(400);
-        return { ok: false, error: "missing_provider_or_profile_id" };
-      }
-
-      const config = getOAuthConfig(provider);
-      if (!config || !config.clientId) {
-        reply.code(400);
-        return {
-          ok: false,
-          error: `provider_not_configured: ${provider}`,
-          message: `OAuth credentials not configured for ${provider}. Check environment variables.`
-        };
-      }
-
       try {
+        const { provider, profileId } = ConnectSchema.parse(request.body);
+
+        const config = getOAuthConfig(provider);
+        if (!config || !config.clientId) {
+          reply.code(400);
+          return {
+            ok: false,
+            error: `provider_not_configured: ${provider}`,
+            message: `OAuth credentials not configured for ${provider}. Check environment variables.`
+          };
+        }
+
         // Generate OAuth state for CSRF protection
         const state = generateOAuthState(profileId, provider);
 
@@ -164,6 +163,11 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
           profileId
         };
       } catch (err) {
+        if (err instanceof z.ZodError) {
+          reply.code(400);
+          return { ok: false, error: "validation_error", details: err.errors };
+        }
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_generate_auth_url" };
       }
@@ -174,18 +178,6 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
    * GET /integrations/cloud-storage/callback
    *
    * OAuth callback handler.
-   *
-   * Provider redirects here after user grants permission.
-   * Exchanges authorization code for access/refresh tokens.
-   * Encrypts tokens and stores in cloud_storage_integrations table.
-   *
-   * Query parameters:
-   * - code: Authorization code from provider
-   * - state: CSRF protection token (must match user's session)
-   * - error: Error code if user denied (e.g., access_denied)
-   *
-   * @example
-   * GET /integrations/cloud-storage/callback?code=4/0AX...&state=base64...
    */
   fastify.get(
     "/integrations/cloud-storage/callback",
@@ -260,6 +252,7 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
           nextSteps: "User should be redirected to settings page with integration confirmed"
         };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_process_callback" };
       }
@@ -270,9 +263,6 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
    * GET /profiles/:profileId/integrations
    *
    * List all connected cloud storage integrations for a profile.
-   *
-   * @example
-   * GET /profiles/profile-uuid/integrations
    */
   fastify.get(
     "/profiles/:profileId/integrations",
@@ -283,17 +273,18 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
         const integrations = await artifactService.listIntegrations(profileId);
 
         // Don't expose encrypted tokens in response
-        const safe = integrations.map((i) => ({
-          ...i,
-          accessTokenEncrypted: undefined,
-          refreshTokenEncrypted: undefined
-        }));
+        const safe = integrations.map((i) => {
+           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+           const { accessTokenEncrypted, refreshTokenEncrypted, ...rest } = i;
+           return rest;
+        });
 
         return {
           ok: true,
           data: safe
         };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_list_integrations" };
       }
@@ -304,9 +295,6 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
    * GET /profiles/:profileId/integrations/:integrationId
    *
    * Get a specific integration's configuration.
-   *
-   * @example
-   * GET /profiles/profile-uuid/integrations/integration-uuid
    */
   fastify.get(
     "/profiles/:profileId/integrations/:integrationId",
@@ -328,12 +316,12 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
         }
 
         // Don't expose encrypted tokens
-        const safe = { ...integration };
-        delete (safe as any).accessTokenEncrypted;
-        delete (safe as any).refreshTokenEncrypted;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { accessTokenEncrypted, refreshTokenEncrypted, ...safe } = integration;
 
         return { ok: true, data: safe };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_get_integration" };
       }
@@ -344,16 +332,6 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
    * PATCH /profiles/:profileId/integrations/:integrationId
    *
    * Update integration configuration (folder settings, exclusions, etc).
-   *
-   * @example
-   * PATCH /profiles/profile-uuid/integrations/integration-uuid
-   * {
-   *   "folderConfig": {
-   *     "includedFolders": ["/Academic", "/Creative Writing"],
-   *     "excludedPatterns": ["\*\*\/Private\/\*\*", "\*\*\/Draft\/\*\*"],
-   *     "maxFileSizeMB": 100
-   *   }
-   * }
    */
   fastify.patch(
     "/profiles/:profileId/integrations/:integrationId",
@@ -362,23 +340,21 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
         profileId: string;
         integrationId: string;
       };
-      const updates = request.body as Record<string, unknown>;
-
-      // Prevent updating sensitive fields
-      const protectedFields = ["id", "profileId", "provider"];
-      const safeUpdates: any = {};
-
-      for (const [key, value] of Object.entries(updates)) {
-        if (!protectedFields.includes(key)) {
-          safeUpdates[key] = value;
-        }
-      }
-
+      
       try {
+        const updates = IntegrationUpdateSchema.parse(request.body);
+        
+        // Ensure integration exists
+        const existing = await artifactService.getIntegration(integrationId, profileId);
+        if (!existing) {
+          reply.code(404);
+          return { ok: false, error: "integration_not_found" };
+        }
+
         const updated = await artifactService.updateIntegration(
           integrationId,
           profileId,
-          safeUpdates
+          updates as any
         );
 
         if (!updated) {
@@ -387,12 +363,16 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
         }
 
         // Don't expose encrypted tokens
-        const safe = { ...updated };
-        delete (safe as any).accessTokenEncrypted;
-        delete (safe as any).refreshTokenEncrypted;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { accessTokenEncrypted, refreshTokenEncrypted, ...safe } = updated;
 
         return { ok: true, data: safe };
       } catch (err) {
+        if (err instanceof z.ZodError) {
+          reply.code(400);
+          return { ok: false, error: "validation_error", details: err.errors };
+        }
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_update_integration" };
       }
@@ -403,12 +383,6 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
    * DELETE /profiles/:profileId/integrations/:integrationId
    *
    * Disconnect a cloud storage integration.
-   *
-   * Revokes OAuth tokens and removes integration record.
-   * Artifacts already ingested are preserved (not deleted).
-   *
-   * @example
-   * DELETE /profiles/profile-uuid/integrations/integration-uuid
    */
   fastify.delete(
     "/profiles/:profileId/integrations/:integrationId",
@@ -419,6 +393,12 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
       };
 
       try {
+        const existing = await artifactService.getIntegration(integrationId, profileId);
+        if (!existing) {
+          reply.code(404);
+          return { ok: false, error: "integration_not_found" };
+        }
+        
         // TODO: Revoke OAuth tokens with provider before deleting
         // This would involve calling the provider's token revocation endpoint
 
@@ -427,13 +407,9 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
           profileId
         );
 
-        if (!deleted) {
-          reply.code(404);
-          return { ok: false, error: "integration_not_found" };
-        }
-
         return { ok: true, message: "Integration disconnected" };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_delete_integration" };
       }
@@ -444,23 +420,6 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
    * POST /profiles/:profileId/integrations/:integrationId/sync
    *
    * Trigger a manual artifact sync for this integration.
-   *
-   * Enqueues a task in the orchestrator task queue.
-   * Returns task ID for polling progress.
-   *
-   * @example
-   * POST /profiles/profile-uuid/integrations/integration-uuid/sync
-   * {
-   *   "mode": "full" or "incremental"
-   * }
-   *
-   * Response:
-   * {
-   *   "ok": true,
-   *   "taskId": "task-uuid",
-   *   "mode": "incremental",
-   *   "estimatedTime": "2-5 minutes"
-   * }
    */
   fastify.post(
     "/profiles/:profileId/integrations/:integrationId/sync",
@@ -469,9 +428,10 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
         profileId: string;
         integrationId: string;
       };
-      const { mode } = request.body as { mode?: string };
-
+      
       try {
+        const { mode } = SyncSchema.parse(request.body || {});
+
         // Verify integration exists
         const integration = await artifactService.getIntegration(
           integrationId,
@@ -503,6 +463,11 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
           estimatedTime: mode === "full" ? "10-30 minutes" : "2-5 minutes"
         };
       } catch (err) {
+        if (err instanceof z.ZodError) {
+          reply.code(400);
+          return { ok: false, error: "validation_error", details: err.errors };
+        }
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_enqueue_sync_task" };
       }
@@ -513,11 +478,6 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
    * POST /profiles/:profileId/integrations/:integrationId/refresh
    *
    * Manually refresh OAuth token.
-   *
-   * Called when token expires or is about to expire.
-   *
-   * @example
-   * POST /profiles/profile-uuid/integrations/integration-uuid/refresh
    */
   fastify.post(
     "/profiles/:profileId/integrations/:integrationId/refresh",
@@ -550,6 +510,7 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
           message: "Token refresh stub - full implementation in Phase 5+"
         };
       } catch (err) {
+        request.log.error(err);
         reply.code(500);
         return { ok: false, error: "failed_to_refresh_token" };
       }

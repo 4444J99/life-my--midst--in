@@ -14,6 +14,8 @@ import { registerAttestationBlockRoutes } from "./routes/attestation-blocks";
 import { jobRoutes } from "./routes/jobs";
 import { interviewRoutes } from "./routes/interviews";
 import { registerHunterProtocolRoutes } from "./routes/hunter-protocol";
+import { registerArtifactRoutes } from "./routes/artifacts";
+import { registerIntegrationRoutes } from "./routes/integrations";
 import type { ProfileRepo } from "./repositories/profiles";
 import type { MaskRepo, EpochRepo, StageRepo } from "./repositories/masks";
 import { createMaskRepo } from "./repositories/masks";
@@ -193,6 +195,10 @@ export function buildServer(options: ApiServerOptions = {}) {
   });
   
   fastify.register(registerAdminLicensingRoutes, licensingService);
+
+  // Phase 5: Cloud Storage & Artifacts
+  fastify.register(registerArtifactRoutes);
+  fastify.register(registerIntegrationRoutes);
 
   return fastify;
 }
