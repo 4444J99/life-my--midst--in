@@ -1,15 +1,19 @@
 import { mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Agent, AgentTask, AgentResult } from "../agents";
+import type { Agent, AgentTask, AgentResult, AgentExecutor } from "../agents";
 import type { Artifact, CloudStorageIntegration, ArtifactSyncState, IntegrityProof, VerificationLog } from "@in-midst-my-life/schema";
 import {
   type CloudStorageProvider,
   type CloudFile,
-  hashPayload
+  type CloudCredentials,
+  hashPayload,
+  createCloudStorageProvider,
+  decrypt
 } from "@in-midst-my-life/core";
 import { processFile } from "../processors";
-import { classifyByHeuristics } from "../classification/heuristics";
+import { classifyByHeuristics, aggregateConfidence } from "../classification/heuristics";
+import { classifyWithLLM } from "../prompts/artifact-classification";
 import type { ArtifactRepo } from "../repositories/artifacts";
 import type { CloudIntegrationRepo } from "../repositories/cloud-integrations";
 import type { SyncStateRepo } from "../repositories/sync-state";
@@ -62,13 +66,15 @@ export class CatcherAgent implements Agent {
   private syncStateRepo: SyncStateRepo;
   private profileKeyRepo: ProfileKeyRepo;
   private verificationLogRepo: VerificationLogRepo;
+  private executor?: AgentExecutor;
 
   constructor(
     artifactRepo?: ArtifactRepo,
     cloudIntegrationRepo?: CloudIntegrationRepo,
     syncStateRepo?: SyncStateRepo,
     profileKeyRepo?: ProfileKeyRepo,
-    verificationLogRepo?: VerificationLogRepo
+    verificationLogRepo?: VerificationLogRepo,
+    executor?: AgentExecutor
   ) {
     // Use provided repositories, or create defaults (in-memory for MVP, postgres for production)
     this.artifactRepo = artifactRepo || createArtifactRepo();
@@ -76,6 +82,87 @@ export class CatcherAgent implements Agent {
     this.syncStateRepo = syncStateRepo || createSyncStateRepo();
     this.profileKeyRepo = profileKeyRepo || createProfileKeyRepo();
     this.verificationLogRepo = verificationLogRepo || createVerificationLogRepo();
+    this.executor = executor;
+  }
+
+  /**
+   * Authenticate and initialize a cloud storage provider for an integration.
+   *
+   * 1. Decrypts access/refresh tokens from database
+   * 2. Initializes provider instance using factory
+   * 3. Authenticates with provider
+   * 4. Checks health/connectivity
+   *
+   * @param integration The cloud integration record
+   * @returns Authenticated CloudStorageProvider instance
+   * @throws Error if authentication or health check fails
+   */
+  private async authenticateProvider(
+    integration: CloudStorageIntegration
+  ): Promise<CloudStorageProvider> {
+    try {
+      // Decrypt credentials
+      const accessToken = integration.accessTokenEncrypted
+        ? decrypt<string>(integration.accessTokenEncrypted)
+        : undefined;
+        
+      const refreshToken = integration.refreshTokenEncrypted
+        ? decrypt<string>(integration.refreshTokenEncrypted)
+        : undefined;
+
+      const credentials: CloudCredentials = {
+        provider: integration.provider,
+        accessToken,
+        refreshToken,
+        // In production, these would come from secret management service
+        // For now, they are injected via env vars in the provider implementations
+        // or could be stored encrypted in the integration record metadata
+        metadata: integration.metadata as Record<string, unknown>
+      };
+
+      // Create provider instance
+      const provider = await createCloudStorageProvider(
+        integration.provider,
+        credentials
+      );
+
+      // Verify connection
+      const health = await provider.checkHealth();
+      if (!health.healthy) {
+        // If unhealthy, try to refresh token once if possible
+        if (provider.refreshToken) {
+          try {
+            await provider.refreshToken();
+            const retryHealth = await provider.checkHealth();
+            if (!retryHealth.healthy) {
+              throw new Error(`Provider unhealthy after refresh: ${retryHealth.message}`);
+            }
+          } catch (refreshErr) {
+            // Update status to error if refresh fails
+            await this.cloudIntegrationRepo.update(integration.id, integration.profileId, {
+              status: "expired"
+            });
+            throw new Error(`Failed to refresh token: ${String(refreshErr)}`);
+          }
+        } else {
+          throw new Error(`Provider unhealthy: ${health.message}`);
+        }
+      }
+
+      return provider;
+    } catch (err) {
+      // Log error and update integration status
+      console.error(`Failed to authenticate provider ${integration.id}:`, err);
+      
+      // Only update status if it's a persistent auth error
+      if (String(err).includes("decrypt") || String(err).includes("auth")) {
+        await this.cloudIntegrationRepo.update(integration.id, integration.profileId, {
+          status: "error"
+        });
+      }
+      
+      throw err;
+    }
   }
 
   /**
@@ -277,29 +364,31 @@ export class CatcherAgent implements Agent {
   private async processIntegrationFullImport(
     integration: CloudStorageIntegration,
     profileId: string,
-    _tempDir: string,
+    tempDir: string,
     metrics: ReturnType<typeof this.createMetricsCollector>
   ): Promise<void> {
     try {
-      // TODO: Phase 6 - Decrypt tokens from integration
-      // const provider = await createCloudStorageProvider(integration.provider, {
-      //   accessToken: decryptToken(integration.accessTokenEncrypted),
-      //   refreshToken: decryptToken(integration.refreshTokenEncrypted),
-      //   ...
-      // });
+      const provider = await this.authenticateProvider(integration);
 
-      // TODO: Phase 6 - Initialize cloud provider with decrypted credentials
-      // For MVP, skip provider initialization and log stub message
-      const provider: CloudStorageProvider | null = null; // Would initialize above
+      // Iterate through configured folders
+      const folders = integration.folderConfig?.includedFolders || ["/"];
+      const options = {
+        recursive: true,
+        filters: {
+          maxFileSize: (integration.folderConfig?.maxFileSizeMB || 100) * 1024 * 1024,
+          excludePatterns: integration.folderConfig?.excludedPatterns
+        }
+      };
 
-      if (!provider) {
-        metrics.recordError("integration", `provider_not_initialized: ${integration.provider} [MVP stub]`);
-        console.log(`[STUB] Would list files from ${integration.provider} for profile ${profileId}`);
-        return;
+      for (const folder of folders) {
+        try {
+          for await (const file of provider.listFiles(folder, options)) {
+            await this.ingestSingleFile(file, integration, profileId, tempDir, metrics);
+          }
+        } catch (err) {
+          metrics.recordError(folder, `list_files_error: ${String(err)}`);
+        }
       }
-
-      // Code below unreachable for MVP (provider is always null)
-      // TODO: Implement when provider initialization is complete
     } catch (err) {
       metrics.recordError(
         integration.id,
@@ -315,7 +404,6 @@ export class CatcherAgent implements Agent {
    *
    * @internal TODO: Phase 6 - Called when cloud providers are initialized
    */
-  // @ts-expect-error TS6133 - Used in Phase 6 when cloud providers are initialized
   private async ingestSingleFile(
     cloudFile: CloudFile,
     integration: CloudStorageIntegration,
@@ -337,13 +425,15 @@ export class CatcherAgent implements Agent {
         return;
       }
 
-      // TODO: Phase 6 - Download file (would need provider instance)
-      // await provider.downloadFile(fileId, tempPath, (bytes) => {
-      //   console.log(`Downloaded ${bytes} bytes from ${cloudFile.name}`);
-      // });
-
-      // For MVP, skip download - would fail anyway without real provider
-      console.log(`[STUB] Would download ${cloudFile.name} to ${tempPath}`);
+      // Instantiate provider to download file
+      // NOTE: In a real optimized flow we would pass the provider instance down
+      // but for now we re-authenticate to keep signature simple. 
+      // Optimization: Pass provider as arg to ingestSingleFile
+      const provider = await this.authenticateProvider(integration);
+      
+      await provider.downloadFile(fileId, tempPath, (_bytes) => {
+        // console.log(`Downloaded ${_bytes} bytes from ${cloudFile.name}`);
+      });
 
       // Extract metadata from file
       const { metadata } = await processFile(
@@ -380,15 +470,6 @@ export class CatcherAgent implements Agent {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-
-      // TODO: Phase 7 - Generate integrity proof
-      // artifact.integrity = await this.generateIntegrityProof(
-      //   integration.provider,
-      //   cloudFile.fileId,
-      //   cloudFile.path,
-      //   cloudFile.size,
-      //   profileId
-      // );
 
       // Generate integrity proof before saving
       artifact.integrity = await this.generateIntegrityProof(
@@ -534,23 +615,61 @@ export class CatcherAgent implements Agent {
    */
   private async processIntegrationIncrementalSync(
     integration: CloudStorageIntegration,
-    _profileId: string,
-    _tempDir: string,
+    profileId: string,
+    tempDir: string,
     metrics: ReturnType<typeof this.createMetricsCollector>
   ): Promise<void> {
     try {
-      // TODO: Phase 6 - Initialize provider with decrypted tokens
-      const provider: CloudStorageProvider | null = null;
+      const provider = await this.authenticateProvider(integration);
+      const lastSynced = integration.lastSyncedAt ? new Date(integration.lastSyncedAt) : new Date(0);
 
-      if (!provider) {
-        metrics.recordError("integration", `provider_not_initialized: ${integration.provider} [MVP stub]`);
-        console.log(`[STUB] Would perform incremental sync from ${integration.provider} for profile ${integration.profileId}`);
-        return;
+      // Iterate through configured folders
+      const folders = integration.folderConfig?.includedFolders || ["/"];
+      const options = {
+        recursive: true,
+        filters: {
+          maxFileSize: (integration.folderConfig?.maxFileSizeMB || 100) * 1024 * 1024,
+          excludePatterns: integration.folderConfig?.excludedPatterns
+        }
+      };
+
+      for (const folder of folders) {
+        try {
+          for await (const file of provider.listFiles(folder, options)) {
+            const modifiedTime = new Date(file.modifiedTime);
+            
+            // If file modified after last sync, process it
+            if (modifiedTime > lastSynced) {
+              // Check if we already have this file
+              const existingSync = await this.syncStateRepo.findByFile(integration.id, file.fileId);
+              
+              if (existingSync) {
+                // Modified file
+                if (file.checksum !== existingSync.checksum) {
+                  // Re-download and update if checksum changed
+                  // For now we treat modified files same as new for ingestion logic
+                  // but in updateArtifactFromCloudFile we handle updates specifically
+                  
+                  // Download file to temp
+                  await provider.downloadFile(file.fileId, join(tempDir, file.fileId));
+                  await this.updateArtifactFromCloudFile(file, integration, profileId, tempDir, metrics);
+                }
+              } else {
+                // New file
+                await this.ingestSingleFile(file, integration, profileId, tempDir, metrics);
+              }
+            }
+          }
+        } catch (err) {
+          metrics.recordError(folder, `list_files_error: ${String(err)}`);
+        }
       }
-
-      // Code below unreachable for MVP (provider is always null)
-      // TODO: Implement incremental sync when provider initialization is complete
-      // Will include delta detection, modified file updates, and deleted file archiving
+      
+      // Update integration last synced time
+      await this.cloudIntegrationRepo.update(integration.id, profileId, {
+        lastSyncedAt: new Date().toISOString()
+      });
+      
     } catch (err) {
       metrics.recordError(
         integration.id,
@@ -566,7 +685,6 @@ export class CatcherAgent implements Agent {
    *
    * @internal TODO: Phase 6 - Called during incremental sync with cloud providers
    */
-  // @ts-expect-error TS6133 - Used in Phase 6 during incremental sync with cloud providers
   private async updateArtifactFromCloudFile(
     cloudFile: CloudFile,
     integration: CloudStorageIntegration,

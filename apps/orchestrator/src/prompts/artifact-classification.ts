@@ -12,6 +12,21 @@
  */
 
 import type { ChatMessage } from "../prompts";
+import type { AgentExecutor, AgentTask } from "../agents";
+import { randomUUID } from "node:crypto";
+
+/**
+ * Metadata extracted from a file for classification.
+ */
+export interface ExtractedMetadata {
+  filename: string;
+  mimeType: string;
+  createdDate?: string;
+  modifiedDate?: string;
+  fileSize: number;
+  textContent?: string;
+  mediaMetadata?: Record<string, unknown>;
+}
 
 /**
  * System prompt for artifact classification.
@@ -59,15 +74,7 @@ Return ONLY valid JSON matching the ArtifactClassificationResponse schema. Be pr
  *   }
  * });
  */
-export function buildArtifactClassificationPrompt(data: {
-  filename: string;
-  mimeType: string;
-  createdDate?: string;
-  modifiedDate?: string;
-  fileSize: number;
-  textContent?: string;
-  mediaMetadata?: Record<string, unknown>;
-}): string {
+export function buildArtifactClassificationPrompt(data: ExtractedMetadata): string {
   const lines: string[] = [
     `Analyze and classify this artifact:`,
     ``,
@@ -124,15 +131,7 @@ export function buildArtifactClassificationPrompt(data: {
  * @param data Artifact metadata and content
  * @returns Array of system + user chat messages ready for LLM
  */
-export function buildArtifactClassificationMessages(data: {
-  filename: string;
-  mimeType: string;
-  createdDate?: string;
-  modifiedDate?: string;
-  fileSize: number;
-  textContent?: string;
-  mediaMetadata?: Record<string, unknown>;
-}): ChatMessage[] {
+export function buildArtifactClassificationMessages(data: ExtractedMetadata): ChatMessage[] {
   return [
     { role: "system", content: ARTIFACT_CLASSIFICATION_SYSTEM_PROMPT },
     { role: "user", content: buildArtifactClassificationPrompt(data) }
@@ -214,4 +213,98 @@ function formatMetadataValue(value: unknown): string {
     }
   }
   return String(value);
+}
+
+/**
+ * Classify an artifact using the LLM.
+ *
+ * Wraps the prompt generation, execution, and response parsing.
+ *
+ * @param metadata Extracted file metadata
+ * @param agentExecutor AgentExecutor instance to run the prompt
+ * @returns Parsed and validated classification response
+ * @throws Error if LLM response is invalid or execution fails
+ */
+export async function classifyWithLLM(
+  metadata: ExtractedMetadata,
+  agentExecutor: AgentExecutor
+): Promise<ArtifactClassificationResponse> {
+  const systemPrompt = ARTIFACT_CLASSIFICATION_SYSTEM_PROMPT;
+  const userPrompt = buildArtifactClassificationPrompt(metadata);
+
+  const task: AgentTask = {
+    id: randomUUID(),
+    role: "catcher", // Role is overridden by systemPromptOverride anyway
+    description: `Classify artifact: ${metadata.filename}`,
+    payload: {
+      systemPromptOverride: systemPrompt,
+      userPromptOverride: userPrompt,
+      metadata
+    }
+  };
+
+  const result = await agentExecutor.invoke(task);
+
+  if (result.status === "failed") {
+    throw new Error(`LLM classification failed: ${result.notes}`);
+  }
+
+  // Parse output
+  // result.output might be the JSON if structured mode was used,
+  // OR result.notes if text mode. 
+  // But LocalLLMExecutor with 'structured-json' returns parsed object in output.
+  // classifyWithLLM should probably enforce structured output?
+  // LocalLLMExecutor configuration determines response format.
+  
+  // If result.output exists, use it. Otherwise try to parse notes.
+  let parsed: unknown;
+  if (result.output) {
+    parsed = result.output;
+  } else if (result.notes) {
+    try {
+      // Try to find JSON in notes
+      const jsonMatch = result.notes.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        parsed = JSON.parse(result.notes);
+      }
+    } catch {
+      throw new Error("Failed to parse LLM response as JSON");
+    }
+  } else {
+    throw new Error("LLM response empty");
+  }
+
+  const response = parsed as ArtifactClassificationResponse;
+
+  // Validate
+  if (!response.artifactType) {
+    throw new Error("Missing artifactType in response");
+  }
+  
+  // Normalize type
+  const validTypes = [
+    "academic_paper",
+    "creative_writing",
+    "visual_art",
+    "presentation",
+    "video",
+    "audio",
+    "dataset",
+    "code_sample",
+    "other"
+  ];
+  if (!validTypes.includes(response.artifactType)) {
+    response.artifactType = "other";
+  }
+
+  // Validate confidence
+  if (typeof response.confidence !== "number") {
+    response.confidence = 0.5;
+  }
+  // Clamp confidence to 0.0-1.0
+  response.confidence = Math.max(0.0, Math.min(1.0, response.confidence));
+
+  return response;
 }
