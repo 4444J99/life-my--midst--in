@@ -278,6 +278,7 @@ export async function registerBillingRoutes(
   fastify.post(
     "/webhooks/stripe",
     {
+      config: { rawBody: true },
       schema: {
         description: "Stripe webhook endpoint",
         consumes: ["application/json"],
@@ -295,8 +296,17 @@ export async function registerBillingRoutes(
         }
 
         // Verify webhook signature
-        const body = JSON.stringify(request.body);
-        const verification = billingService!.verifyWebhookSignature(body, signature);
+        // fastify-raw-body adds rawBody to the request
+        const rawBody = (request as any).rawBody;
+        if (!rawBody) {
+             return reply.code(400).send({
+            ok: false,
+            error: "missing_body",
+            message: "Missing request body",
+          });
+        }
+        
+        const verification = billingService!.verifyWebhookSignature(rawBody, signature);
 
         if (!verification.valid) {
           return reply.code(401).send({

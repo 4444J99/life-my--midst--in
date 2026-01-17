@@ -1,4 +1,4 @@
-import type { JobListing } from "@in-midst-my-life/schema";
+import type { JobPosting } from "@in-midst-my-life/schema";
 import type { HunterSearchFilter } from "@in-midst-my-life/schema";
 import { createJobSearchProvider } from "@in-midst-my-life/core";
 
@@ -23,12 +23,13 @@ export class JobSearchProvider {
     process.env["NODE_ENV"] === "production" || !!process.env["SERPER_API_KEY"]
   );
 
-  async search(criteria: JobSearchCriteria): Promise<JobListing[]> {
+  async search(criteria: JobSearchCriteria): Promise<JobPosting[]> {
     // Convert JobSearchCriteria to HunterSearchFilter format
+    // Note: seniority_levels is not part of HunterSearchFilter in the actual schema
+    // This method should use the mock provider directly which returns JobListing[]
     const filter: HunterSearchFilter = {
       keywords: criteria.keywords || [],
       locations: criteria.location ? [criteria.location] : [],
-      seniority_levels: criteria.seniority ? [criteria.seniority] : [],
       remote_requirement: "any",
     };
 
@@ -53,39 +54,35 @@ export class JobSearchProvider {
    * Fallback mock data for development/testing
    * Used when real providers are unavailable
    */
-  private getMockFallback(criteria: JobSearchCriteria): JobListing[] {
-    const mockJobs: JobListing[] = [
+  private getMockFallback(criteria: JobSearchCriteria): JobPosting[] {
+    const mockJobs: JobPosting[] = [
       {
-        id: "job_001",
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        profileId: "550e8400-e29b-41d4-a716-446655440001",
         title: "Senior Software Engineer",
         company: "Tech Corp",
         location: criteria.location || "Remote",
-        description: "Looking for experienced engineer with modern stack experience",
-        requirements: "5+ years experience, TypeScript, Node.js",
-        salary_min: 150000,
-        salary_max: 180000,
-        currency: "USD",
-        posted_date: new Date(),
-        job_url: "https://example.com/job/001",
+        descriptionMarkdown: "Looking for experienced engineer with modern stack experience",
+        salaryRange: "$150,000 - $180,000 USD",
+        url: "https://example.com/job/001",
         remote: "hybrid",
-        source: "other",
-        technologies: ["TypeScript", "React", "Node.js"],
+        status: "active",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       },
       {
-        id: "job_002",
+        id: "550e8400-e29b-41d4-a716-446655440002",
+        profileId: "550e8400-e29b-41d4-a716-446655440001",
         title: "Full Stack Developer",
         company: "StartUp Inc",
         location: criteria.location || "Remote",
-        description: "Build amazing products for millions of users",
-        requirements: "3+ years experience, React, Python",
-        salary_min: 120000,
-        salary_max: 150000,
-        currency: "USD",
-        posted_date: new Date(),
-        job_url: "https://example.com/job/002",
+        descriptionMarkdown: "Build amazing products for millions of users",
+        salaryRange: "$120,000 - $150,000 USD",
+        url: "https://example.com/job/002",
         remote: "fully",
-        source: "other",
-        technologies: ["React", "Python"],
+        status: "active",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       },
     ];
 
@@ -95,8 +92,7 @@ export class JobSearchProvider {
         criteria.keywords.some(
           (keyword) =>
             job.title.toLowerCase().includes(keyword.toLowerCase()) ||
-            job.description.toLowerCase().includes(keyword.toLowerCase()) ||
-            job.technologies?.some((t) => t.toLowerCase().includes(keyword.toLowerCase()))
+            job.descriptionMarkdown?.toLowerCase().includes(keyword.toLowerCase())
         )
       );
     }

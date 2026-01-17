@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: inmidst-postgres
     restart: unless-stopped
     environment:
@@ -15,6 +15,23 @@ services:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: inmidst-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/password}
+    volumes:
+      - neo4jdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -34,6 +51,76 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: inmidst-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - api
+      - orchestrator
+    healthcheck:
+      test: ["CMD", "wget", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: inmidst-grafana
+    restart: unless-stopped
+    ports:
+      - "3003:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: http://localhost:3003
+      GF_INSTALL_PLUGINS: redis-datasource
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: inmidst-redis-exporter
+    restart: unless-stopped
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - redis
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: inmidst-postgres-exporter
+    restart: unless-stopped
+    ports:
+      - "9187:9187"
+    environment:
+      DATA_SOURCE_NAME: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-midstsvc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-midst}?sslmode=disable}
+    depends_on:
+      - postgres
+
   api:
     image: node:22-alpine
     container_name: inmidst-api
@@ -41,11 +128,16 @@ services:
     command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @in-midst-my-life/api dev"
     ports:
       - "3001:3001"
+      - "9464:9464"
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-midstsvc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-midst}}
       POSTGRES_URL: ${POSTGRES_URL:-postgresql://${POSTGRES_USER:-midstsvc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-midst}}
       PROFILE_REPO: postgres
       NODE_ENV: development
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
+      OTEL_SERVICE_NAME: api
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,6 +151,7 @@ services:
     command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @in-midst-my-life/orchestrator dev"
     ports:
       - "3002:3002"
+      - "9465:9465"
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-midstsvc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-midst}}
       POSTGRES_URL: ${POSTGRES_URL:-postgresql://${POSTGRES_USER:-midstsvc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-midst}}
@@ -77,6 +170,10 @@ services:
       REDIS_URL: ${ORCH_REDIS_URL:-redis://redis:6379}
       NODE_ENV: development
       CI: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
+      OTEL_SERVICE_NAME: orchestrator
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,6 +220,24 @@ services:
     profiles:
       - init
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: inmidst-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    healthcheck:
+      test: ["CMD", "wget", "--tries=1", "--spider", "http://localhost:14269"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   pgdata:
   redisdata:
+  neo4jdata:
+  prometheus-data:
+  grafana-data:

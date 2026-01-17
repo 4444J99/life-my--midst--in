@@ -1166,6 +1166,543 @@ paths:
                   ok:
                     type: boolean
 
+  /profiles/{id}/publications:
+    post:
+      tags: [CV Components]
+      summary: Add publication
+      operationId: createPublication
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                venue:
+                  type: string
+                date:
+                  type: string
+                  format: date
+                url:
+                  type: string
+                  format: uri
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Publication created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List publications
+      operationId: listPublications
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Publications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/publications/{pubId}:
+    get:
+      tags: [CV Components]
+      summary: Get publication by ID
+      operationId: getPublication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: pubId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Publication retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    patch:
+      tags: [CV Components]
+      summary: Update publication
+      operationId: updatePublication
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: pubId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Publication updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [CV Components]
+      summary: Delete publication
+      operationId: deletePublication
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: pubId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Publication deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /profiles/{id}/awards:
+    post:
+      tags: [CV Components]
+      summary: Add award
+      operationId: createAward
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                issuer:
+                  type: string
+                date:
+                  type: string
+                  format: date
+                url:
+                  type: string
+                  format: uri
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Award created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List awards
+      operationId: listAwards
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Awards retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/awards/{awardId}:
+    get:
+      tags: [CV Components]
+      summary: Get award by ID
+      operationId: getAward
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: awardId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Award retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    patch:
+      tags: [CV Components]
+      summary: Update award
+      operationId: updateAward
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: awardId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Award updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [CV Components]
+      summary: Delete award
+      operationId: deleteAward
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: awardId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Award deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /profiles/{id}/certifications:
+    post:
+      tags: [CV Components]
+      summary: Add certification
+      operationId: createCertification
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, issuer]
+              properties:
+                name:
+                  type: string
+                issuer:
+                  type: string
+                issueDate:
+                  type: string
+                  format: date
+                credentialUrl:
+                  type: string
+                  format: uri
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Certification created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    get:
+      tags: [CV Components]
+      summary: List certifications
+      operationId: listCertifications
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Certifications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+
+  /profiles/{id}/certifications/{certId}:
+    get:
+      tags: [CV Components]
+      summary: Get certification by ID
+      operationId: getCertification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: certId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Certification retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    patch:
+      tags: [CV Components]
+      summary: Update certification
+      operationId: updateCertification
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: certId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Certification updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: object
+
+    delete:
+      tags: [CV Components]
+      summary: Delete certification
+      operationId: deleteCertification
+      security:
+        - bearerAuth: [WRITE_TIMELINE]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: certId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Certification deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
   /profiles/{id}/projects:
     post:
       tags: [CV Components]
@@ -3289,6 +3826,47 @@ components:
           type: string
         headline:
           type: string
+        summaryMarkdown:
+          type: string
+        locationText:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        languages:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        education:
+          type: array
+          items:
+            type: object
+            properties:
+              institution:
+                type: string
+              degree:
+                type: string
+              startDate:
+                type: string
+                format: date-time
+              endDate:
+                type: string
+                format: date-time
+        experiences:
+          type: array
+          items:
+            type: object
+        skills:
+          type: array
+          items:
+            type: object
         createdAt:
           type: string
           format: date-time

@@ -3,6 +3,14 @@
  * Provides in-memory caching with TTL support and cache invalidation.
  */
 
+import { createClient, RedisClientType } from 'redis';
+import { 
+  cacheHitsTotal, 
+  cacheMissesTotal, 
+  redisOperationsTotal, 
+  redisOperationDuration 
+} from '../metrics';
+
 export interface CacheConfig {
   /**
    * Redis connection URL (e.g., redis://localhost:6379)
@@ -40,16 +48,27 @@ export class MemoryCache {
    * Get a value from cache
    */
   get<T>(key: string): T | null {
+    const end = redisOperationDuration.startTimer({ operation: 'get' });
+    redisOperationsTotal.inc({ operation: 'get' });
+    
     const entry = this.cache.get(key) as CacheEntry<T> | undefined;
 
-    if (!entry) return null;
+    if (!entry) {
+      cacheMissesTotal.inc({ cache_type: 'memory' });
+      end();
+      return null;
+    }
 
     // Check if expired
     if (Date.now() > entry.expiresAt) {
       this.cache.delete(key);
+      cacheMissesTotal.inc({ cache_type: 'memory' });
+      end();
       return null;
     }
 
+    cacheHitsTotal.inc({ cache_type: 'memory' });
+    end();
     return entry.value;
   }
 
@@ -57,21 +76,34 @@ export class MemoryCache {
    * Set a value in cache
    */
   set<T>(key: string, value: T, ttl?: number): void {
+    const end = redisOperationDuration.startTimer({ operation: 'set' });
+    redisOperationsTotal.inc({ operation: 'set' });
+    
     const expiresAt = Date.now() + (ttl ?? this.defaultTtl) * 1000;
     this.cache.set(key, { value, expiresAt });
+    
+    end();
   }
 
   /**
    * Delete a key from cache
    */
   delete(key: string): boolean {
-    return this.cache.delete(key);
+    const end = redisOperationDuration.startTimer({ operation: 'del' });
+    redisOperationsTotal.inc({ operation: 'del' });
+    
+    const result = this.cache.delete(key);
+    end();
+    return result;
   }
 
   /**
    * Delete multiple keys matching a pattern
    */
   deletePattern(pattern: string): number {
+    const end = redisOperationDuration.startTimer({ operation: 'del' });
+    redisOperationsTotal.inc({ operation: 'del' });
+    
     let count = 0;
     const regex = new RegExp(pattern);
 
@@ -82,6 +114,7 @@ export class MemoryCache {
       }
     }
 
+    end();
     return count;
   }
 
@@ -100,6 +133,136 @@ export class MemoryCache {
       size: this.cache.size,
       keys: Array.from(this.cache.keys())
     };
+  }
+}
+
+/**
+ * Redis-backed cache implementation
+ */
+export class RedisCache {
+  private client: RedisClientType;
+  private defaultTtl: number;
+  private isConnected = false;
+
+  constructor(redisUrl: string, defaultTtl: number = 300) {
+    this.defaultTtl = defaultTtl;
+    this.client = createClient({ url: redisUrl });
+    
+    this.client.on('error', (err) => {
+      console.error('Redis Client Error:', err);
+      this.isConnected = false;
+    });
+
+    this.client.on('connect', () => {
+      console.log('Redis connected');
+      this.isConnected = true;
+    });
+  }
+
+  async connect(): Promise<void> {
+    if (!this.isConnected) {
+      await this.client.connect();
+      this.isConnected = true;
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.isConnected) {
+      await this.client.quit();
+      this.isConnected = false;
+    }
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    const end = redisOperationDuration.startTimer({ operation: 'get' });
+    redisOperationsTotal.inc({ operation: 'get' });
+
+    try {
+      const value = await this.client.get(key);
+      
+      if (!value || typeof value !== 'string') {
+        cacheMissesTotal.inc({ cache_type: 'redis' });
+        end();
+        return null;
+      }
+
+      cacheHitsTotal.inc({ cache_type: 'redis' });
+      end();
+      return JSON.parse(value) as T;
+    } catch (err) {
+      console.error('Redis get error:', err);
+      cacheMissesTotal.inc({ cache_type: 'redis' });
+      end();
+      return null;
+    }
+  }
+
+  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    const end = redisOperationDuration.startTimer({ operation: 'set' });
+    redisOperationsTotal.inc({ operation: 'set' });
+
+    try {
+      const serialized = JSON.stringify(value);
+      const expiry = ttl ?? this.defaultTtl;
+      await this.client.setEx(key, expiry, serialized);
+    } catch (err) {
+      console.error('Redis set error:', err);
+    } finally {
+      end();
+    }
+  }
+
+  async delete(key: string): Promise<boolean> {
+    const end = redisOperationDuration.startTimer({ operation: 'del' });
+    redisOperationsTotal.inc({ operation: 'del' });
+
+    try {
+      const result = await this.client.del(key);
+      end();
+      return result > 0;
+    } catch (err) {
+      console.error('Redis delete error:', err);
+      end();
+      return false;
+    }
+  }
+
+  async deletePattern(pattern: string): Promise<number> {
+    const end = redisOperationDuration.startTimer({ operation: 'del' });
+    redisOperationsTotal.inc({ operation: 'del' });
+
+    try {
+      const keys = await this.client.keys(pattern);
+      if (keys.length === 0) {
+        end();
+        return 0;
+      }
+      const result = await this.client.del(keys);
+      end();
+      return result;
+    } catch (err) {
+      console.error('Redis deletePattern error:', err);
+      end();
+      return 0;
+    }
+  }
+
+  async clear(): Promise<void> {
+    try {
+      await this.client.flushDb();
+    } catch (err) {
+      console.error('Redis clear error:', err);
+    }
+  }
+
+  async stats() {
+    try {
+      const info = await this.client.info('stats');
+      return { info };
+    } catch (err) {
+      console.error('Redis stats error:', err);
+      return { info: 'unavailable' };
+    }
   }
 }
 
@@ -368,4 +531,30 @@ export function withCache<T extends (...args: any[]) => Promise<any>>(
 
     return result;
   }) as T;
+}
+
+
+/**
+ * Global cache instance
+ */
+let globalCache: MemoryCache | null = null;
+
+/**
+ * Get or create the global cache instance
+ */
+export function getCache(config?: { defaultTtl?: number }): MemoryCache {
+  if (!globalCache) {
+    globalCache = new MemoryCache(config?.defaultTtl);
+  }
+  return globalCache;
+}
+
+/**
+ * Reset the global cache (for testing)
+ */
+export function resetCache(): void {
+  if (globalCache) {
+    globalCache.clear();
+  }
+  globalCache = null;
 }

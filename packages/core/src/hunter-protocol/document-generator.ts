@@ -57,7 +57,13 @@ export class DefaultResumeTailor implements ResumeTailor {
 
     // Header
     resume += `# ${profile.displayName}\n`;
-    resume += `[Contact Info Provided Upon Request] | ${profile.locationText || "Remote"}\n\n`;
+    const contactParts = [];
+    if (profile.email) contactParts.push(profile.email);
+    if (profile.phone) contactParts.push(profile.phone);
+    if (profile.website) contactParts.push(profile.website);
+    contactParts.push(profile.locationText || "Remote");
+    
+    resume += `${contactParts.join(" | ")}\n\n`;
 
     // Summary
     resume += `## Professional Summary\n\n`;
@@ -85,8 +91,12 @@ export class DefaultResumeTailor implements ResumeTailor {
     return resume;
   }
 
-  private generateSummary(_profile: Profile, personaId: string): string {
-    // Persona-specific summary
+  private generateSummary(profile: Profile, personaId: string): string {
+    if (profile.summaryMarkdown) {
+      return profile.summaryMarkdown;
+    }
+
+    // Persona-specific summary fallback
     const summaries: Record<string, string> = {
       Architect:
         "Technical leader with proven ability to design and execute large-scale systems. Strong track record of building high-performing teams and delivering business impact.",
@@ -105,34 +115,37 @@ export class DefaultResumeTailor implements ResumeTailor {
     return summaries[personaId] || summaries["Engineer"] || "";
   }
 
-  private generateExperience(_profile: Profile, emphasize: string[]): string {
-    // In production: filter CV entries by persona
-    // For MVP: generate mock experience
+  private generateExperience(profile: Profile, _emphasize: string[]): string {
+    if (profile.experiences && profile.experiences.length > 0) {
+      return profile.experiences
+        .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+        .map(exp => {
+          const end = exp.isCurrent ? "Present" : exp.endDate ? new Date(exp.endDate).getFullYear() : "";
+          const start = new Date(exp.startDate).getFullYear();
+          
+          let content = `### ${exp.roleTitle} | ${exp.organization} | ${start}-${end}\n`;
+          if (exp.descriptionMarkdown) {
+            content += `${exp.descriptionMarkdown}\n`;
+          }
+          if (exp.highlights && exp.highlights.length > 0) {
+            content += exp.highlights.map(h => `- ${h}`).join("\n");
+          }
+          return content;
+        })
+        .join("\n\n");
+    }
 
-    const experience = `
-### Senior Engineer | TechCorp | 2023-Present
-- Led migration of 50+ microservices to new architecture
-- Reduced system latency by 40% through optimization work
-- Mentored team of 3 junior engineers
-- ${emphasize[0] || "Improved system reliability and scalability"}
-
-### Full-Stack Engineer | StartupXYZ | 2021-2023
-- Built core product features from zero to production
-- Designed and implemented API serving 100K+ daily users
-- Contributed to raising Series A funding through technical demos
-- ${emphasize[1] || "Wore multiple hats in fast-paced startup environment"}
-
-### Junior Engineer | Acme Corp | 2019-2021
-- Maintained and improved legacy systems serving millions
-- Implemented new features across frontend and backend
-- Participated in on-call rotation and incident response
-- ${emphasize[2] || "Learned production engineering fundamentals"}
-    `.trim();
-
-    return experience;
+    // Fallback if no experience data
+    return "No experience data available.";
   }
 
-  private generateSkills(_profile: Profile, personaId: string): string {
+  private generateSkills(profile: Profile, personaId: string): string {
+    if (profile.skills && profile.skills.length > 0) {
+      // Logic to filter/sort skills based on persona could go here
+      // For now, just list them all
+      return profile.skills.map(s => `- ${s.name}`).join("\n");
+    }
+
     const skillsByPersona: Record<string, string[]> = {
       Architect: [
         "System Design",
@@ -195,13 +208,24 @@ export class DefaultResumeTailor implements ResumeTailor {
     return skills.map((skill) => `- ${skill}`).join("\n");
   }
 
-  private generateEducation(_profile: Profile): string {
-    return `
-### Bachelor of Science, Computer Science
-University Name | 2019
+  private generateEducation(profile: Profile): string {
+    if (profile.education && profile.education.length > 0) {
+      return profile.education
+        .map(edu => {
+          const year = edu.endDate ? new Date(edu.endDate).getFullYear() : (edu.startDate ? new Date(edu.startDate).getFullYear() : "");
+          let content = `### ${edu.degree || "Degree"} | ${edu.institution}`;
+          if (year) content += ` | ${year}`;
+          content += "\n";
+          
+          if (edu.descriptionMarkdown) {
+            content += `${edu.descriptionMarkdown}\n`;
+          }
+          return content;
+        })
+        .join("\n\n");
+    }
 
-Relevant Coursework: Algorithms, Databases, Distributed Systems
-    `.trim();
+    return "";
   }
 
   private generateAchievements(_profile: Profile, emphasize: string[]): string {

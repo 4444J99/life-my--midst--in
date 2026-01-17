@@ -18,7 +18,6 @@ import type {
   Epoch,
   IntegrityProof,
 } from '@in-midst-my-life/schema';
-import Image from 'next/image';
 import {
   buildForcePositionMap,
   buildGraphNodes,
@@ -27,13 +26,12 @@ import {
   type GraphLayoutMode,
   type GraphNode,
 } from './graph-utils';
+import { buildTimelineEntries, type TimelineEntry } from './timeline-utils';
+import { buildGalleryItems, buildMermaidChart, type GalleryItem } from './dashboard-utils';
 import { MaskSelector } from '../../components/MaskSelector';
 import { Hero } from '../../components/Hero';
-import { Timeline } from '../../components/Timeline';
 import { GraphView } from '../../components/GraphView';
 import { NarrativePreview } from '../../components/NarrativePreview';
-import { RelationshipBuilder } from '../../components/RelationshipBuilder';
-import { TaxonomyEditor } from '../../components/TaxonomyEditor';
 import { ImmersiveModal } from '../../components/ImmersiveModal';
 import { ContentEditor } from '../../components/ContentEditor';
 import { MermaidView } from '../../components/MermaidView';
@@ -41,28 +39,22 @@ import { KeyExportModal } from '../../components/KeyExportModal';
 import type { EntityType } from '../../components/EntityForm';
 import { useIdentity } from '../../hooks/use-identity';
 import { VC } from '@in-midst-my-life/core';
+import { BackupPanel } from './BackupPanel';
+import { TimelineView } from './TimelineView';
+import { CVEntities } from './CVEntities';
+import { ActionPanel } from './ActionPanel';
+import { GalleryView } from './GalleryView';
+import { OrchestratorQueue } from './OrchestratorQueue';
+import { AdminStudio } from './AdminStudio';
+import { IngestTools } from './IngestTools';
 
 const apiBase = process.env['NEXT_PUBLIC_API_BASE_URL'] || 'http://localhost:3001';
 const orchBase = process.env['NEXT_PUBLIC_ORCH_BASE_URL'] || 'http://localhost:3002';
 const graphLayoutMode = (process.env['NEXT_PUBLIC_GRAPH_LAYOUT'] || 'radial') as GraphLayoutMode;
 
 type ErrorResponse = { message?: string; error?: string };
-
-type Task = {
-  id: string;
-  description: string;
-  status: string;
-};
-
-type Envelope<T> = {
-  ok: boolean;
-  data?: T;
-  offset?: number;
-  limit?: number;
-  total?: number;
-  status?: string;
-};
-
+type Task = { id: string; description: string; status: string };
+type Envelope<T> = { ok: boolean; data?: T; offset?: number; limit?: number; total?: number; status?: string };
 type HealthResponse = { status: string };
 type TaskListResponse = { ok: boolean; data: Task[] };
 
@@ -80,47 +72,10 @@ export type NarrativeResponse = {
   meta?: Record<string, unknown>;
 };
 
-type BundleSummary = {
-  profile: number;
-  experiences: number;
-  educations: number;
-  projects: number;
-  skills: number;
-  publications: number;
-  awards: number;
-  certifications: number;
-  customSections: number;
-  socialLinks: number;
-  timelineEvents: number;
-  verificationLogs: number;
-  credentials: number;
-  attestations: number;
-  edges: number;
-  revisions: number;
-  masks: number;
-  epochs: number;
-  stages: number;
-};
-
-type BackupSummary = {
-  id: string;
-  profileId: string;
-  label?: string;
-  createdAt: string;
-};
-
-type BackupSnapshot = BackupSummary & {
-  bundle?: Record<string, unknown>;
-};
-
-type AgentToken = {
-  id: string;
-  label?: string;
-  scopes: string[];
-  createdAt: string;
-  lastUsedAt?: string;
-  revokedAt?: string;
-};
+type BundleSummary = { profile: number; experiences: number; educations: number; projects: number; skills: number; publications: number; awards: number; certifications: number; customSections: number; socialLinks: number; timelineEvents: number; verificationLogs: number; credentials: number; attestations: number; edges: number; revisions: number; masks: number; epochs: number; stages: number };
+type BackupSummary = { id: string; profileId: string; label?: string; createdAt: string };
+type BackupSnapshot = BackupSummary & { bundle?: Record<string, unknown> };
+type AgentToken = { id: string; label?: string; scopes: string[]; createdAt: string; lastUsedAt?: string; revokedAt?: string };
 
 type ImportResponse = {
   ok: boolean;
@@ -143,39 +98,6 @@ type RestoreResponse = {
   };
 };
 
-type TimelineEntry = {
-  id: string;
-  type: string;
-  title: string;
-  summary?: string;
-  start: string;
-  end?: string;
-  tags?: string[];
-  stageId?: string;
-  settingId?: string;
-};
-
-type GalleryItem = {
-  id: string;
-  title: string;
-  description?: string;
-  url?: string;
-  kind: 'image' | 'video' | 'fallback';
-  integrity?: IntegrityProof;
-  payload?: Record<string, unknown>;
-  profileId?: string;
-  entityType?: string;
-};
-
-const STAGE_MAP: Record<string, { stageId: string; settingId: string }> = {
-  experience: { stageId: 'stage/construction', settingId: 'setting/production' },
-  education: { stageId: 'stage/inquiry', settingId: 'setting/research' },
-  project: { stageId: 'stage/design', settingId: 'setting/studio' },
-  publication: { stageId: 'stage/transmission', settingId: 'setting/public' },
-  award: { stageId: 'stage/transmission', settingId: 'setting/public' },
-  certification: { stageId: 'stage/calibration', settingId: 'setting/lab' },
-};
-
 const SETTING_LABELS: Record<string, string> = {
   'setting/research': 'Research Lab',
   'setting/studio': 'Studio',
@@ -186,15 +108,6 @@ const SETTING_LABELS: Record<string, string> = {
   'setting/arena': 'Negotiation Table',
   'setting/archive': 'Archive',
 };
-
-const stripMarkdown = (value?: string) =>
-  value
-    ? value
-        .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
-        .replace(/[`*_>#]/g, '')
-        .replace(/\n+/g, ' ')
-        .trim()
-    : '';
 
 const splitList = (value: string) =>
   value
@@ -480,92 +393,7 @@ export default function ClientDashboard() {
     setAgentAccessEnabled(profile?.settings?.agentAccess?.enabled ?? false);
   }, [profile]);
 
-  const timelineEntries = useMemo<TimelineEntry[]>(() => {
-    const entries: TimelineEntry[] = [];
-    cvData.experiences.forEach((exp) => {
-      const map = STAGE_MAP['experience']!;
-      entries.push({
-        id: exp.id,
-        type: 'experience',
-        title: `${exp.roleTitle} @ ${exp.organization}`,
-        summary: stripMarkdown(exp.descriptionMarkdown),
-        start: exp.startDate,
-        end: exp.endDate,
-        tags: exp.tags ?? [],
-        stageId: map.stageId,
-        settingId: map.settingId,
-      });
-    });
-    cvData.educations.forEach((edu) => {
-      const map = STAGE_MAP['education']!;
-      entries.push({
-        id: edu.id,
-        type: 'education',
-        title: `${edu.institution}${edu.degree ? ` - ${edu.degree}` : ''}`,
-        summary: stripMarkdown(edu.descriptionMarkdown),
-        start: edu.startDate ?? '',
-        end: edu.endDate,
-        tags: edu.fieldOfStudy ? [edu.fieldOfStudy] : [],
-        stageId: map.stageId,
-        settingId: map.settingId,
-      });
-    });
-    cvData.projects.forEach((project) => {
-      const map = STAGE_MAP['project']!;
-      entries.push({
-        id: project.id,
-        type: 'project',
-        title: project.name,
-        summary: stripMarkdown(project.descriptionMarkdown),
-        start: project.startDate ?? project.createdAt,
-        end: project.endDate,
-        tags: project.tags ?? [],
-        stageId: map.stageId,
-        settingId: map.settingId,
-      });
-    });
-    cvData.publications.forEach((pub) => {
-      const map = STAGE_MAP['publication']!;
-      entries.push({
-        id: pub.id,
-        type: 'publication',
-        title: pub.title,
-        summary: stripMarkdown(pub.abstractMarkdown),
-        start: pub.date ?? pub.createdAt,
-        tags: pub.authors ?? [],
-        stageId: map.stageId,
-        settingId: map.settingId,
-      });
-    });
-    cvData.awards.forEach((award) => {
-      const map = STAGE_MAP['award']!;
-      entries.push({
-        id: award.id,
-        type: 'award',
-        title: award.title,
-        summary: stripMarkdown(award.descriptionMarkdown),
-        start: award.date ?? award.createdAt,
-        tags: award.issuer ? [award.issuer] : [],
-        stageId: map.stageId,
-        settingId: map.settingId,
-      });
-    });
-    cvData.certifications.forEach((cert) => {
-      const map = STAGE_MAP['certification']!;
-      entries.push({
-        id: cert.id,
-        type: 'certification',
-        title: cert.name,
-        summary: cert.issuer,
-        start: cert.issueDate ?? cert.createdAt,
-        end: cert.expiryDate,
-        tags: cert.credentialId ? [cert.credentialId] : [],
-        stageId: map.stageId,
-        settingId: map.settingId,
-      });
-    });
-    return entries.sort((a, b) => (a.start < b.start ? 1 : -1));
-  }, [cvData]);
+  const timelineEntries = useMemo<TimelineEntry[]>(() => buildTimelineEntries(cvData), [cvData]);
 
   const timelineTypes = useMemo(() => {
     const types = new Set(timelineEntries.map((entry) => entry.type));
@@ -614,48 +442,15 @@ export default function ClientDashboard() {
     };
   }, [filteredGraphNodes]);
 
-  const galleryItems = useMemo<GalleryItem[]>(() => {
-    const items: GalleryItem[] = [];
-    cvData.projects.forEach((project) => {
-      if (project.mediaGallery && project.mediaGallery.length > 0) {
-        project.mediaGallery.forEach((media) => {
-          items.push({
-            id: media.id,
-            title: media.title ?? project.name,
-            description: media.description ?? project.subtitle ?? '',
-            url: media.thumbnailUrl ?? media.url,
-            kind: media.type === 'video' ? 'video' : 'image',
-            integrity: project.integrity,
-            payload: project as unknown as Record<string, unknown>,
-            profileId: project.profileId,
-            entityType: 'project',
-          });
-        });
-      } else {
-        items.push({
-          id: project.id,
-          title: project.name,
-          description: project.subtitle ?? project.role ?? '',
-          kind: 'fallback',
-          integrity: project.integrity,
-          payload: project as unknown as Record<string, unknown>,
-          profileId: project.profileId,
-          entityType: 'project',
-        });
-      }
-    });
-    if (items.length === 0 && profile?.coverImageUrl) {
-      items.push({
-        id: profile.id,
-        title: profile.displayName,
-        description: profile.headline ?? '',
-        url: profile.coverImageUrl,
-        kind: 'image',
-        payload: profile as unknown as Record<string, unknown>,
-      });
-    }
-    return items;
-  }, [cvData.projects, profile]);
+  const galleryItems = useMemo<GalleryItem[]>(
+    () => buildGalleryItems(cvData.projects, profile),
+    [cvData.projects, profile],
+  );
+
+  const mermaidChart = useMemo(
+    () => buildMermaidChart(graphNodes, edges),
+    [graphNodes, edges],
+  );
 
   const toggleGraphType = (type: string) => {
     setGraphFilter((prev) =>
@@ -1018,27 +813,6 @@ export default function ClientDashboard() {
     });
   };
 
-  const mermaidChart = useMemo(() => {
-    if (graphNodes.length === 0) return '';
-    const nodeDefs = graphNodes
-      .map((n) => {
-        const safeId = n.id.replace(/-/g, '_');
-        const safeLabel = n.label.replace(/"/g, "'");
-        return `${safeId}["${safeLabel}"]`;
-      })
-      .join('\n');
-
-    const edgeDefs = edges
-      .map((e) => {
-        const safeFrom = e.fromId.replace(/-/g, '_');
-        const safeTo = e.toId.replace(/-/g, '_');
-        return `${safeFrom} -->|${e.relationType}| ${safeTo}`;
-      })
-      .join('\n');
-
-    return `graph TD\n${nodeDefs}\n${edgeDefs}`;
-  }, [graphNodes, edges]);
-
   const handleCreateEntity = async (type: EntityType, data: Record<string, unknown>) => {
     if (!profileId) return;
     const endpointMap: Record<EntityType, string> = {
@@ -1214,7 +988,15 @@ export default function ClientDashboard() {
 
       <MaskSelector value={previewMaskId} onChange={setPreviewMaskId} />
 
-      <Timeline
+      <CVEntities
+        experiences={cvData.experiences}
+        projects={cvData.projects}
+        educations={cvData.educations}
+        skills={cvData.skills}
+        onRefresh={() => void loadProfileData(profileId)}
+      />
+
+      <TimelineView
         entries={timelineEntries}
         types={timelineTypes}
         tags={timelineTags}
@@ -1245,407 +1027,92 @@ export default function ClientDashboard() {
         <MermaidView chart={mermaidChart} />
       </section>
 
-      <section className="section">
-        <h2 className="section-title">Gallery + Immersive Mode</h2>
-        <p className="section-subtitle">
-          Visual artifacts, project media, and cover imagery. Click to open immersive mode.
-        </p>
-        <div className="gallery">
-          {galleryItems.map((item) => (
-            <div
-              key={item.id}
-              className="gallery-card"
-              onClick={() => setImmersiveItem(item)}
-              role="button"
-              tabIndex={0}
-            >
-              {item.kind === 'image' && item.url ? (
-                <Image
-                  src={item.url}
-                  alt={item.title}
-                  width={300}
-                  height={140}
-                  style={{ width: '100%', height: '140px', objectFit: 'cover' }}
-                />
-              ) : (
-                <div
-                  style={{
-                    height: '140px',
-                    background:
-                      'linear-gradient(135deg, rgba(211, 107, 60, 0.3), rgba(47, 94, 100, 0.3))',
-                  }}
-                />
-              )}
-              <div className="caption">
-                <strong>{item.title}</strong>
-                <div className="section-subtitle">{item.description}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <GalleryView items={galleryItems} onItemClick={setImmersiveItem} />
 
-      <section className="section">
-        <h2 className="section-title">Export Pipeline</h2>
-        <p className="section-subtitle">
-          Generate JSON-LD, verifiable credential bundles, and PDF snapshots.
-        </p>
-        <div className="hero-actions">
-          <button className="button" onClick={() => void downloadExport('jsonld')}>
-            JSON-LD
-          </button>
-          <button className="button secondary" onClick={() => void downloadExport('vc')}>
-            VC Bundle
-          </button>
-          <button className="button ghost" onClick={() => void downloadExport('pdf')}>
-            PDF Snapshot
-          </button>
-          {exportStatus ? <span className="section-subtitle">{exportStatus}</span> : null}
-        </div>
-      </section>
+      <ActionPanel
+        profileId={profileId}
+        exportStatus={exportStatus}
+        onExport={downloadExport}
+        onGenerateIdentity={generateIdentity}
+        onMintIdentity={handleMintIdentity}
+        identity={identity}
+        lastMintedCID={lastMintedCID}
+      />
 
-      <section className="section">
-        <h2 className="section-title">Backups + Import</h2>
-        <p className="section-subtitle">
-          Capture snapshots, restore profile data, or import a JSON-LD bundle.
-        </p>
-        <div className="grid two" style={{ gap: '1rem' }}>
-          <div className="stat-card">
-            <h3 style={{ marginTop: 0 }}>Import JSON-LD</h3>
-            <p className="section-subtitle">
-              Paste a bundle or load a file, then choose merge or replace.
-            </p>
-            <textarea
-              className="input"
-              rows={6}
-              placeholder="Paste JSON-LD bundle..."
-              value={importBundleText}
-              onChange={(event) => setImportBundleText(event.target.value)}
-            />
-            <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
-              <label className="label">Import Mode</label>
-              <select
-                className="input"
-                value={importMode}
-                onChange={(event) => setImportMode(event.target.value as 'merge' | 'replace')}
-              >
-                <option value="merge">Merge (upsert)</option>
-                <option value="replace">Replace (wipe + import)</option>
-              </select>
-              <label
-                className="label"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                <input
-                  type="checkbox"
-                  checked={importDryRun}
-                  onChange={(event) => setImportDryRun(event.target.checked)}
-                />
-                Dry-run import
-              </label>
-            </div>
-            <div className="hero-actions" style={{ marginTop: '0.75rem' }}>
-              <button className="button" onClick={() => void runImport()}>
-                Run Import
-              </button>
-              <label className="button ghost" style={{ cursor: 'pointer' }}>
-                Load JSON-LD
-                <input
-                  type="file"
-                  accept="application/json,application/ld+json"
-                  onChange={handleImportFile}
-                  hidden
-                />
-              </label>
-              {importStatus ? <span className="section-subtitle">{importStatus}</span> : null}
-            </div>
-          </div>
-          <div className="stat-card">
-            <h3 style={{ marginTop: 0 }}>Snapshot Log</h3>
-            <p className="section-subtitle">Create backups and restore from recent snapshots.</p>
-            <div className="hero-actions">
-              <button className="button secondary" onClick={() => void createBackup()}>
-                Create Snapshot
-              </button>
-              <button className="button ghost" onClick={() => void loadBackups(profileId)}>
-                Refresh
-              </button>
-            </div>
-            <label
-              className="label"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginTop: '0.5rem',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={restoreDryRun}
-                onChange={(event) => setRestoreDryRun(event.target.checked)}
-              />
-              Dry-run restore
-            </label>
-            <div className="stack" style={{ marginTop: '0.75rem' }}>
-              {backups.length === 0 ? (
-                <span className="section-subtitle">No snapshots yet.</span>
-              ) : (
-                backups.map((backup) => (
-                  <div
-                    key={backup.id}
-                    className="stack-item"
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: '0.75rem',
-                    }}
-                  >
-                    <div>
-                      <strong>{new Date(backup.createdAt).toLocaleString()}</strong>
-                      <div className="section-subtitle">{backup.label ?? 'Manual snapshot'}</div>
-                    </div>
-                    <button className="button ghost" onClick={() => void restoreBackup(backup.id)}>
-                      Restore
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-            {backupStatus ? <span className="section-subtitle">{backupStatus}</span> : null}
-          </div>
-        </div>
-      </section>
+      <BackupPanel
+        profileId={profileId}
+        importBundleText={importBundleText}
+        importMode={importMode}
+        importDryRun={importDryRun}
+        importStatus={importStatus}
+        onImportTextChange={setImportBundleText}
+        onImportModeChange={setImportMode}
+        onImportDryRunChange={setImportDryRun}
+        onRunImport={runImport}
+        onFileUpload={handleImportFile}
+        backups={backups}
+        backupStatus={backupStatus}
+        restoreDryRun={restoreDryRun}
+        onRestoreDryRunChange={setRestoreDryRun}
+        onCreateBackup={createBackup}
+        onRestoreBackup={restoreBackup}
+        onRefreshBackups={() => void loadBackups(profileId)}
+      />
 
       <section className="section">
         <h2 className="section-title">Admin Studio</h2>
-
         <p className="section-subtitle">
           Curate edges, update mask/stage taxonomies, and preview narrative blocks.
         </p>
 
         <div className="editor-grid">
-          <RelationshipBuilder
+          <AdminStudio
             relationshipStack={relationshipStack}
             availableNodes={graphNodes}
             relationType={relationType}
-            setRelationType={setRelationType}
-            onDropToStack={handleDropToStack}
-            onClear={() => setRelationshipStack([])}
-            onSave={() => void saveRelationshipEdges()}
             edges={edges}
-          />
-
-          <TaxonomyEditor
-            masks={taxonomyMasks}
-            stages={taxonomyStages}
-            epochs={taxonomyEpochs}
-            onUpdateMask={(mask) => {
-              void updateMask(mask);
-            }}
-            onUpdateStage={(stage) => {
-              void updateStage(stage);
-            }}
-            onUpdateEpoch={(epoch) => {
-              void updateEpoch(epoch);
-            }}
+            taxonomyMasks={taxonomyMasks}
+            taxonomyStages={taxonomyStages}
+            taxonomyEpochs={taxonomyEpochs}
+            onRelationTypeChange={setRelationType}
+            onDropToStack={handleDropToStack}
+            onClearStack={() => setRelationshipStack([])}
+            onSaveEdges={() => void saveRelationshipEdges()}
+            onUpdateMask={(mask) => void updateMask(mask)}
+            onUpdateStage={(stage) => void updateStage(stage)}
+            onUpdateEpoch={(epoch) => void updateEpoch(epoch)}
             setMasks={setTaxonomyMasks}
             setStages={setTaxonomyStages}
             setEpochs={setTaxonomyEpochs}
           />
-          <div className="stat-card">
-            <h3 style={{ marginTop: 0 }}>GitHub Ingest</h3>
-            <p className="section-subtitle">
-              Fetch repositories and map them to your project ledger.
-            </p>
-            <input
-              className="input"
-              placeholder="GitHub Username"
-              value={githubUsername}
-              onChange={(e) => setGithubUsername(e.target.value)}
-            />
-            <div className="hero-actions" style={{ marginTop: '0.75rem' }}>
-              <button className="button" onClick={() => void triggerIngest()}>
-                Start Ingest
-              </button>
-            </div>
-            {ingestStatus ? (
-              <div className="section-subtitle" style={{ marginTop: '0.75rem' }}>
-                {ingestStatus}
-              </div>
-            ) : null}
-          </div>
 
-          <div className="stat-card">
-            <h3 style={{ marginTop: 0 }}>Resume Parser</h3>
-            <p className="section-subtitle">
-              Paste a resume to generate experience, education, projects, and skills.
-            </p>
-            <input
-              className="input"
-              placeholder="Resume Label"
-              value={resumeTitle}
-              onChange={(e) => setResumeTitle(e.target.value)}
-            />
-            <textarea
-              className="input"
-              rows={6}
-              placeholder="Paste resume text..."
-              value={resumeText}
-              onChange={(e) => setResumeText(e.target.value)}
-            />
-            <div className="hero-actions" style={{ marginTop: '0.75rem' }}>
-              <button className="button" onClick={() => void triggerResumeIngest()}>
-                Parse Resume
-              </button>
-            </div>
-            {resumeStatus ? (
-              <div className="section-subtitle" style={{ marginTop: '0.75rem' }}>
-                {resumeStatus}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="stat-card">
-            <h3 style={{ marginTop: 0 }}>Agent Access</h3>
-            <p className="section-subtitle">
-              Issue scoped tokens for external agents to query this profile.
-            </p>
-            <label
-              className="label"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '0.5rem',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={agentAccessEnabled}
-                onChange={(event) => toggleAgentAccess(event.target.checked)}
-              />
-              Enable agent queries
-            </label>
-            <input
-              className="input"
-              placeholder="Token label (optional)"
-              value={agentTokenLabel}
-              onChange={(event) => setAgentTokenLabel(event.target.value)}
-            />
-            <div className="hero-actions" style={{ marginTop: '0.75rem' }}>
-              <button className="button" onClick={() => void createAgentToken()}>
-                Create Token
-              </button>
-              {agentTokenStatus ? (
-                <span className="section-subtitle">{agentTokenStatus}</span>
-              ) : null}
-            </div>
-            {agentTokenValue ? (
-              <textarea
-                readOnly
-                className="input"
-                value={agentTokenValue}
-                style={{ marginTop: '0.75rem', fontFamily: 'monospace' }}
-              />
-            ) : null}
-            <div className="stack" style={{ marginTop: '0.75rem' }}>
-              {agentTokens.length === 0 ? (
-                <span className="section-subtitle">No active tokens.</span>
-              ) : (
-                agentTokens.map((token) => (
-                  <div
-                    key={token.id}
-                    className="stack-item"
-                    style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}
-                  >
-                    <div>
-                      <strong>{token.label ?? 'Agent Token'}</strong>
-                      <div className="section-subtitle">
-                        Created {new Date(token.createdAt).toLocaleString()}
-                      </div>
-                    </div>
-                    <button
-                      className="button ghost"
-                      onClick={() => void revokeAgentToken(token.id)}
-                    >
-                      Revoke
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <h3 style={{ marginTop: 0 }}>Project Crawler</h3>
-            <p className="section-subtitle">
-              Scan local/cloud paths to ingest artifacts and documentation.
-            </p>
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
-              <input
-                className="input"
-                placeholder="Base Path (e.g. /app)"
-                value={crawlPath}
-                onChange={(e) => setCrawlPath(e.target.value)}
-              />
-              <input
-                className="input"
-                placeholder="Filters (e.g. .ts,.md)"
-                value={crawlFilters}
-                onChange={(e) => setCrawlFilters(e.target.value)}
-              />
-            </div>
-            <div className="hero-actions" style={{ marginTop: '0.75rem' }}>
-              <button className="button" onClick={() => void triggerCrawl()}>
-                Start Crawl
-              </button>
-            </div>
-            {crawlStatus ? (
-              <div className="section-subtitle" style={{ marginTop: '0.75rem' }}>
-                {crawlStatus}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="stat-card">
-            <h3 style={{ marginTop: 0 }}>Identity Vault</h3>
-            <p className="section-subtitle">Manage your DID and cryptographic keys.</p>
-            {identityLoading ? (
-              <div className="section-subtitle">Loading identity...</div>
-            ) : identity ? (
-              <div>
-                <div className="section-subtitle" style={{ wordBreak: 'break-all' }}>
-                  <strong>DID:</strong> {identity.did}
-                </div>
-                <div className="hero-actions" style={{ marginTop: '0.75rem' }}>
-                  <button className="button secondary" onClick={() => setShowKeyExport(true)}>
-                    Export Private Key
-                  </button>
-                  <button className="button ghost" onClick={() => void generateIdentity()}>
-                    Regenerate
-                  </button>
-                  <button className="button" onClick={() => void handleMintIdentity()}>
-                    Mint Identity Proof
-                  </button>
-                </div>
-                {lastMintedCID ? (
-                  <div
-                    className="section-subtitle"
-                    style={{ marginTop: '0.5rem', color: 'var(--accent)' }}
-                  >
-                    <strong>Latest CID:</strong> {lastMintedCID}
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="hero-actions" style={{ marginTop: '0.75rem' }}>
-                <button className="button" onClick={() => void generateIdentity()}>
-                  Generate Identity
-                </button>
-              </div>
-            )}
-          </div>
+          <IngestTools
+            githubUsername={githubUsername}
+            ingestStatus={ingestStatus}
+            resumeTitle={resumeTitle}
+            resumeText={resumeText}
+            resumeStatus={resumeStatus}
+            crawlPath={crawlPath}
+            crawlFilters={crawlFilters}
+            crawlStatus={crawlStatus}
+            agentAccessEnabled={agentAccessEnabled}
+            agentTokens={agentTokens}
+            agentTokenLabel={agentTokenLabel}
+            agentTokenStatus={agentTokenStatus}
+            agentTokenValue={agentTokenValue}
+            onGithubUsernameChange={setGithubUsername}
+            onTriggerIngest={() => void triggerIngest()}
+            onResumeTitleChange={setResumeTitle}
+            onResumeTextChange={setResumeText}
+            onTriggerResumeIngest={() => void triggerResumeIngest()}
+            onCrawlPathChange={setCrawlPath}
+            onCrawlFiltersChange={setCrawlFilters}
+            onTriggerCrawl={() => void triggerCrawl()}
+            onToggleAgentAccess={(enabled) => void toggleAgentAccess(enabled)}
+            onAgentTokenLabelChange={setAgentTokenLabel}
+            onCreateAgentToken={() => void createAgentToken()}
+            onRevokeAgentToken={(tokenId) => void revokeAgentToken(tokenId)}
+          />
         </div>
 
         <NarrativePreview
@@ -1678,38 +1145,7 @@ export default function ClientDashboard() {
         />
       </section>
 
-      <section className="section">
-        <h2 className="section-title">Orchestrator Queue</h2>
-        <p className="section-subtitle">Recent tasks and orchestration counters.</p>
-        {tasks.length === 0 ? (
-          <div className="stat-card">
-            {status === 'loading'
-              ? 'Loading tasks...'
-              : 'No tasks yet. Trigger via orchestrator webhook or POST /tasks.'}
-          </div>
-        ) : (
-          <div className="grid two">
-            {tasks.slice(0, 6).map((task) => (
-              <div key={task.id} className="stat-card">
-                <div className="stat-label">{task.status}</div>
-                <div className="stat-value">{task.description}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        {Object.keys(orchMetrics).length > 0 ? (
-          <div className="chip-row" style={{ marginTop: '0.75rem' }}>
-            <span className="chip">
-              Dispatched {orchMetrics['orchestrator_tasks_dispatched'] ?? 0}
-            </span>
-            <span className="chip">
-              Completed {orchMetrics['orchestrator_tasks_completed'] ?? 0}
-            </span>
-            <span className="chip">Failed {orchMetrics['orchestrator_tasks_failed'] ?? 0}</span>
-            <span className="chip">Retries {orchMetrics['orchestrator_tasks_retries'] ?? 0}</span>
-          </div>
-        ) : null}
-      </section>
+      <OrchestratorQueue tasks={tasks} orchMetrics={orchMetrics} status={status} />
 
       <KeyExportModal
         open={showKeyExport}

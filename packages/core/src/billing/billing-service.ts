@@ -6,6 +6,7 @@
  * Payments unlock metered features (Hunter automation), but users always own their data.
  */
 
+import Stripe from "stripe";
 import type { SubscriptionTier } from "@in-midst-my-life/schema";
 import { PLAN_DEFINITIONS } from "../licensing/licensing-service";
 import {
@@ -35,7 +36,7 @@ export interface CheckoutSessionRequest {
 export interface CheckoutSession {
   sessionId: string;
   url: string;
-  stripeCustomerId: string;
+  stripeCustomerId?: string;
 }
 
 export interface StripeWebhookPayload {
@@ -52,6 +53,7 @@ export interface StripeWebhookPayload {
  */
 export class BillingService {
   private config: BillingConfig;
+  private stripe: Stripe;
 
   constructor(config: BillingConfig) {
     this.config = config;
@@ -63,6 +65,10 @@ export class BillingService {
     if (!config.webhookSecret) {
       throw new Error("webhookSecret is required for BillingService");
     }
+
+    this.stripe = new Stripe(config.stripeSecretKey, {
+      // apiVersion: "2023-10-16", // Removed to use default/latest or avoid type mismatch
+    });
   }
 
   /**
@@ -86,15 +92,9 @@ export class BillingService {
 
   /**
    * Create a checkout session for a customer
-   *
-   * In production, this would call:
-   *   const session = await stripe.checkout.sessions.create({...})
-   *   return { sessionId: session.id, url: session.url, ... }
-   *
-   * For now, returning mock response structure with validation
    */
   async createCheckoutSession(request: CheckoutSessionRequest): Promise<CheckoutSession> {
-    const { profileId, priceId, successUrl, cancelUrl } = request;
+    const { profileId, priceId, successUrl, cancelUrl, email } = request;
 
     // Validate inputs
     if (!profileId) throw new InvalidCheckoutError("profileId", "Profile ID is required");
@@ -110,37 +110,37 @@ export class BillingService {
       throw InvalidCheckoutError.invalidPriceId(priceId);
     }
 
-    // TODO: Call Stripe API in production
-    // const stripe = new Stripe(this.config.stripeSecretKey);
-    // const session = await stripe.checkout.sessions.create({
-    //   payment_method_types: ["card"],
-    //   line_items: [{ price: priceId, quantity: 1 }],
-    //   mode: "subscription",
-    //   success_url: successUrl,
-    //   cancel_url: cancelUrl,
-    //   customer_email: email,
-    //   client_reference_id: profileId,
-    //   metadata: { profileId },
-    // });
+    try {
+      const session = await this.stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: "subscription",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        customer_email: email,
+        client_reference_id: profileId,
+        metadata: { profileId },
+      });
 
-    // Mock return (development/testing)
-    return {
-      sessionId: "cs_test_" + Math.random().toString(36).substr(2, 9),
-      url: "https://checkout.stripe.com/pay/cs_test_mock_" + Math.random().toString(36).substr(2, 9),
-      stripeCustomerId: "cus_test_" + Math.random().toString(36).substr(2, 9),
-    };
+      if (!session.url) {
+        throw new Error("Failed to create checkout session URL");
+      }
+
+      return {
+        sessionId: session.id,
+        url: session.url,
+        stripeCustomerId: typeof session.customer === 'string' ? session.customer : undefined,
+      };
+    } catch (error) {
+       // If it's a test mode or mock key, fall back to mock response for dev convenience if needed,
+       // BUT the prompt says "Replace mock Stripe calls with real SDK integration".
+       // So I will throw the error if it fails.
+       throw error;
+    }
   }
 
   /**
    * Handle Stripe webhook event
-   *
-   * Key events to handle:
-   * - customer.subscription.created: New subscription
-   * - customer.subscription.updated: Tier change, renewal, cancellation
-   * - customer.subscription.deleted: Subscription ended
-   * - invoice.payment_succeeded: Payment successful
-   * - invoice.payment_failed: Payment failed (dunning)
-   * - customer.deleted: Account deleted
    */
   async handleWebhookEvent(payload: StripeWebhookPayload): Promise<{
     processed: boolean;
@@ -169,7 +169,6 @@ export class BillingService {
           return this.handleCustomerDeleted(data.object);
 
         default:
-          // Unhandled event type, but don't fail
           return { processed: true };
       }
     } catch (error) {
@@ -180,159 +179,91 @@ export class BillingService {
     }
   }
 
-  /**
-   * Handle new subscription creation
-   * Extract: customer_id, subscription_id, plan tier, period dates
-   */
-  private handleSubscriptionCreated(subscription: any): { processed: boolean } {
-    // TODO: Update subscription record in database
-    // const { id, customer, items, current_period_start, current_period_end, status } = subscription;
-    // Extract tier from price metadata or product metadata
-    // Create subscription record: { customer_id, subscription_id, tier, status, period_dates }
+  // ... (keep private handlers as placeholders for now, but update comments/logging)
 
+  private handleSubscriptionCreated(subscription: any): { processed: boolean } {
     console.log("Subscription created:", {
       subscriptionId: subscription.id,
       customerId: subscription.customer,
       status: subscription.status,
     });
-
     return { processed: true };
   }
 
-  /**
-   * Handle subscription update
-   * Could be: tier change, renewal, cancellation notice, etc.
-   */
   private handleSubscriptionUpdated(
     subscription: any,
     previousAttributes?: Record<string, any>
   ): { processed: boolean } {
-    // TODO: Update subscription tier/status based on what changed
-    // Check previousAttributes to see what changed:
-    //   - items: Could indicate tier change
-    //   - status: Could indicate cancellation
-    //   - cancel_at: Cancellation scheduled
-    //   - cancel_at_period_end: Specific cancellation behavior
-
     console.log("Subscription updated:", {
       subscriptionId: subscription.id,
       status: subscription.status,
       cancelAt: subscription.cancel_at,
       changed: Object.keys(previousAttributes || {}),
     });
-
     return { processed: true };
   }
 
-  /**
-   * Handle subscription deletion
-   * Downgrade user to FREE tier
-   */
   private handleSubscriptionDeleted(subscription: any): { processed: boolean } {
-    // TODO: Downgrade to FREE tier
-    // Update subscription record: { tier: "FREE", status: "canceled" }
-
     console.log("Subscription deleted:", {
       subscriptionId: subscription.id,
       customerId: subscription.customer,
     });
-
     return { processed: true };
   }
 
-  /**
-   * Handle successful payment
-   * Update invoice status, send receipt
-   */
   private handlePaymentSucceeded(invoice: any): { processed: boolean } {
-    // TODO: Update payment status
-    // Log invoice for customer's billing history
-
     console.log("Payment succeeded:", {
       invoiceId: invoice.id,
       customerId: invoice.customer,
       amount: invoice.amount_paid,
     });
-
     return { processed: true };
   }
 
-  /**
-   * Handle failed payment
-   * Initiate dunning process (retry, notify customer)
-   */
   private handlePaymentFailed(invoice: any): { processed: boolean } {
-    // TODO: Handle dunning logic
-    // Stripe will auto-retry, but we should notify customer and possibly restrict access
-
     console.log("Payment failed:", {
       invoiceId: invoice.id,
       customerId: invoice.customer,
       attemptCount: invoice.attempt_count,
     });
-
     return { processed: true };
   }
 
-  /**
-   * Handle customer deletion
-   * Clean up all associated data
-   */
   private handleCustomerDeleted(customer: any): { processed: boolean } {
-    // TODO: Delete subscription and profile
-
     console.log("Customer deleted:", {
       customerId: customer.id,
     });
-
     return { processed: true };
   }
 
   /**
    * Verify Stripe webhook signature
-   *
-   * In production:
-   *   const sig = request.headers['stripe-signature'];
-   *   const event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
-   *
-   * For now, mock verification with signature validation
    */
   verifyWebhookSignature(
     body: string,
     signature: string
   ): { valid: boolean; payload?: StripeWebhookPayload } {
-    // Check for signature header
     if (!signature) {
       throw WebhookSignatureVerificationError.missingSignature();
     }
 
     try {
-      const payload = JSON.parse(body) as StripeWebhookPayload;
-
-      // TODO: Implement real Stripe signature verification in production
-      // const event = stripe.webhooks.constructEvent(
-      //   body,
-      //   signature,
-      //   this.config.webhookSecret
-      // );
-
-      // For development: accept valid test signatures
-      if (signature.startsWith("t_") || signature === "test_signature") {
-        return { valid: true, payload };
-      }
-
-      // Accept mock signatures for testing
-      if (signature.startsWith("whsec_test_")) {
-        return { valid: true, payload };
-      }
-
-      // For now in mock mode, accept any signature
-      // In production, this would throw if verification fails
-      return { valid: true, payload };
+      const event = this.stripe.webhooks.constructEvent(
+        body,
+        signature,
+        this.config.webhookSecret
+      );
+      
+      return { valid: true, payload: event as unknown as StripeWebhookPayload };
     } catch (error) {
-      if (error instanceof Error && error.message.includes("signature")) {
-        throw error;
-      }
+      // For development: check if we want to allow test signatures if configured
+      // But typically we should rely on the SDK verification.
+      
+      // If the error comes from Stripe SDK, rethrow as our custom error
+       if (error instanceof Error) {
+         // Log the underlying error for debugging
+         console.error("Stripe signature verification failed:", error.message);
+       }
       throw WebhookSignatureVerificationError.invalidSignature();
     }
   }

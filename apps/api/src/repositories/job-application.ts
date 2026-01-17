@@ -5,115 +5,74 @@
  * Tracks user applications, their status, and outcomes
  */
 
-import type { JobApplication as SchemaJobApplication } from "@in-midst-my-life/schema";
-
-type JobApplicationStatus = SchemaJobApplication["status"];
-
-export interface JobApplicationEntity {
-  id: string;
-  profile_id: string;
-  job_posting_id: string;
-  mask_id: string; // Which mask was used for this application
-  status: JobApplicationStatus;
-  tailored_resume_url?: string; // URL to tailored resume PDF
-  cover_letter?: string;
-  submitted_date?: Date;
-  response_date?: Date;
-  interview_scheduled?: boolean;
-  interview_date?: Date;
-  offer_received?: boolean;
-  offer_details?: {
-    salary_offered?: number;
-    title?: string;
-    notes?: string;
-  };
-  rejection_reason?: string;
-  notes?: string;
-  created_at: Date;
-  updated_at: Date;
-}
+import type { JobApplication } from "@in-midst-my-life/schema";
+import { Pool } from "pg";
 
 /**
  * Repository interface for JobApplication entities
  */
 export interface JobApplicationRepository {
   // Read operations
-  find(id: string): Promise<JobApplicationEntity | undefined>;
+  find(id: string): Promise<JobApplication | undefined>;
   findByProfileAndJob(
     profileId: string,
-    jobId: string
-  ): Promise<JobApplicationEntity | undefined>;
+    jobPostingId: string
+  ): Promise<JobApplication | undefined>;
   listByProfile(
     profileId: string,
-    options?: { status?: JobApplicationStatus; offset?: number; limit?: number }
+    options?: { status?: JobApplication["status"]; offset?: number; limit?: number }
   ): Promise<{
-    data: JobApplicationEntity[];
+    data: JobApplication[];
     total: number;
   }>;
 
   // Write operations
-  create(app: Omit<JobApplicationEntity, "id" | "created_at" | "updated_at">): Promise<JobApplicationEntity>;
+  create(app: JobApplication): Promise<JobApplication>;
   update(
     id: string,
-    patch: Partial<Omit<JobApplicationEntity, "id" | "created_at">>
-  ): Promise<JobApplicationEntity | undefined>;
+    patch: Partial<JobApplication>
+  ): Promise<JobApplication | undefined>;
+  delete(id: string): Promise<boolean>;
 
-  // Bulk operations
+  // Workflow operations
   markAsSubmitted(
-    ids: string[],
-    tailoredResumeUrl: string,
-    submittedDate: Date
-  ): Promise<JobApplicationEntity[]>;
-  markAsRejected(
-    ids: string[],
-    rejectionReason?: string
-  ): Promise<JobApplicationEntity[]>;
-  recordInterviewScheduled(id: string, interviewDate: Date): Promise<JobApplicationEntity | undefined>;
-  recordOfferReceived(
     id: string,
-    offerDetails: { salary_offered?: number; title?: string; notes?: string }
-  ): Promise<JobApplicationEntity | undefined>;
-
-  // Analytics
-  getStats(profileId: string): Promise<{
-    total_applications: number;
-    pending: number;
-    submitted: number;
-    rejected: number;
-    interviews: number;
-    offers: number;
-  }>;
+    submittedDate: string
+  ): Promise<JobApplication | undefined>;
+  markAsRejected(
+    id: string,
+    notes?: string
+  ): Promise<JobApplication | undefined>;
 }
 
 /**
  * In-Memory Job Application Repository (Development)
  */
 export class InMemoryJobApplicationRepository implements JobApplicationRepository {
-  private applications: Map<string, JobApplicationEntity> = new Map();
-  private idCounter = 0;
+  private applications: Map<string, JobApplication> = new Map();
 
-  async find(id: string): Promise<JobApplicationEntity | undefined> {
+  async find(id: string): Promise<JobApplication | undefined> {
     return this.applications.get(id);
   }
 
   async findByProfileAndJob(
     profileId: string,
-    jobId: string
-  ): Promise<JobApplicationEntity | undefined> {
+    jobPostingId: string
+  ): Promise<JobApplication | undefined> {
     return Array.from(this.applications.values()).find(
-      (app) => app.profile_id === profileId && app.job_posting_id === jobId
+      (app) => app.profileId === profileId && app.jobPostingId === jobPostingId
     );
   }
 
   async listByProfile(
     profileId: string,
-    options?: { status?: JobApplicationStatus; offset?: number; limit?: number }
-  ): Promise<{ data: JobApplicationEntity[]; total: number }> {
+    options?: { status?: JobApplication["status"]; offset?: number; limit?: number }
+  ): Promise<{ data: JobApplication[]; total: number }> {
     const offset = options?.offset || 0;
     const limit = options?.limit || 50;
 
     let filtered = Array.from(this.applications.values()).filter(
-      (app) => app.profile_id === profileId
+      (app) => app.profileId === profileId
     );
 
     if (options?.status) {
@@ -121,7 +80,7 @@ export class InMemoryJobApplicationRepository implements JobApplicationRepositor
     }
 
     const sorted = filtered.sort(
-      (a, b) => b.created_at.getTime() - a.created_at.getTime()
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
 
     return {
@@ -130,220 +89,208 @@ export class InMemoryJobApplicationRepository implements JobApplicationRepositor
     };
   }
 
-  async create(
-    app: Omit<JobApplicationEntity, "id" | "created_at" | "updated_at">
-  ): Promise<JobApplicationEntity> {
-    const id = `app-${++this.idCounter}`;
-    const now = new Date();
-
-    const application: JobApplicationEntity = {
-      ...app,
-      id,
-      created_at: now,
-      updated_at: now,
-    };
-
-    this.applications.set(id, application);
-    return application;
+  async create(app: JobApplication): Promise<JobApplication> {
+    this.applications.set(app.id, app);
+    return app;
   }
 
   async update(
     id: string,
-    patch: Partial<Omit<JobApplicationEntity, "id" | "created_at">>
-  ): Promise<JobApplicationEntity | undefined> {
+    patch: Partial<JobApplication>
+  ): Promise<JobApplication | undefined> {
     const app = this.applications.get(id);
     if (!app) return undefined;
 
-    const updated: JobApplicationEntity = {
+    const updated: JobApplication = {
       ...app,
       ...patch,
-      updated_at: new Date(),
+      updatedAt: new Date().toISOString(),
     };
 
     this.applications.set(id, updated);
     return updated;
   }
 
+  async delete(id: string): Promise<boolean> {
+    return this.applications.delete(id);
+  }
+
   async markAsSubmitted(
-    ids: string[],
-    tailoredResumeUrl: string,
-    submittedDate: Date
-  ): Promise<JobApplicationEntity[]> {
-    const results: JobApplicationEntity[] = [];
-
-    for (const id of ids) {
-      const updated = await this.update(id, {
-        status: "applied" as JobApplicationStatus,
-        tailored_resume_url: tailoredResumeUrl,
-        submitted_date: submittedDate,
-      });
-      if (updated) results.push(updated);
-    }
-
-    return results;
+    id: string,
+    submittedDate: string
+  ): Promise<JobApplication | undefined> {
+    return this.update(id, {
+      status: "applied",
+      appliedAt: submittedDate,
+    });
   }
 
   async markAsRejected(
-    ids: string[],
-    rejectionReason?: string
-  ): Promise<JobApplicationEntity[]> {
-    const results: JobApplicationEntity[] = [];
-
-    for (const id of ids) {
-      const updated = await this.update(id, {
-        status: "rejected" as JobApplicationStatus,
-        rejection_reason: rejectionReason,
-        response_date: new Date(),
-      });
-      if (updated) results.push(updated);
-    }
-
-    return results;
-  }
-
-  async recordInterviewScheduled(
     id: string,
-    interviewDate: Date
-  ): Promise<JobApplicationEntity | undefined> {
+    notes?: string
+  ): Promise<JobApplication | undefined> {
     return this.update(id, {
-      status: "interviewing" as JobApplicationStatus,
-      interview_scheduled: true,
-      interview_date: interviewDate,
+      status: "rejected",
+      notes: notes ? (this.applications.get(id)?.notes ? `${this.applications.get(id)?.notes}\n${notes}` : notes) : undefined,
     });
-  }
-
-  async recordOfferReceived(
-    id: string,
-    offerDetails: { salary_offered?: number; title?: string; notes?: string }
-  ): Promise<JobApplicationEntity | undefined> {
-    return this.update(id, {
-      status: "offer" as JobApplicationStatus,
-      offer_received: true,
-      offer_details: offerDetails,
-      response_date: new Date(),
-    });
-  }
-
-  async getStats(profileId: string): Promise<{
-    total_applications: number;
-    pending: number;
-    submitted: number;
-    rejected: number;
-    interviews: number;
-    offers: number;
-  }> {
-    const apps = Array.from(this.applications.values()).filter(
-      (app) => app.profile_id === profileId
-    );
-
-    return {
-      total_applications: apps.length,
-      pending: apps.filter((a) => a.status === "draft").length,
-      submitted: apps.filter((a) => a.status === "applied").length,
-      rejected: apps.filter((a) => a.status === "rejected").length,
-      interviews: apps.filter((a) => a.status === "interviewing").length,
-      offers: apps.filter((a) => a.status === "offer").length,
-    };
   }
 }
 
 /**
  * PostgreSQL Job Application Repository (Production)
- * 
- * TODO: Implement when Neon database is provisioned
  */
 export class PostgresJobApplicationRepository implements JobApplicationRepository {
-  constructor(private db: any) {} // TODO: proper DB type
+  constructor(private pool: Pool) {}
 
-  async find(id: string): Promise<JobApplicationEntity | undefined> {
-    throw new Error(
-      "PostgresJobApplicationRepository.find() not yet implemented"
+  private mapRow(row: any): JobApplication {
+    return {
+      id: row.id,
+      profileId: row.profile_id,
+      jobPostingId: row.job_posting_id,
+      status: row.status,
+      coverLetterMarkdown: row.cover_letter_markdown,
+      resumeSnapshotId: row.resume_snapshot_id,
+      appliedAt: row.applied_at?.toISOString(),
+      notes: row.notes,
+      createdAt: row.created_at.toISOString(),
+      updatedAt: row.updated_at.toISOString()
+    };
+  }
+
+  async find(id: string): Promise<JobApplication | undefined> {
+    const res = await this.pool.query(
+      `SELECT * FROM job_applications WHERE id = $1`,
+      [id]
     );
+    return res.rows[0] ? this.mapRow(res.rows[0]) : undefined;
   }
 
   async findByProfileAndJob(
     profileId: string,
-    jobId: string
-  ): Promise<JobApplicationEntity | undefined> {
-    throw new Error(
-      "PostgresJobApplicationRepository.findByProfileAndJob() not yet implemented"
+    jobPostingId: string
+  ): Promise<JobApplication | undefined> {
+    const res = await this.pool.query(
+      `SELECT * FROM job_applications WHERE profile_id = $1 AND job_posting_id = $2`,
+      [profileId, jobPostingId]
     );
+    return res.rows[0] ? this.mapRow(res.rows[0]) : undefined;
   }
 
   async listByProfile(
     profileId: string,
-    options?: { status?: JobApplicationStatus; offset?: number; limit?: number }
-  ): Promise<{ data: JobApplicationEntity[]; total: number }> {
-    throw new Error(
-      "PostgresJobApplicationRepository.listByProfile() not yet implemented"
+    options?: { status?: JobApplication["status"]; offset?: number; limit?: number }
+  ): Promise<{ data: JobApplication[]; total: number }> {
+    const offset = options?.offset || 0;
+    const limit = options?.limit || 50;
+    
+    let query = `SELECT * FROM job_applications WHERE profile_id = $1`;
+    const params: any[] = [profileId];
+
+    if (options?.status) {
+      params.push(options.status);
+      query += ` AND status = $${params.length}`;
+    }
+
+    query += ` ORDER BY updated_at DESC OFFSET $${params.length + 1} LIMIT $${params.length + 2}`;
+    
+    const countRes = await this.pool.query(
+      `SELECT COUNT(*) as count FROM job_applications WHERE profile_id = $1 ${options?.status ? `AND status = '${options.status}'` : ''}`,
+      [profileId]
     );
+
+    const res = await this.pool.query(query, [...params, offset, limit]);
+
+    return {
+      data: res.rows.map(this.mapRow),
+      total: parseInt(countRes.rows[0].count, 10)
+    };
   }
 
-  async create(
-    app: Omit<JobApplicationEntity, "id" | "created_at" | "updated_at">
-  ): Promise<JobApplicationEntity> {
-    throw new Error(
-      "PostgresJobApplicationRepository.create() not yet implemented"
-    );
+  async create(app: JobApplication): Promise<JobApplication> {
+    const query = `
+      INSERT INTO job_applications (
+        id, profile_id, job_posting_id, status, cover_letter_markdown, resume_snapshot_id, applied_at, notes, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `;
+    
+    const values = [
+      app.id,
+      app.profileId,
+      app.jobPostingId,
+      app.status,
+      app.coverLetterMarkdown,
+      app.resumeSnapshotId,
+      app.appliedAt,
+      app.notes,
+      app.createdAt,
+      app.updatedAt
+    ];
+
+    const res = await this.pool.query(query, values);
+    return this.mapRow(res.rows[0]);
   }
 
   async update(
     id: string,
-    patch: Partial<Omit<JobApplicationEntity, "id" | "created_at">>
-  ): Promise<JobApplicationEntity | undefined> {
-    throw new Error(
-      "PostgresJobApplicationRepository.update() not yet implemented"
-    );
+    patch: Partial<JobApplication>
+  ): Promise<JobApplication | undefined> {
+    const existing = await this.find(id);
+    if (!existing) return undefined;
+
+    const updated = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    
+    const query = `
+      UPDATE job_applications SET
+        status = $2,
+        cover_letter_markdown = $3,
+        resume_snapshot_id = $4,
+        applied_at = $5,
+        notes = $6,
+        updated_at = $7
+      WHERE id = $1
+      RETURNING *
+    `;
+    
+    const values = [
+      id,
+      updated.status,
+      updated.coverLetterMarkdown,
+      updated.resumeSnapshotId,
+      updated.appliedAt,
+      updated.notes,
+      updated.updatedAt
+    ];
+
+    const res = await this.pool.query(query, values);
+    return this.mapRow(res.rows[0]);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const res = await this.pool.query(`DELETE FROM job_applications WHERE id = $1`, [id]);
+    return (res.rowCount ?? 0) > 0;
   }
 
   async markAsSubmitted(
-    ids: string[],
-    tailoredResumeUrl: string,
-    submittedDate: Date
-  ): Promise<JobApplicationEntity[]> {
-    throw new Error(
-      "PostgresJobApplicationRepository.markAsSubmitted() not yet implemented"
-    );
+    id: string,
+    submittedDate: string
+  ): Promise<JobApplication | undefined> {
+    return this.update(id, {
+      status: "applied",
+      appliedAt: submittedDate
+    });
   }
 
   async markAsRejected(
-    ids: string[],
-    rejectionReason?: string
-  ): Promise<JobApplicationEntity[]> {
-    throw new Error(
-      "PostgresJobApplicationRepository.markAsRejected() not yet implemented"
-    );
-  }
-
-  async recordInterviewScheduled(
     id: string,
-    interviewDate: Date
-  ): Promise<JobApplicationEntity | undefined> {
-    throw new Error(
-      "PostgresJobApplicationRepository.recordInterviewScheduled() not yet implemented"
-    );
-  }
-
-  async recordOfferReceived(
-    id: string,
-    offerDetails: { salary_offered?: number; title?: string; notes?: string }
-  ): Promise<JobApplicationEntity | undefined> {
-    throw new Error(
-      "PostgresJobApplicationRepository.recordOfferReceived() not yet implemented"
-    );
-  }
-
-  async getStats(profileId: string): Promise<{
-    total_applications: number;
-    pending: number;
-    submitted: number;
-    rejected: number;
-    interviews: number;
-    offers: number;
-  }> {
-    throw new Error(
-      "PostgresJobApplicationRepository.getStats() not yet implemented"
-    );
+    notes?: string
+  ): Promise<JobApplication | undefined> {
+    const existing = await this.find(id);
+    const newNotes = notes ? (existing?.notes ? `${existing.notes}\n${notes}` : notes) : existing?.notes;
+    return this.update(id, {
+      status: "rejected",
+      notes: newNotes
+    });
   }
 }
 
@@ -353,7 +300,7 @@ export class PostgresJobApplicationRepository implements JobApplicationRepositor
 export function createJobApplicationRepository(
   options?: {
     type?: "memory" | "postgres";
-    db?: any;
+    db?: Pool;
   }
 ): JobApplicationRepository {
   const type = options?.type || process.env['JOB_APP_REPO_TYPE'] || "memory";
@@ -361,7 +308,7 @@ export function createJobApplicationRepository(
   if (type === "postgres") {
     if (!options?.db) {
       throw new Error(
-        "PostgreSQL repository requires database connection"
+        "PostgreSQL repository requires database connection pool"
       );
     }
     return new PostgresJobApplicationRepository(options.db);

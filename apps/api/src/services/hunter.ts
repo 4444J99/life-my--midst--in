@@ -220,7 +220,9 @@ export class DefaultHunterService implements HunterService {
       throw new NotFoundError(`Profile not found: ${profileId}`);
     }
 
-    const rankedJobs = await this.rankJobs(profile, jobs);
+    // Convert JobPosting to JobListing for ranking
+    const jobListings = jobs.map(job => this.mapJobPostingToListing(job));
+    const rankedJobs = await this.rankJobs(profile, jobListings);
 
     // Save discovered jobs to repository
     if (this.jobPostingRepo) {

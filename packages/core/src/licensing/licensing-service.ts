@@ -26,7 +26,7 @@ export const PLAN_DEFINITIONS: Record<SubscriptionTier, PlanDefinition> = {
       auto_apply: { limit: 0, resetPeriod: "never" },
       cover_letter_generation: { limit: 0, resetPeriod: "monthly" },
       masks_limit: { limit: 3, resetPeriod: "never" },
-      resume_tailoring: { limit: 10, resetPeriod: "monthly" },
+      resume_tailoring: { limit: 1, resetPeriod: "monthly" },
       narrative_generation: { limit: 5, resetPeriod: "monthly" },
     },
     stripePriceId: {

@@ -138,37 +138,157 @@ export async function registerExportRoutes(fastify: FastifyInstance, _deps?: Exp
    * GET /export/json-ld/:profileId
    *
    * Retrieves a JSON-LD export of an existing profile by ID.
-   * (Requires database integration - returns placeholder for now)
+   * Integrates with PostgreSQL and Redis caching.
    */
   fastify.get("/json-ld/:profileId", async (request, reply) => {
     const { profileId } = request.params as { profileId: string };
 
-    // TODO: Fetch profile from database using profileId
-    // For now, return placeholder error
-    return reply.code(501).send({
-      ok: false,
-      error: "not_implemented",
-      message: "Profile lookup requires database integration",
-      hint: "Use POST /export/json-ld with profile data instead"
-    });
+    try {
+      // Check cache first
+      const cacheKey = `export:jsonld:${profileId}`;
+      const { getCache } = await import('../services/cache');
+      const cache = getCache();
+      const cached = cache?.get<string>(cacheKey);
+
+      if (cached) {
+        reply.header('X-Cache', 'HIT');
+        return reply.type('application/ld+json').send(cached);
+      }
+
+      // Fetch profile from database
+      const { getPool } = await import('../db');
+      const pool = getPool();
+      const profileResult = await pool.query(
+        'SELECT * FROM profiles WHERE id = $1 AND is_active = true',
+        [profileId]
+      );
+
+      if (profileResult.rows.length === 0) {
+        return reply.code(404).send({
+          ok: false,
+          error: "profile_not_found",
+          message: `Profile ${profileId} not found or inactive`
+        });
+      }
+
+      const profile = profileResult.rows[0];
+
+      // Fetch related data
+      const [experiencesResult, educationsResult, skillsResult] = await Promise.all([
+        pool.query('SELECT * FROM experiences WHERE profile_id = $1 ORDER BY start_date DESC', [profileId]),
+        pool.query('SELECT * FROM educations WHERE profile_id = $1 ORDER BY start_date DESC', [profileId]),
+        pool.query('SELECT * FROM skills WHERE profile_id = $1', [profileId])
+      ]);
+
+      // Generate JSON-LD
+      const jsonLd = generateProfileJsonLd({
+        profile,
+        experiences: experiencesResult.rows as any[],
+        educations: educationsResult.rows as any[],
+        skills: skillsResult.rows as any[]
+      });
+
+      const jsonLdString = JSON.stringify(jsonLd, null, 2);
+
+      // Cache for 5 minutes
+      if (cache) {
+        cache.set(cacheKey, jsonLdString, 300);
+      }
+
+      reply.header('X-Cache', 'MISS');
+      return reply.type('application/ld+json').send(jsonLdString);
+    } catch (error: unknown) {
+      request.log.error({ err: error }, 'JSON-LD export error:');
+      return reply.code(500).send({
+        ok: false,
+        error: "export_failed",
+        message: error instanceof Error ? error.message : "Failed to generate JSON-LD export"
+      });
+    }
   });
 
   /**
    * GET /export/json-ld/:profileId/masked/:maskId
    *
    * Retrieves a masked JSON-LD export of a profile.
-   * (Requires database integration)
+   * Integrates with PostgreSQL and Redis caching.
    */
   fastify.get("/json-ld/:profileId/masked/:maskId", async (request, reply) => {
     const { profileId, maskId } = request.params as { profileId: string; maskId: string };
 
-    // TODO: Fetch profile and mask from database
-    return reply.code(501).send({
-      ok: false,
-      error: "not_implemented",
-      message: "Masked profile lookup requires database integration",
-      context: { profileId, maskId }
-    });
+    try {
+      // Check cache first
+      const cacheKey = `export:jsonld:${profileId}:mask:${maskId}`;
+      const { getCache } = await import('../services/cache');
+      const cache = getCache();
+      const cached = cache?.get<string>(cacheKey);
+
+      if (cached) {
+        reply.header('X-Cache', 'HIT');
+        return reply.type('application/ld+json').send(cached);
+      }
+
+      // Fetch profile and mask from database
+      const { getPool } = await import('../db');
+      const pool = getPool();
+      
+      const [profileResult, maskResult] = await Promise.all([
+        pool.query('SELECT * FROM profiles WHERE id = $1 AND is_active = true', [profileId]),
+        pool.query('SELECT * FROM masks WHERE id = $1', [maskId])
+      ]);
+
+      if (profileResult.rows.length === 0) {
+        return reply.code(404).send({
+          ok: false,
+          error: "profile_not_found",
+          message: `Profile ${profileId} not found`
+        });
+      }
+
+      if (maskResult.rows.length === 0) {
+        return reply.code(404).send({
+          ok: false,
+          error: "mask_not_found",
+          message: `Mask ${maskId} not found`
+        });
+      }
+
+      const profile = profileResult.rows[0];
+      const mask = maskResult.rows[0];
+
+      // Fetch related data
+      const [experiencesResult, educationsResult, skillsResult] = await Promise.all([
+        pool.query('SELECT * FROM experiences WHERE profile_id = $1 ORDER BY start_date DESC', [profileId]),
+        pool.query('SELECT * FROM educations WHERE profile_id = $1 ORDER BY start_date DESC', [profileId]),
+        pool.query('SELECT * FROM skills WHERE profile_id = $1', [profileId])
+      ]);
+
+      // Generate masked JSON-LD
+      const jsonLd = generateMaskedJsonLd(
+        profile,
+        mask,
+        experiencesResult.rows as any[],
+        educationsResult.rows as any[],
+        skillsResult.rows as any[]
+      );
+
+      const jsonLdString = JSON.stringify(jsonLd, null, 2);
+
+      // Cache for 5 minutes
+      if (cache) {
+        cache.set(cacheKey, jsonLdString, 300);
+      }
+
+      reply.header('X-Cache', 'MISS');
+      return reply.type('application/ld+json').send(jsonLdString);
+    } catch (error: unknown) {
+      request.log.error({ err: error }, 'Masked JSON-LD export error:');
+      return reply.code(500).send({
+        ok: false,
+        error: "export_failed",
+        message: error instanceof Error ? error.message : "Failed to generate masked JSON-LD export"
+      });
+    }
   });
 
   /**
@@ -268,6 +388,93 @@ export async function registerExportRoutes(fastify: FastifyInstance, _deps?: Exp
         ok: false,
         error: "pdf_generation_failed",
         message: error instanceof Error ? error.message : "Failed to generate PDF"
+      });
+    }
+  });
+
+  /**
+   * GET /export/vc/:profileId
+   *
+   * Exports a profile as a Verifiable Credential.
+   * Integrates with PostgreSQL and Redis caching.
+   */
+  fastify.get("/vc/:profileId", async (request, reply) => {
+    const { profileId } = request.params as { profileId: string };
+    const { types, expiresIn } = request.query as { types?: string; expiresIn?: string };
+
+    try {
+      // Check cache first
+      const cacheKey = `export:vc:${profileId}:${types || 'default'}`;
+      const { getCache } = await import('../services/cache');
+      const cache = getCache();
+      const cached = cache.get<string>(cacheKey);
+
+      if (cached) {
+        reply.header('X-Cache', 'HIT');
+        return reply.type('application/json').send(cached);
+      }
+
+      // Fetch profile from database
+      const { getPool } = await import('../db');
+      const pool = getPool();
+      const profileResult = await pool.query(
+        'SELECT * FROM profiles WHERE id = $1 AND is_active = true',
+        [profileId]
+      );
+
+      if (profileResult.rows.length === 0) {
+        return reply.code(404).send({
+          ok: false,
+          error: "profile_not_found",
+          message: `Profile ${profileId} not found`
+        });
+      }
+
+      const profile = profileResult.rows[0];
+
+      // Generate or fetch issuer key pair
+      const { DIDKey, VC } = await import("@in-midst-my-life/core");
+      const keyPair = await DIDKey.generate();
+
+      // Prepare credential subject
+      const credentialSubject = {
+        id: `did:profile:${profileId}`,
+        name: profile.display_name,
+        email: profile.email,
+        headline: profile.headline,
+        bio: profile.bio,
+        location: profile.location
+      };
+
+      // Parse credential types
+      const credentialTypes = types 
+        ? ['VerifiableCredential', ...types.split(',')]
+        : ['VerifiableCredential', 'ProfileCredential'];
+
+      // Calculate expiration
+      const expirationDate = expiresIn
+        ? new Date(Date.now() + parseInt(expiresIn) * 1000).toISOString()
+        : undefined;
+
+      // Issue credential
+      const credential = await VC.issue(keyPair, credentialSubject, credentialTypes, {
+        expirationDate,
+        credentialId: `urn:profile:vc:${profileId}`
+      });
+
+      const credentialString = JSON.stringify(credential, null, 2);
+
+      // Cache for 10 minutes (shorter than profile data)
+      cache.set(cacheKey, credentialString, 600);
+
+      reply.header('X-Cache', 'MISS');
+      return reply.type('application/json').send(credentialString);
+    } catch (error: unknown) {
+      request.log.error({ err: error }, 'VC export error:');
+      return reply.code(500).send({
+        ok: false,
+        error: "vc_export_failed",
+        message: error instanceof Error ? error.message : "Failed to generate Verifiable Credential"
       });
     }
   });

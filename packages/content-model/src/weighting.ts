@@ -45,6 +45,9 @@ export interface WeightingConfig {
 export interface BlockScore {
   blockId: string;
   totalScore: number;
+  contentRichness: number;
+  relevanceScore: number;
+  confidence: number;
   breakdown: {
     baseWeight: number;
     recencyScore: number;
@@ -291,6 +294,9 @@ export function scoreNarrativeBlock(
   return {
     blockId: block.title,
     totalScore: Math.min(1, totalScore),
+    contentRichness: baseWeight * baseWeightFactor,
+    relevanceScore: relevanceScore * relevanceFactor,
+    confidence: confidenceScore * confidenceFactor,
     breakdown: {
       baseWeight: baseWeight * baseWeightFactor,
       recencyScore: recencyScore * recencyFactor,
@@ -379,38 +385,10 @@ export function generateWeightingReport(
   blocks: NarrativeBlock[],
   context: Parameters<typeof scoreNarrativeBlock>[1],
   config: WeightingConfig = {}
-): {
-  summary: string;
-  blocks: Array<{
-    title: string;
-    score: number;
-    topContributors: string[];
-  }>;
-} {
+): Array<{
+  block: NarrativeBlock;
+  score: BlockScore;
+}> {
   const ranked = rankNarrativeBlocks(blocks, context, config);
-
-  const blockReports = ranked.slice(0, 10).map(({ block, score }) => {
-    const contributors = Object.entries(score.breakdown)
-      .filter(([, v]) => v > 0.05) // Only show contributions > 5%
-      .sort(([, a], [, b]) => b - a)
-      .map(
-        ([name, value]) =>
-          `${name}: ${(value * 100).toFixed(0)}%`
-      );
-
-    return {
-      title: block.title,
-      score: score.totalScore,
-      topContributors: contributors
-    };
-  });
-
-  const topScore = blockReports[0]?.score ?? 0;
-  const avgScore =
-    blockReports.reduce((sum, item) => sum + item.score, 0) / Math.max(1, blockReports.length);
-
-  return {
-    summary: `Ranked ${blocks.length} blocks. Top score: ${(topScore * 100).toFixed(1)}%, Average: ${(avgScore * 100).toFixed(1)}%`,
-    blocks: blockReports
-  };
+  return ranked;
 }

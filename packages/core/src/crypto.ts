@@ -111,7 +111,10 @@ export const hashPayload = async (payload: Record<string, unknown>): Promise<str
   const normalized = canonicalize(payload);
   const bytes = Buffer.from(JSON.stringify(normalized), 'utf-8');
   const digest = await sha256.digest(bytes);
-  return Array.from(digest.bytes)
+  // digest.bytes includes multicodec prefix (1220 for SHA-256), skip it
+  // SHA-256 produces 32 bytes (64 hex chars), multicodec adds 2 bytes prefix
+  const hashBytes = digest.bytes.slice(2);
+  return Array.from(hashBytes)
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 };
@@ -204,10 +207,16 @@ export class DIDKey {
       const original = JSON.parse(decoded);
       
       // Verify basic integrity
+      // Note: original contains {...payload, timestamp, did}
+      // We need to compare the nested structure
+      const originalPayload = { ...original };
+      delete originalPayload.did;
+      delete originalPayload.timestamp;
+      
       return (
         original.did === block.did &&
         original.timestamp === block.timestamp &&
-        JSON.stringify(original.payload) === JSON.stringify(block.payload)
+        JSON.stringify(originalPayload) === JSON.stringify(block.payload)
       );
     } catch (e) {
       console.warn('Verification failed', e);
