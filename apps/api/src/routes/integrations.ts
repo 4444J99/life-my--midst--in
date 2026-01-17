@@ -216,41 +216,99 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
           return { ok: false, error: "invalid_provider" };
         }
 
-        // TODO: Exchange code for tokens
-        // This would involve:
-        // 1. POST to config.tokenUrl with code + client credentials
-        // 2. Receive access_token and refresh_token
-        // 3. Encrypt tokens using crypto utilities
-        // 4. Create CloudStorageIntegration record with encrypted tokens
-        // 5. Return success with integration details
+        // Exchange authorization code for tokens
+        try {
+          const tokenResponse = await fetch(config.tokenUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json'
+            },
+            body: new URLSearchParams({
+              grant_type: 'authorization_code',
+              code: code,
+              client_id: config.clientId,
+              client_secret: config.clientSecret, // allow-secret
+              redirect_uri: config.redirectUri
+            })
+          });
 
-        // For MVP, return success stub
-        const integrationId = randomUUID();
-        const integration = await artifactService.createIntegration(
-          {
-            id: integrationId,
-            profileId,
-            provider: provider as any,
-            status: "active",
-            folderConfig: {
-              includedFolders: [""],
-              excludedPatterns: [],
-              maxFileSizeMB: 100
-            }
-          },
-          profileId
-        );
+          if (!tokenResponse.ok) {
+            const errorData = await tokenResponse.json().catch(() => ({}));
+            reply.code(502);
+            return {
+              ok: false,
+              error: "token_exchange_failed",
+              message: `Failed to exchange authorization code: ${errorData.error || tokenResponse.statusText}`
+            };
+          }
 
-        return {
-          ok: true,
-          message: "OAuth callback stub - full token exchange in Phase 5+",
-          integration: {
-            id: integration.id,
-            provider: integration.provider,
-            status: integration.status
-          },
-          nextSteps: "User should be redirected to settings page with integration confirmed"
-        };
+          const tokens = await tokenResponse.json();
+          const { access_token, refresh_token, expires_in, token_type } = tokens;
+
+          if (!access_token) {
+            reply.code(502);
+            return {
+              ok: false,
+              error: "invalid_token_response",
+              message: "Provider did not return an access token"
+            };
+          }
+
+          // Encrypt tokens before storage
+          const { encrypt } = await import("@in-midst-my-life/core");
+          const accessTokenEncrypted = encrypt(access_token);
+          const refreshTokenEncrypted = refresh_token ? encrypt(refresh_token) : undefined;
+
+          // Calculate expiration timestamp
+          const expiresAt = expires_in 
+            ? new Date(Date.now() + expires_in * 1000).toISOString()
+            : undefined;
+
+          const integrationId = randomUUID();
+          const integration = await artifactService.createIntegration(
+            {
+              id: integrationId,
+              profileId,
+              provider: provider as any,
+              status: "active",
+              accessTokenEncrypted,
+              refreshTokenEncrypted,
+              tokenExpiresAt: expiresAt,
+              metadata: {
+                token_type: token_type || 'Bearer',
+                scope: tokens.scope,
+                connected_at: new Date().toISOString()
+              },
+              folderConfig: {
+                includedFolders: [""],
+                excludedPatterns: [],
+                maxFileSizeMB: 100
+              }
+            },
+            profileId
+          );
+
+          return {
+            ok: true,
+            message: "Integration connected successfully",
+            integration: {
+              id: integration.id,
+              provider: integration.provider,
+              status: integration.status,
+              connected_at: integration.metadata?.['connected_at']
+            },
+            nextSteps: "User can now configure folder settings and initiate sync"
+          };
+        } catch (fetchError: unknown) {
+          request.log.error({ err: fetchError }, 'Token exchange error:');
+          reply.code(502);
+          return {
+            ok: false,
+            error: "token_exchange_failed",
+            message: fetchError instanceof Error ? fetchError.message : "Failed to communicate with OAuth provider"
+          };
+        }
       } catch (err) {
         request.log.error(err);
         reply.code(500);
@@ -399,8 +457,36 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
           return { ok: false, error: "integration_not_found" };
         }
         
-        // TODO: Revoke OAuth tokens with provider before deleting
-        // This would involve calling the provider's token revocation endpoint
+        // Revoke OAuth tokens with provider before deleting
+        const config = getOAuthConfig(existing.provider);
+        if (config && existing.accessTokenEncrypted) {
+          try {
+            const { decrypt } = await import("@in-midst-my-life/core");
+            const accessToken = decrypt<string>(existing.accessTokenEncrypted);
+            
+            // Attempt token revocation (best effort)
+            const revocationUrl = getRevokeTokenUrl(existing.provider);
+            if (revocationUrl) {
+              await fetch(revocationUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                  token: accessToken, // allow-secret
+                  client_id: config.clientId,
+                  client_secret: config.clientSecret // allow-secret
+                })
+              }).catch((err: unknown) => {
+                // Log but don't fail deletion if revocation fails
+                request.log.warn({ err }, 'Token revocation failed');
+              });
+            }
+          } catch (decryptError: unknown) {
+            // Log but continue with deletion even if decryption/revocation fails
+            request.log.warn({ err: decryptError }, 'Token decryption/revocation error');
+          }
+        }
 
         const deleted = await artifactService.deleteIntegration(
           integrationId,
@@ -498,17 +584,125 @@ export async function registerIntegrationRoutes(fastify: FastifyInstance) {
           return { ok: false, error: "integration_not_found" };
         }
 
-        // TODO: Use refresh token to get new access token
-        // This would involve:
-        // 1. Decrypt refresh_token_encrypted
-        // 2. Call provider's token endpoint with refresh_token
-        // 3. Receive new access_token (and optionally new refresh_token)
-        // 4. Encrypt and update integration record
+        // Check if refresh token exists
+        if (!integration.refreshTokenEncrypted) {
+          reply.code(400);
+          return {
+            ok: false,
+            error: "no_refresh_token",
+            message: "Integration does not have a refresh token. User must reconnect."
+          };
+        }
 
-        return {
-          ok: true,
-          message: "Token refresh stub - full implementation in Phase 5+"
-        };
+        const config = getOAuthConfig(integration.provider);
+        if (!config) {
+          reply.code(500);
+          return {
+            ok: false,
+            error: "provider_config_missing",
+            message: "OAuth configuration not available for this provider"
+          };
+        }
+
+        try {
+          // Decrypt refresh token
+          const { decrypt, encrypt } = await import("@in-midst-my-life/core");
+          const refreshToken = decrypt<string>(integration.refreshTokenEncrypted);
+
+          // Request new access token
+          const tokenResponse = await fetch(config.tokenUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json'
+            },
+            body: new URLSearchParams({
+              grant_type: 'refresh_token',
+              refresh_token: refreshToken,
+              client_id: config.clientId,
+              client_secret: config.clientSecret // allow-secret
+            })
+          });
+
+          if (!tokenResponse.ok) {
+            const errorData = await tokenResponse.json().catch(() => ({}));
+            
+            // If refresh token is invalid/expired, mark integration as expired
+            if (errorData.error === 'invalid_grant' || tokenResponse.status === 401) {
+              await artifactService.updateIntegration(integrationId, profileId, {
+                status: 'expired',
+                metadata: {
+                  ...integration.metadata,
+                  refresh_failed_at: new Date().toISOString(),
+                  refresh_error: 'invalid_grant'
+                }
+              });
+
+              reply.code(401);
+              return {
+                ok: false,
+                error: "refresh_token_expired",
+                message: "Refresh token is expired or invalid. User must reconnect."
+              };
+            }
+
+            reply.code(502);
+            return {
+              ok: false,
+              error: "refresh_failed",
+              message: `Token refresh failed: ${errorData.error || tokenResponse.statusText}`
+            };
+          }
+
+          const tokens = await tokenResponse.json();
+          const { access_token, refresh_token: new_refresh_token, expires_in } = tokens;
+
+          if (!access_token) {
+            reply.code(502);
+            return {
+              ok: false,
+              error: "invalid_token_response",
+              message: "Provider did not return an access token"
+            };
+          }
+
+          // Encrypt new tokens
+          const accessTokenEncrypted = encrypt(access_token);
+          const refreshTokenEncrypted = new_refresh_token 
+            ? encrypt(new_refresh_token)
+            : integration.refreshTokenEncrypted; // Keep old refresh token if not rotated
+
+          // Calculate new expiration
+          const tokenExpiresAt = expires_in
+            ? new Date(Date.now() + expires_in * 1000).toISOString()
+            : undefined;
+
+          // Update integration with new tokens
+          await artifactService.updateIntegration(integrationId, profileId, {
+            accessTokenEncrypted,
+            refreshTokenEncrypted,
+            tokenExpiresAt,
+            status: 'active',
+            metadata: {
+              ...integration.metadata,
+              last_token_refresh: new Date().toISOString()
+            }
+          });
+
+          return {
+            ok: true,
+            message: "Access token refreshed successfully",
+            expiresAt: tokenExpiresAt
+          };
+        } catch (fetchError: unknown) {
+          request.log.error({ err: fetchError }, 'Token refresh error');
+          reply.code(502);
+          return {
+            ok: false,
+            error: "refresh_request_failed",
+            message: fetchError instanceof Error ? fetchError.message : "Failed to communicate with OAuth provider"
+          };
+        }
       } catch (err) {
         request.log.error(err);
         reply.code(500);
@@ -546,5 +740,24 @@ function getOAuthScopes(provider: string): string[] {
 
     default:
       return [];
+  }
+}
+
+/**
+ * Get OAuth token revocation URL for a provider.
+ *
+ * @param provider Cloud storage provider name
+ * @returns Revocation URL or null if not supported
+ */
+function getRevokeTokenUrl(provider: string): string | null {
+  switch (provider) {
+    case "google_drive":
+      return "https://oauth2.googleapis.com/revoke";
+
+    case "dropbox":
+      return "https://api.dropboxapi.com/2/auth/token/revoke";
+
+    default:
+      return null;
   }
 }

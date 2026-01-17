@@ -1,18 +1,46 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { BillingService } from '../src/billing/billing-service';
+
+// Mock Stripe SDK before importing BillingService
+vi.mock('stripe', () => {
+  const mockCheckoutSessions = {
+    create: vi.fn().mockResolvedValue({
+      id: 'cs_test_mock_' + Math.random().toString(36).slice(2),
+      url: 'https://checkout.stripe.com/pay/cs_test_mock',
+      customer: 'cus_test_mock_' + Math.random().toString(36).slice(2),
+    }),
+  };
+
+  const mockWebhooks = {
+    constructEvent: vi.fn((body: string, signature: string, secret: string) => { // allow-secret
+      const payload = JSON.parse(body);
+      return payload;
+    }),
+  };
+
+  return {
+    default: class MockStripe {
+      checkout = { sessions: mockCheckoutSessions };
+      webhooks = mockWebhooks;
+      constructor(apiKey: string, config?: any) {} // allow-secret
+    },
+  };
+});
 
 describe('BillingService', () => {
   let service: BillingService;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     service = new BillingService({
-      stripeSecretKey: 'sk_test_mock',
+      stripeSecretKey: 'sk_test_mock', // allow-secret
       stripePriceIds: {
         FREE: { monthly: 'free', yearly: 'free' },
         PRO: { monthly: 'price_pro_monthly', yearly: 'price_pro_yearly' },
         ENTERPRISE: { monthly: 'price_ent_monthly', yearly: 'price_ent_yearly' },
       },
-      webhookSecret: 'whsec_test',
+      webhookSecret: 'whsec_test', // allow-secret
     });
   });
 
