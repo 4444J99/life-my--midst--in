@@ -3,9 +3,14 @@
 > **Theatrical Identity Operating System**: A blockchain-inspired CV system with mask-based professional identity, autonomous job search, and philosophical depth
 
 [![Implementation Status](https://img.shields.io/badge/implementation-90%25-blue)]()
-[![Commercialization Status](https://img.shields.io/badge/commercialization-0%25-orange)]()
-[![Unified Roadmap](https://img.shields.io/badge/roadmap-140%20EU-brightgreen)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Architecture](https://img.shields.io/badge/architecture-hexagonal-purple)]()
+
+### Deploy Your Own Instance
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/4444J99/life-my--midst--in)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/4444J99/life-my--midst--in)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/4444J99/life-my--midst--in)
 
 ---
 
@@ -751,7 +756,15 @@ git reset --hard origin/main
 
 ## 📝 License
 
-To be determined during Phase 3 (portfolio phase).
+MIT License - see [LICENSE](LICENSE) for details.
+
+This is free and open source software. You can:
+- Use it commercially
+- Modify and distribute
+- Use privately
+- Sublicense
+
+See the [LICENSE](LICENSE) file for the full text.
 
 ---
 

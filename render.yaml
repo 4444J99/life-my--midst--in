@@ -1,0 +1,79 @@
+# Render Blueprint for in-midst-my-life
+# One-click deploy: https://render.com/deploy
+
+services:
+  # Next.js Web Application
+  - type: web
+    name: inmidst-web
+    runtime: node
+    plan: free
+    buildCommand: pnpm install && pnpm --filter @in-midst-my-life/web build
+    startCommand: pnpm --filter @in-midst-my-life/web start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: inmidst-api
+          property: host
+      - key: DATABASE_URL
+        fromDatabase:
+          name: inmidst-db
+          property: connectionString
+
+  # Fastify API
+  - type: web
+    name: inmidst-api
+    runtime: node
+    plan: free
+    buildCommand: pnpm install && pnpm --filter @in-midst-my-life/api build
+    startCommand: pnpm --filter @in-midst-my-life/api start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: inmidst-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: inmidst-redis
+          property: connectionString
+
+  # Orchestrator Worker
+  - type: worker
+    name: inmidst-orchestrator
+    runtime: node
+    plan: free
+    buildCommand: pnpm install && pnpm --filter @in-midst-my-life/orchestrator build
+    startCommand: pnpm --filter @in-midst-my-life/orchestrator start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: inmidst-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: inmidst-redis
+          property: connectionString
+
+databases:
+  - name: inmidst-db
+    plan: free
+    databaseName: midst
+    user: midst
+
+services:
+  - type: redis
+    name: inmidst-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
