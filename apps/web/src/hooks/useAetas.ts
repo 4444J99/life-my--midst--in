@@ -36,7 +36,7 @@ export function useAetas(profileId: string | null): UseAetasReturn {
   const [canonicalAetas, setCanonicalAetas] = useState<Aetas[]>([]);
   const [profileAetas, setProfileAetas] = useState<Aetas[]>([]);
   const [currentAetasId, setCurrentAetasId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);  // Start loading since we auto-fetch
   const [error, setError] = useState<string | null>(null);
 
   const fetchAetas = useCallback(async () => {
@@ -57,13 +57,18 @@ export function useAetas(profileId: string | null): UseAetasReturn {
       const profileData = await profileRes.json();
 
       setCanonicalAetas(canonicalData.aetas ?? []);
-      setProfileAetas(profileData.aetas ?? []);
+      // Handle both response formats: { profileAetas: [...] } or { aetas: [...] }
+      const pAetas = profileData.profileAetas ?? profileData.aetas ?? [];
+      setProfileAetas(pAetas);
 
-      // Determine current aetas
-      const current = profileData.current_aetas;
-      if (current) {
-        const currentAeta = (profileData.aetas ?? []).find((a: Aetas) => a.name === current);
-        setCurrentAetasId(currentAeta?.id ?? null);
+      // Determine current aetas - find the one WITHOUT endDate
+      const currentAeta = pAetas.find((a: any) => !a.endDate);
+      if (currentAeta) {
+        setCurrentAetasId(currentAeta.id ?? currentAeta.aetasId ?? null);
+      } else if (profileData.current_aetas) {
+        // Fallback to explicit current_aetas field
+        const found = pAetas.find((a: Aetas) => a.name === profileData.current_aetas);
+        setCurrentAetasId(found?.id ?? null);
       }
     } catch (err) {
       setError((err as Error).message);
@@ -153,11 +158,20 @@ export function useAetas(profileId: string | null): UseAetasReturn {
     addAetas: addProfileAetas,
     updateAetas: updateProfileAetas,
     deleteAetas: deleteProfileAetas,
-    completedAetasIds: profileAetas.filter((a) => a.id === currentAetasId).map((a) => a.id),
+    // Completed aetas are those WITH an endDate (finished stages)
+    completedAetasIds: profileAetas.filter((a: any) => a.endDate !== undefined).map((a) => a.id ?? a.aetasId),
     getAetasDuration: (id: string) => {
       const aeta = canonicalAetas.find((a) => a.id === id);
+      // Handle both duration_years and duration_months fields
+      const years = (aeta as any)?.duration_years;
+      if (years !== undefined) return years;
       return (aeta?.duration_months ?? 0) / 12;
     },
-    getCurrentAetas: () => currentAetasId,
+    // Return the actual Aetas object, not just the ID
+    getCurrentAetas: () => {
+      if (!currentAetasId) return null;
+      const current = canonicalAetas.find((a) => a.id === currentAetasId);
+      return current ?? null;
+    },
   };
 }

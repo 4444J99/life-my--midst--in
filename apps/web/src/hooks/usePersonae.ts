@@ -16,6 +16,7 @@ interface PersonaWithResonance extends TabulaPersonarumEntry {
 
 interface UsePersonaeReturn {
   personas: PersonaWithResonance[];
+  resonances: PersonaResonance[];
   selectedPersonaId: string | null;
   loading: boolean;
   error: string | null;
@@ -29,13 +30,21 @@ interface UsePersonaeReturn {
   ) => Promise<TabulaPersonarumEntry | null>;
   deletePersona: (id: string) => Promise<boolean>;
   refetch: () => Promise<void>;
+  getSelectedPersona: () => PersonaWithResonance | undefined;
+  getPersonaResonances: (personaId: string) => PersonaResonance[];
 }
 
 const apiBase = process.env['NEXT_PUBLIC_API_BASE_URL'] || 'http://localhost:3001';
 
-export function usePersonae(profileId: string | null): UsePersonaeReturn {
+export function usePersonae(
+  profileId: string | null,
+  initialSelectedPersonaId?: string,
+): UsePersonaeReturn {
   const [personas, setPersonas] = useState<PersonaWithResonance[]>([]);
-  const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
+  const [resonances, setResonances] = useState<PersonaResonance[]>([]);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(
+    initialSelectedPersonaId ?? null,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,23 +57,41 @@ export function usePersonae(profileId: string | null): UsePersonaeReturn {
       if (!res.ok) throw new Error('Failed to fetch personas');
 
       const data = await res.json();
-      const personaeList = data.data?.personas ?? [];
-      setPersonas(personaeList);
+      const personaeList = data.data?.personas ?? data.personas ?? [];
+
+      // Filter out inactive personas
+      const activePersonae = personaeList.filter((p: PersonaWithResonance) => p.active !== false);
+      setPersonas(activePersonae);
 
       // Auto-select first persona if none selected
-      if (personaeList.length > 0 && !selectedPersonaId) {
-        setSelectedPersonaId(personaeList[0]?.id ?? null);
+      if (activePersonae.length > 0 && !selectedPersonaId && !initialSelectedPersonaId) {
+        setSelectedPersonaId(activePersonae[0]?.id ?? null);
       }
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [profileId, selectedPersonaId]);
+  }, [profileId, selectedPersonaId, initialSelectedPersonaId]);
+
+  const fetchResonances = useCallback(async () => {
+    if (!profileId) return;
+    try {
+      const res = await fetch(`${apiBase}/profiles/${profileId}/resonances`);
+      if (!res.ok) throw new Error('Failed to fetch resonances');
+
+      const data = await res.json();
+      const resonancesList = data.data?.resonances ?? data.resonances ?? [];
+      setResonances(resonancesList);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }, [profileId]);
 
   useEffect(() => {
     void fetchPersonae();
-  }, [fetchPersonae]);
+    void fetchResonances();
+  }, [fetchPersonae, fetchResonances]);
 
   const addPersona = useCallback(
     async (persona: Omit<TabulaPersonarumEntry, 'id' | 'created_at' | 'updated_at'>) => {
@@ -79,7 +106,8 @@ export function usePersonae(profileId: string | null): UsePersonaeReturn {
 
         const data = await res.json();
         void fetchPersonae();
-        return data.data ?? null;
+        // Handle both wrapped (data.data) and direct responses
+        return (data.data ?? data) ?? null;
       } catch (err) {
         setError((err as Error).message);
         return null;
@@ -101,7 +129,8 @@ export function usePersonae(profileId: string | null): UsePersonaeReturn {
 
         const data = await res.json();
         void fetchPersonae();
-        return data.data ?? null;
+        // Handle both wrapped (data.data) and direct responses
+        return (data.data ?? data) ?? null;
       } catch (err) {
         setError((err as Error).message);
         return null;
@@ -128,8 +157,20 @@ export function usePersonae(profileId: string | null): UsePersonaeReturn {
     [profileId, fetchPersonae],
   );
 
+  const getSelectedPersona = useCallback((): PersonaWithResonance | undefined => {
+    return personas.find((p) => p.id === selectedPersonaId);
+  }, [personas, selectedPersonaId]);
+
+  const getPersonaResonances = useCallback(
+    (personaId: string): PersonaResonance[] => {
+      return resonances.filter((r) => r.persona_id === personaId);
+    },
+    [resonances],
+  );
+
   return {
     personas,
+    resonances,
     selectedPersonaId,
     loading,
     error,
@@ -138,5 +179,7 @@ export function usePersonae(profileId: string | null): UsePersonaeReturn {
     updatePersona,
     deletePersona,
     refetch: fetchPersonae,
+    getSelectedPersona,
+    getPersonaResonances,
   };
 }

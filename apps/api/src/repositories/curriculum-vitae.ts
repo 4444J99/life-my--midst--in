@@ -160,10 +160,10 @@ class InMemoryCVMultiplexRepo implements CVMultiplexRepo {
   ): Promise<{ data: CVEntry[]; total: number }> {
     let entries = (await this.get(profileId))?.entries ?? [];
 
-    // Apply personae filters
+    // Apply personae filters (require dimension exists AND matches for include)
     if (filter.includePersonae && filter.includePersonae.length > 0) {
       entries = entries.filter(
-        (e) => !e.personae || e.personae.length === 0 || e.personae.some((p) => filter.includePersonae!.includes(p))
+        (e) => e.personae && e.personae.length > 0 && e.personae.some((p) => filter.includePersonae!.includes(p))
       );
     }
     if (filter.excludePersonae && filter.excludePersonae.length > 0) {
@@ -175,7 +175,7 @@ class InMemoryCVMultiplexRepo implements CVMultiplexRepo {
     // Apply aetas filters
     if (filter.includeAetas && filter.includeAetas.length > 0) {
       entries = entries.filter(
-        (e) => !e.aetas || e.aetas.length === 0 || e.aetas.some((a) => filter.includeAetas!.includes(a))
+        (e) => e.aetas && e.aetas.length > 0 && e.aetas.some((a) => filter.includeAetas!.includes(a))
       );
     }
     if (filter.excludeAetas && filter.excludeAetas.length > 0) {
@@ -185,7 +185,7 @@ class InMemoryCVMultiplexRepo implements CVMultiplexRepo {
     // Apply scaenae filters
     if (filter.includeScaenae && filter.includeScaenae.length > 0) {
       entries = entries.filter(
-        (e) => !e.scaenae || e.scaenae.length === 0 || e.scaenae.some((s) => filter.includeScaenae!.includes(s))
+        (e) => e.scaenae && e.scaenae.length > 0 && e.scaenae.some((s) => filter.includeScaenae!.includes(s))
       );
     }
     if (filter.excludeScaenae && filter.excludeScaenae.length > 0) {
@@ -195,7 +195,7 @@ class InMemoryCVMultiplexRepo implements CVMultiplexRepo {
     // Apply tag filters
     if (filter.includeTags && filter.includeTags.length > 0) {
       entries = entries.filter(
-        (e) => !e.tags || e.tags.length === 0 || e.tags.some((t) => filter.includeTags!.includes(t))
+        (e) => e.tags && e.tags.length > 0 && e.tags.some((t) => filter.includeTags!.includes(t))
       );
     }
     if (filter.excludeTags && filter.excludeTags.length > 0) {
@@ -511,8 +511,9 @@ class PostgresCVMultiplexRepo implements CVMultiplexRepo {
     const params: any[] = [profileId];
     let paramIndex = 2;
 
+    // For include filters, require dimension exists AND matches (for AND logic)
     if (filter.includePersonae && filter.includePersonae.length > 0) {
-      query += ` AND (personae IS NULL OR personae = '{}' OR personae && $${paramIndex}::text[])`;
+      query += ` AND personae IS NOT NULL AND personae != '{}' AND personae && $${paramIndex}::text[]`;
       params.push(filter.includePersonae);
       paramIndex++;
     }
@@ -524,7 +525,7 @@ class PostgresCVMultiplexRepo implements CVMultiplexRepo {
     }
 
     if (filter.includeAetas && filter.includeAetas.length > 0) {
-      query += ` AND (aetas IS NULL OR aetas = '{}' OR aetas && $${paramIndex}::text[])`;
+      query += ` AND aetas IS NOT NULL AND aetas != '{}' AND aetas && $${paramIndex}::text[]`;
       params.push(filter.includeAetas);
       paramIndex++;
     }
@@ -536,7 +537,7 @@ class PostgresCVMultiplexRepo implements CVMultiplexRepo {
     }
 
     if (filter.includeScaenae && filter.includeScaenae.length > 0) {
-      query += ` AND (scaenae IS NULL OR scaenae = '{}' OR scaenae && $${paramIndex}::text[])`;
+      query += ` AND scaenae IS NOT NULL AND scaenae != '{}' AND scaenae && $${paramIndex}::text[]`;
       params.push(filter.includeScaenae);
       paramIndex++;
     }
@@ -548,7 +549,7 @@ class PostgresCVMultiplexRepo implements CVMultiplexRepo {
     }
 
     if (filter.includeTags && filter.includeTags.length > 0) {
-      query += ` AND (tags IS NULL OR tags = '{}' OR tags && $${paramIndex}::text[])`;
+      query += ` AND tags IS NOT NULL AND tags != '{}' AND tags && $${paramIndex}::text[]`;
       params.push(filter.includeTags);
       paramIndex++;
     }

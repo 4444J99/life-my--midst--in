@@ -21,10 +21,10 @@ export class MockJobSearchProvider implements JobSearchService {
       id: "job-1",
       title: "Senior Software Engineer",
       company: "TechCorp",
-      location: "San Francisco, CA",
-      remote: "hybrid",
+      location: "Remote",
+      remote: "fully",
       description:
-        "Join our growing engineering team. We build scalable systems serving millions of users.",
+        "Join our growing engineering team. We build scalable systems serving millions of users. TypeScript and Node.js experience required.",
       requirements:
         "5+ years TypeScript, React, Node.js. Experience with microservices. Strong system design.",
       salary_min: 180000,
@@ -41,11 +41,11 @@ export class MockJobSearchProvider implements JobSearchService {
       id: "job-2",
       title: "Frontend Engineer",
       company: "DesignStudio",
-      location: "New York, NY",
+      location: "Remote",
       remote: "fully",
       description:
-        "Help us build beautiful user interfaces. Design-focused engineering role.",
-      requirements: "3+ years React, CSS, Figma collaboration. Strong design sense.",
+        "Help us build beautiful user interfaces. Design-focused engineering role. TypeScript and React expertise needed.",
+      requirements: "3+ years React, TypeScript, CSS. Strong design sense.",
       salary_min: 140000,
       salary_max: 180000,
       currency: "USD",

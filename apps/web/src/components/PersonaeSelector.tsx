@@ -320,3 +320,5 @@ export function PersonaeSelector({
     </div>
   );
 }
+
+export default PersonaeSelector;

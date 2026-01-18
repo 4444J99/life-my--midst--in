@@ -184,13 +184,15 @@ describe('useAetas', () => {
 
   it('provides function to update aetas', async () => {
     (global.fetch as any).mockImplementation((url: string, options: any) => {
-      if (url.includes('/profiles/profile-1/aetas/aetas-1') && options.method === 'PATCH') {
+      if (url.includes('/profiles/profile-1/aetas/aetas-1') && options?.method === 'PATCH') {
         return Promise.resolve({
           ok: true,
           json: async () => ({
-            id: 'aetas-1',
-            startDate: new Date('2020-01-01'),
-            endDate: new Date('2024-06-01'),
+            aetas: {
+              id: 'aetas-1',
+              startDate: new Date('2020-01-01'),
+              endDate: new Date('2024-06-01'),
+            },
           }),
         });
       }

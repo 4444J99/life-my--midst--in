@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { usePersonae } from '../usePersonae';
 import type { TabulaPersonarumEntry, PersonaResonance } from '@in-midst-my-life/schema';
 
@@ -198,7 +198,9 @@ describe('usePersonae', () => {
 
     expect(result.current.selectedPersonaId).toBe('persona-1');
 
-    result.current.selectPersona('persona-2');
+    act(() => {
+      result.current.selectPersona('persona-2');
+    });
 
     expect(result.current.selectedPersonaId).toBe('persona-2');
   });

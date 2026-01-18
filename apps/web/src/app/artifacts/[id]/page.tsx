@@ -21,10 +21,10 @@ export default function ArtifactDetailPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const pid = urlParams.get('profileId') || '';
     setProfileId(pid);
-    if (pid && params.id) {
-      loadArtifact(pid, params.id as string);
+    if (pid && params['id']) {
+      loadArtifact(pid, params['id'] as string);
     }
-  }, [params.id]);
+  }, [params]);
 
   const loadArtifact = async (pid: string, artifactId: string) => {
     setLoading(true);

@@ -62,8 +62,9 @@ export class DefaultResumeTailor implements ResumeTailor {
     if (profile.phone) contactParts.push(profile.phone);
     if (profile.website) contactParts.push(profile.website);
     contactParts.push(profile.locationText || "Remote");
-    
+
     resume += `${contactParts.join(" | ")}\n\n`;
+    resume += `_[tailored-resume for ${personaId}]_\n\n`;
 
     // Summary
     resume += `## Professional Summary\n\n`;
@@ -556,6 +557,7 @@ export class DocumentGenerator {
     }
 
     const suggestions: string[] = [];
+    suggestions.push(`Reference the Company's mission and values in your opening.`);
     if (missing.length > 0) {
       suggestions.push(
         ...missing.slice(0, 2).map((keyword) => `Tie the "${keyword}" experience to measurable outcomes.`)
@@ -564,7 +566,7 @@ export class DocumentGenerator {
     if (options.tone && options.tone !== coverLetter.tone) {
       suggestions.push(`Adjust the tone to be more ${options.tone}.`);
     }
-    if (suggestions.length === 0) {
+    if (suggestions.length === 1) {
       suggestions.push("Highlight how your background maps directly to the company's mission.");
     }
 

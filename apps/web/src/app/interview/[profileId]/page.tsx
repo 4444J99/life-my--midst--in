@@ -19,7 +19,7 @@ interface Answer {
 
 export default function InterviewPage() {
   const params = useParams();
-  const profileId = params.profileId as string;
+  const profileId = params['profileId'] as string;
 
   const [stage, setStage] = useState<'intro' | 'interview' | 'results'>('intro');
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);

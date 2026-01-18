@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function DELETE(request: NextRequest, { params }: { params: { profileId: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: { profileId: string } }) {
   const { profileId } = params;
   const orchestratorUrl = process.env['ORCHESTRATOR_URL'] || 'http://localhost:3002';
 

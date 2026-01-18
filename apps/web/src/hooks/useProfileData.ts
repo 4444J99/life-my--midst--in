@@ -25,10 +25,13 @@ interface CVFilter {
 }
 
 interface CVData {
+  id?: string;
+  profileId?: string;
+  version?: number;
   entries: CVEntry[];
-  total: number;
-  offset: number;
-  limit: number;
+  total?: number;
+  offset?: number;
+  limit?: number;
 }
 
 interface UseProfileDataReturn {
@@ -48,7 +51,7 @@ const apiBase = process.env['NEXT_PUBLIC_API_BASE_URL'] || 'http://localhost:300
 export function useProfileData(profileId: string | null): UseProfileDataReturn {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [cv, setCV] = useState<CVData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);  // Start with loading=true since we auto-fetch on mount
   const [error, setError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
@@ -68,13 +71,22 @@ export function useProfileData(profileId: string | null): UseProfileDataReturn {
       const profileData = await profileRes.json();
       const cvData = await cvRes.json();
 
-      setProfile(profileData.data ?? null);
-      setCV({
-        entries: cvData.data?.entries ?? [],
-        total: cvData.total ?? 0,
-        offset: cvData.offset ?? 0,
-        limit: cvData.limit ?? 50,
-      });
+      // Handle both { profile: ... } and { data: ... } response formats
+      setProfile(profileData.profile ?? profileData.data ?? null);
+      // Handle both direct CV response and nested { data: ... } format
+      // Preserve exact response shape when possible
+      const rawCv = cvData.data ?? cvData;
+      // Only add pagination fields if they exist in the response
+      const cvResult: CVData = {
+        entries: rawCv.entries ?? [],
+      };
+      if (rawCv.id !== undefined) cvResult.id = rawCv.id;
+      if (rawCv.profileId !== undefined) cvResult.profileId = rawCv.profileId;
+      if (rawCv.version !== undefined) cvResult.version = rawCv.version;
+      if (rawCv.total !== undefined) cvResult.total = rawCv.total;
+      if (rawCv.offset !== undefined) cvResult.offset = rawCv.offset;
+      if (rawCv.limit !== undefined) cvResult.limit = rawCv.limit;
+      setCV(cvResult);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -91,34 +103,21 @@ export function useProfileData(profileId: string | null): UseProfileDataReturn {
       if (!profileId) return;
       setLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (filter.includePersonae)
-          params.append('includePersonae', JSON.stringify(filter.includePersonae));
-        if (filter.excludePersonae)
-          params.append('excludePersonae', JSON.stringify(filter.excludePersonae));
-        if (filter.includeAetas) params.append('includeAetas', JSON.stringify(filter.includeAetas));
-        if (filter.excludeAetas) params.append('excludeAetas', JSON.stringify(filter.excludeAetas));
-        if (filter.includeScaenae)
-          params.append('includeScaenae', JSON.stringify(filter.includeScaenae));
-        if (filter.excludeScaenae)
-          params.append('excludeScaenae', JSON.stringify(filter.excludeScaenae));
-        if (filter.minPriority !== undefined)
-          params.append('minPriority', filter.minPriority.toString());
-        if (filter.includeTags) params.append('includeTags', JSON.stringify(filter.includeTags));
-        if (filter.excludeTags) params.append('excludeTags', JSON.stringify(filter.excludeTags));
-        params.append('offset', (filter.offset ?? 0).toString());
-        params.append('limit', (filter.limit ?? 50).toString());
-
-        const res = await fetch(`${apiBase}/profiles/${profileId}/cv/entries?${params.toString()}`);
+        // Use POST to /filter endpoint with filter as body
+        const res = await fetch(`${apiBase}/profiles/${profileId}/cv/filter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(filter),
+        });
         if (!res.ok) throw new Error('Failed to filter entries');
 
         const data = await res.json();
-        setCV({
-          entries: data.data ?? [],
-          total: data.total ?? 0,
-          offset: data.offset ?? 0,
-          limit: data.limit ?? 50,
-        });
+        const entries = data.data ?? data.entries ?? [];
+        setCV((prev) => ({
+          ...prev,
+          entries,
+          total: data.total ?? entries.length,
+        }));
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -141,7 +140,11 @@ export function useProfileData(profileId: string | null): UseProfileDataReturn {
 
         const data = await res.json();
         void fetchProfile();
-        return data.data ?? null;
+        // Handle both { data: entry } and direct entry response formats
+        // Check for entry-specific fields to distinguish from CV object
+        if (data.data) return data.data;
+        if (data.type !== undefined) return data;  // It's an entry, has type field
+        return null;
       } catch (err) {
         setError((err as Error).message);
         return null;
@@ -163,7 +166,9 @@ export function useProfileData(profileId: string | null): UseProfileDataReturn {
 
         const data = await res.json();
         void fetchProfile();
-        return data.data ?? null;
+        // Handle both { data: entry } and direct entry response formats
+        const result = data.data ?? (data.id ? data : null);
+        return result;
       } catch (err) {
         setError((err as Error).message);
         return null;

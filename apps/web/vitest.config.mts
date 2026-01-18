@@ -7,5 +7,11 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./test/setup.ts'],
+    // Exclude e2e and accessibility tests - they require Playwright
+    exclude: [
+      '**/node_modules/**',
+      '__tests__/e2e/**',
+      '__tests__/accessibility/**',
+    ],
   },
 });

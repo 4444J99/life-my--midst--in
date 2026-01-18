@@ -3,21 +3,25 @@ import { createProfileRepo } from '../src/repositories/profiles';
 import { createMaskRepo } from '../src/repositories/masks';
 import { createCvRepos } from '../src/repositories/cv';
 import { createBackupRepo } from '../src/repositories/backups';
+import { createJobRepo } from '../src/repositories/jobs';
 import { InMemorySubscriptionRepo } from '../src/repositories/subscriptions';
 import { InMemoryRateLimitStore } from '../src/repositories/rate-limits';
 import { BillingService, LicensingService, type RateLimitStore } from '@in-midst-my-life/core';
 import { getPermissionsForRole, UserRole } from '../src/services/auth';
 import type { ProfileRepo } from '../src/repositories/profiles';
+import type { JobRepo } from '../src/repositories/jobs';
 import type { SubscriptionRepo } from '../src/repositories/subscriptions';
 
 export interface TestAppOptions {
   profileRepo?: ProfileRepo;
+  jobRepo?: JobRepo;
   subscriptionRepo?: SubscriptionRepo;
   rateLimitStore?: RateLimitStore;
 }
 
 export async function buildTestApp(deps: TestAppOptions = {}) {
   const profileRepo = deps.profileRepo ?? createProfileRepo({ kind: 'memory' });
+  const jobRepo = deps.jobRepo ?? createJobRepo({ kind: 'memory' });
   const maskRepoSet = createMaskRepo({ kind: 'memory' });
   const cvRepos = createCvRepos({ kind: 'memory' });
   const backupRepo = createBackupRepo({ kind: 'memory' });
@@ -44,6 +48,7 @@ export async function buildTestApp(deps: TestAppOptions = {}) {
 
   const app = buildServer({
     profileRepo,
+    jobRepo,
     maskRepo: maskRepoSet.masks,
     epochRepo: maskRepoSet.epochs,
     stageRepo: maskRepoSet.stages,

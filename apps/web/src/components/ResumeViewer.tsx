@@ -412,3 +412,5 @@ export function ResumeViewer({
     </div>
   );
 }
+
+export default ResumeViewer;

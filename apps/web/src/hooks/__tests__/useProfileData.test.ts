@@ -124,20 +124,14 @@ describe('useProfileData', () => {
   });
 
   it('provides addEntry function to create new CV entries', async () => {
-    (global.fetch as any).mockImplementation((url: string) => {
-      if (url.includes('/profiles/profile-1') && !url.includes('/cv')) {
+    (global.fetch as any).mockImplementation((url: string, options: any) => {
+      if (url.includes('/profiles/profile-1') && !url.includes('/cv') && !options?.method) {
         return Promise.resolve({
           ok: true,
           json: async () => ({ profile: mockProfile }),
         });
       }
-      if (url.includes('/profiles/profile-1/cv')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => mockCVData,
-        });
-      }
-      if (url.includes('POST') && url.includes('/entries')) {
+      if (url.includes('/profiles/profile-1/cv') && options?.method === 'POST') {
         return Promise.resolve({
           ok: true,
           json: async () => ({
@@ -145,6 +139,12 @@ describe('useProfileData', () => {
             type: 'experience',
             content: 'New entry',
           }),
+        });
+      }
+      if (url.includes('/profiles/profile-1/cv')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockCVData,
         });
       }
       return Promise.reject(new Error('Unknown URL'));
@@ -166,20 +166,14 @@ describe('useProfileData', () => {
   });
 
   it('provides updateEntry function to modify existing entries', async () => {
-    (global.fetch as any).mockImplementation((url: string) => {
-      if (url.includes('/profiles/profile-1') && !url.includes('/cv')) {
+    (global.fetch as any).mockImplementation((url: string, options: any) => {
+      if (url.includes('/profiles/profile-1') && !url.includes('/cv') && !options?.method) {
         return Promise.resolve({
           ok: true,
           json: async () => ({ profile: mockProfile }),
         });
       }
-      if (url.includes('/profiles/profile-1/cv')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => mockCVData,
-        });
-      }
-      if (url.includes('PATCH') && url.includes('/entries/entry-1')) {
+      if (url.includes('/profiles/profile-1/cv/entries/entry-1') && options?.method === 'PATCH') {
         return Promise.resolve({
           ok: true,
           json: async () => ({
@@ -187,6 +181,12 @@ describe('useProfileData', () => {
             type: 'achievement',
             content: 'Updated entry',
           }),
+        });
+      }
+      if (url.includes('/profiles/profile-1/cv')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockCVData,
         });
       }
       return Promise.reject(new Error('Unknown URL'));

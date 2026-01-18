@@ -9,11 +9,17 @@ import {
   addBreadcrumbContext
 } from "../services/jsonld-export";
 import { generatePdfResume, generateMinimalPdfResume } from "../services/pdf-export";
+import type { ProfileRepo } from "../repositories/profiles";
+import type { CvRepos } from "../repositories/cv";
+import { profileRepo as defaultProfileRepo } from "../repositories/profiles";
+import { cvRepos as defaultCvRepos } from "../repositories/cv";
 
 interface ExportRouteDeps {
-  // Service dependencies (optional - for future DB integration)
-  profiles?: any;
-  masks?: any;
+  profileRepo?: ProfileRepo;
+  cvRepos?: CvRepos;
+  maskRepo?: any;
+  epochRepo?: any;
+  stageRepo?: any;
 }
 
 /**
@@ -39,7 +45,9 @@ const JsonLdExportRequestSchema = z.object({
     .describe("Optional breadcrumb navigation for SEO context")
 });
 
-export async function registerExportRoutes(fastify: FastifyInstance, _deps?: ExportRouteDeps) {
+export async function registerExportRoutes(fastify: FastifyInstance, deps?: ExportRouteDeps) {
+  const profileRepo = deps?.profileRepo ?? defaultProfileRepo;
+  const cvRepos = deps?.cvRepos ?? defaultCvRepos;
   /**
    * POST /export/json-ld
    *
@@ -76,7 +84,7 @@ export async function registerExportRoutes(fastify: FastifyInstance, _deps?: Exp
    * }
    * ```
    */
-  fastify.post("/json-ld", async (request, reply) => {
+  fastify.post("/export/json-ld", async (request, reply) => {
     const parsed = JsonLdExportRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({
@@ -140,61 +148,34 @@ export async function registerExportRoutes(fastify: FastifyInstance, _deps?: Exp
    * Retrieves a JSON-LD export of an existing profile by ID.
    * Integrates with PostgreSQL and Redis caching.
    */
-  fastify.get("/json-ld/:profileId", async (request, reply) => {
+  fastify.get("/:profileId/export/jsonld", async (request, reply) => {
     const { profileId } = request.params as { profileId: string };
 
     try {
-      // Check cache first
-      const cacheKey = `export:jsonld:${profileId}`;
-      const { getCache } = await import('../services/cache');
-      const cache = getCache();
-      const cached = cache?.get<string>(cacheKey);
-
-      if (cached) {
-        reply.header('X-Cache', 'HIT');
-        return reply.type('application/ld+json').send(cached);
-      }
-
-      // Fetch profile from database
-      const { getPool } = await import('../db');
-      const pool = getPool();
-      const profileResult = await pool.query(
-        'SELECT * FROM profiles WHERE id = $1 AND is_active = true',
-        [profileId]
-      );
-
-      if (profileResult.rows.length === 0) {
+      // Fetch profile from repository
+      const profile = await profileRepo.find(profileId);
+      if (!profile) {
         return reply.code(404).send({
           ok: false,
           error: "profile_not_found",
-          message: `Profile ${profileId} not found or inactive`
+          message: `Profile ${profileId} not found`
         });
       }
 
-      const profile = profileResult.rows[0];
-
       // Fetch related data
-      const [experiencesResult, educationsResult, skillsResult] = await Promise.all([
-        pool.query('SELECT * FROM experiences WHERE profile_id = $1 ORDER BY start_date DESC', [profileId]),
-        pool.query('SELECT * FROM educations WHERE profile_id = $1 ORDER BY start_date DESC', [profileId]),
-        pool.query('SELECT * FROM skills WHERE profile_id = $1', [profileId])
-      ]);
+      const experiences = await cvRepos.experiences.list(profileId, 0, 1000);
+      const educations = await cvRepos.educations.list(profileId, 0, 1000);
+      const skills = await cvRepos.skills.list(profileId, 0, 1000);
 
       // Generate JSON-LD
       const jsonLd = generateProfileJsonLd({
         profile,
-        experiences: experiencesResult.rows as any[],
-        educations: educationsResult.rows as any[],
-        skills: skillsResult.rows as any[]
+        experiences: experiences.data as any[],
+        educations: educations.data as any[],
+        skills: skills.data as any[]
       });
 
       const jsonLdString = JSON.stringify(jsonLd, null, 2);
-
-      // Cache for 5 minutes
-      if (cache) {
-        cache.set(cacheKey, jsonLdString, 300);
-      }
-
       reply.header('X-Cache', 'MISS');
       return reply.type('application/ld+json').send(jsonLdString);
     } catch (error: unknown) {
@@ -213,7 +194,7 @@ export async function registerExportRoutes(fastify: FastifyInstance, _deps?: Exp
    * Retrieves a masked JSON-LD export of a profile.
    * Integrates with PostgreSQL and Redis caching.
    */
-  fastify.get("/json-ld/:profileId/masked/:maskId", async (request, reply) => {
+  fastify.get("/:profileId/export/jsonld/masked/:maskId", async (request, reply) => {
     const { profileId, maskId } = request.params as { profileId: string; maskId: string };
 
     try {
@@ -297,7 +278,7 @@ export async function registerExportRoutes(fastify: FastifyInstance, _deps?: Exp
    * Generates a sitemap entry for a profile in JSON format.
    * Useful for SEO and search engine indexing.
    */
-  fastify.post("/sitemap-entry", async (request, reply) => {
+  fastify.post("/export/sitemap-entry", async (request, reply) => {
     const schema = z.object({
       url: z.string().url(),
       lastModified: z.string().datetime().optional(),
@@ -334,10 +315,60 @@ export async function registerExportRoutes(fastify: FastifyInstance, _deps?: Exp
   });
 
   /**
+   * GET /:profileId/export/pdf
+   * Generates a PDF résumé from a profile stored in database or in-memory repos.
+   */
+  fastify.get("/:profileId/export/pdf", async (request, reply) => {
+    const { profileId } = request.params as { profileId: string };
+    const { colorScheme, download } = request.query as { colorScheme?: string; download?: string };
+
+    try {
+      // Fetch profile from repository
+      const profile = await profileRepo.find(profileId);
+      if (!profile) {
+        return reply.code(404).send({
+          ok: false,
+          error: "profile_not_found",
+          message: `Profile ${profileId} not found`
+        });
+      }
+
+      // Fetch related data
+      const experiences = await cvRepos.experiences.list(profileId, 0, 1000);
+      const educations = await cvRepos.educations.list(profileId, 0, 1000);
+      const skills = await cvRepos.skills.list(profileId, 0, 1000);
+
+      // Generate PDF
+      const result = await generatePdfResume({
+        profile,
+        experiences: experiences.data as any[],
+        educations: educations.data as any[],
+        skills: skills.data as any[],
+        colorScheme: (colorScheme as "classic" | "modern" | "minimal") || "modern"
+      });
+
+      reply
+        .type(result.contentType)
+        .header(
+          "Content-Disposition",
+          download === "true" ? `attachment; filename="${result.filename}"` : `inline; filename="${result.filename}"`
+        )
+        .send(result.buffer);
+    } catch (error) {
+      request.log.error({ err: error }, 'PDF export error:');
+      return reply.code(500).send({
+        ok: false,
+        error: "pdf_export_failed",
+        message: error instanceof Error ? error.message : "Failed to generate PDF export"
+      });
+    }
+  });
+
+  /**
    * POST /export/pdf
    * Generates a PDF résumé from profile data with multiple color schemes.
    */
-  fastify.post("/pdf", async (request, reply) => {
+  fastify.post("/export/pdf", async (request, reply) => {
     const PdfExportRequestSchema = z.object({
       profile: z.record(z.unknown()),
       mask: z.record(z.unknown()).optional(),
@@ -393,12 +424,12 @@ export async function registerExportRoutes(fastify: FastifyInstance, _deps?: Exp
   });
 
   /**
-   * GET /export/vc/:profileId
+   * GET /:profileId/export/vc
    *
    * Exports a profile as a Verifiable Credential.
    * Integrates with PostgreSQL and Redis caching.
    */
-  fastify.get("/vc/:profileId", async (request, reply) => {
+  fastify.get("/:profileId/export/vc", async (request, reply) => {
     const { profileId } = request.params as { profileId: string };
     const { types, expiresIn } = request.query as { types?: string; expiresIn?: string };
 

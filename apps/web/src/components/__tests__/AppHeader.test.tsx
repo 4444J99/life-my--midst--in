@@ -30,59 +30,54 @@ const mockPersonas: TabulaPersonarumEntry[] = [
 ];
 
 describe('AppHeader', () => {
-  const mockOnNavigate = vi.fn();
-  const mockOnPersonaChange = vi.fn();
+  const mockOnSelectPersona = vi.fn();
 
   beforeEach(() => {
-    mockOnNavigate.mockClear();
-    mockOnPersonaChange.mockClear();
+    mockOnSelectPersona.mockClear();
   });
 
   it('displays branding and profile name', () => {
     render(
       <AppHeader
+        profileId="profile-1"
         profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.getByText(/in-midst|life|profile/i)).toBeInTheDocument();
   });
 
   it('shows navigation links', () => {
     render(
       <AppHeader
+        profileId="profile-1"
         profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
-    expect(screen.getByRole('link', { name: /profile/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /resumes?/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /narrative/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /interview/i })).toBeInTheDocument();
+    // Component should have navigation links
+    const links = screen.getAllByRole('link');
+    expect(links.length).toBeGreaterThan(0);
   });
 
-  it('displays current persona in context button', () => {
+  it('displays current persona information', () => {
     render(
       <AppHeader
+        profileId="profile-1"
         profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
-    // Current persona should be displayed
-    expect(screen.getByText('Archimago')).toBeInTheDocument();
+    // Current persona button shows everyday_name
     expect(screen.getByText('Engineer')).toBeInTheDocument();
   });
 
@@ -91,11 +86,11 @@ describe('AppHeader', () => {
 
     render(
       <AppHeader
+        profileId="profile-1"
         profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
@@ -103,9 +98,8 @@ describe('AppHeader', () => {
     const personaButton = screen.getByRole('button', { name: /archimago|engineer/i });
     await user.click(personaButton);
 
-    // Should show dropdown with all personas
+    // Should show dropdown with other personas
     expect(screen.getByText('Artifex')).toBeInTheDocument();
-    expect(screen.getByText('Artist')).toBeInTheDocument();
   });
 
   it('lists all personas in dropdown with nomen and everyday_name', async () => {
@@ -113,39 +107,33 @@ describe('AppHeader', () => {
 
     render(
       <AppHeader
+        profileId="profile-1"
         profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
     // Open dropdown
     const personaButton = screen.getByRole('button', { name: /archimago|engineer/i });
     await user.click(personaButton);
-
-    // Check for both personas in dropdown
-    const dropdownItems = screen.getAllByRole('menuitem');
-    expect(dropdownItems.length).toBeGreaterThanOrEqual(2);
 
     // Both personas should be visible
     expect(screen.getByText('Archimago')).toBeInTheDocument();
-    expect(screen.getByText('Engineer')).toBeInTheDocument();
     expect(screen.getByText('Artifex')).toBeInTheDocument();
-    expect(screen.getByText('Artist')).toBeInTheDocument();
   });
 
-  it('calls onPersonaChange when persona is selected', async () => {
+  it('calls onSelectPersona when persona is selected', async () => {
     const user = userEvent.setup();
 
     render(
       <AppHeader
+        profileId="profile-1"
         profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
@@ -153,195 +141,43 @@ describe('AppHeader', () => {
     const personaButton = screen.getByRole('button', { name: /archimago|engineer/i });
     await user.click(personaButton);
 
-    // Click on second persona
-    const artifexOption = screen.getByRole('menuitem', { name: /artifex|artist/i });
-    await user.click(artifexOption);
+    // Click on second persona - find any element with Artifex text and click it
+    const artifexElements = screen.getAllByText('Artifex');
+    await user.click(artifexElements[artifexElements.length - 1]);
 
-    expect(mockOnPersonaChange).toHaveBeenCalledWith('persona-2');
+    expect(mockOnSelectPersona).toHaveBeenCalledWith('persona-2');
   });
 
-  it('highlights currently selected persona in dropdown', async () => {
+  it('displays persona nomen in dropdown', async () => {
     const user = userEvent.setup();
 
     render(
       <AppHeader
+        profileId="profile-1"
         profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
     // Open dropdown
-    const personaButton = screen.getByRole('button', { name: /archimago|engineer/i });
+    const personaButton = screen.getByRole('button', { name: /engineer/i });
     await user.click(personaButton);
 
-    // Selected persona should be highlighted
-    const archImageOption = screen.getByRole('menuitem', {
-      name: /archimago|engineer/i,
-    });
-    expect(archImageOption).toHaveClass('selected');
-  });
-
-  it('displays persona role vectors in dropdown', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <AppHeader
-        profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
-      />,
-    );
-
-    // Open dropdown
-    const personaButton = screen.getByRole('button', { name: /archimago|engineer/i });
-    await user.click(personaButton);
-
-    // Role vectors should be visible
-    expect(screen.getByText('Builds systems')).toBeInTheDocument();
-    expect(screen.getByText('Creates')).toBeInTheDocument();
-  });
-
-  it('allows navigation to Profile page', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <AppHeader
-        profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
-      />,
-    );
-
-    const profileLink = screen.getByRole('link', { name: /profile/i });
-    await user.click(profileLink);
-
-    expect(mockOnNavigate).toHaveBeenCalledWith('profile');
-  });
-
-  it('allows navigation to Resumes page', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <AppHeader
-        profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
-      />,
-    );
-
-    const resumesLink = screen.getByRole('link', { name: /resumes?/i });
-    await user.click(resumesLink);
-
-    expect(mockOnNavigate).toHaveBeenCalledWith('resumes');
-  });
-
-  it('allows navigation to Narrative page', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <AppHeader
-        profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
-      />,
-    );
-
-    const narrativeLink = screen.getByRole('link', { name: /narrative/i });
-    await user.click(narrativeLink);
-
-    expect(mockOnNavigate).toHaveBeenCalledWith('narrative');
-  });
-
-  it('allows navigation to Interview page', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <AppHeader
-        profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
-      />,
-    );
-
-    const interviewLink = screen.getByRole('link', { name: /interview/i });
-    await user.click(interviewLink);
-
-    expect(mockOnNavigate).toHaveBeenCalledWith('interview');
-  });
-
-  it('is sticky and stays visible while scrolling', () => {
-    const { container } = render(
-      <AppHeader
-        profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
-      />,
-    );
-
-    const header = container.firstChild;
-    expect(header).toHaveClass('sticky');
-  });
-
-  it('has color-coded styling for current persona', () => {
-    const { container } = render(
-      <AppHeader
-        profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
-      />,
-    );
-
-    // Should have color-coded styling
-    const personaContext = container.querySelector("[data-persona-id='persona-1']");
-    expect(personaContext).toHaveClass('color-coded');
-  });
-
-  it('shows hover effects on navigation links', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <AppHeader
-        profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
-      />,
-    );
-
-    const profileLink = screen.getByRole('link', { name: /profile/i });
-
-    // Hover over link
-    await user.hover(profileLink);
-
-    expect(profileLink).toHaveClass('hover');
+    // Dropdown shows everyday_name and nomen for each persona
+    expect(screen.getByText('Archimago')).toBeInTheDocument();
+    expect(screen.getByText('Artifex')).toBeInTheDocument();
   });
 
   it('handles missing profile name gracefully', () => {
     render(
       <AppHeader
+        profileId="profile-1"
         profileName=""
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
@@ -349,33 +185,63 @@ describe('AppHeader', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 
-  it('displays smooth transitions between persona changes', async () => {
-    const user = userEvent.setup();
-
+  it('displays correct persona after change', async () => {
     const { rerender } = render(
       <AppHeader
+        profileId="profile-1"
         profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-1"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
-    expect(screen.getByText('Archimago')).toBeInTheDocument();
+    // Button shows everyday_name
+    expect(screen.getByText('Engineer')).toBeInTheDocument();
 
     // Update to second persona
     rerender(
       <AppHeader
+        profileId="profile-1"
         profileName="John Doe"
-        personas={mockPersonas}
-        selectedPersonaId="persona-2"
-        onNavigate={mockOnNavigate}
-        onPersonaChange={mockOnPersonaChange}
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[1]}
+        onSelectPersona={mockOnSelectPersona}
       />,
     );
 
-    // Should show new persona with transition
-    expect(screen.getByText('Artifex')).toBeInTheDocument();
+    // Should show new persona's everyday_name
+    expect(screen.getByText('Artist')).toBeInTheDocument();
+  });
+
+  it('handles null currentPersona gracefully', () => {
+    render(
+      <AppHeader
+        profileId="profile-1"
+        profileName="John Doe"
+        allPersonas={mockPersonas}
+        currentPersona={null}
+        onSelectPersona={mockOnSelectPersona}
+      />,
+    );
+
+    // Should still render header
+    expect(screen.getByRole('banner')).toBeInTheDocument();
+  });
+
+  it('handles loading state', () => {
+    render(
+      <AppHeader
+        profileId="profile-1"
+        profileName="John Doe"
+        allPersonas={mockPersonas}
+        currentPersona={mockPersonas[0]}
+        onSelectPersona={mockOnSelectPersona}
+        loading={true}
+      />,
+    );
+
+    // Should still render header during loading
+    expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 });

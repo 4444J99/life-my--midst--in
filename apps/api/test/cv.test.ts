@@ -22,7 +22,7 @@ describe("cv routes", () => {
       profileId,
       roleTitle: "Systems Designer",
       organization: "Midst Labs",
-      startDate: "2021-01-01",
+      startDate: "2021-01-01T00:00:00Z",
       isCurrent: true,
       createdAt: now,
       updatedAt: now

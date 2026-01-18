@@ -19,6 +19,9 @@ export * from './licensing/licensing-service';
 export * from './billing/billing-service';
 export * from './analytics/events';
 export * from './analytics/analytics-service';
-export * from './integrations/cloud-storage-provider';
 export { GraphClient, type GraphConfig } from './graph/neo4j-client';
 export { EmbeddingsService, type EmbeddingsConfig } from './embeddings/service';
+
+// Server-only exports (cloud storage integrations with ssh2, smb2, etc.)
+// are available from '@in-midst-my-life/core/server' to prevent webpack bundling issues
+// See packages/core/src/server.ts

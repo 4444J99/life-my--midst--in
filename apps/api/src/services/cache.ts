@@ -129,9 +129,24 @@ export class MemoryCache {
    * Get cache statistics
    */
   stats() {
+    // Clean up expired entries while getting stats
+    const now = Date.now();
+    let validCount = 0;
+    const validKeys: string[] = [];
+
+    for (const [key, entry] of this.cache.entries()) {
+      if (now <= entry.expiresAt) {
+        validCount++;
+        validKeys.push(key);
+      } else {
+        // Remove expired entries
+        this.cache.delete(key);
+      }
+    }
+
     return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys())
+      size: validCount,
+      keys: validKeys
     };
   }
 }
@@ -403,7 +418,13 @@ export const defaultInvalidationStrategy: CacheInvalidationStrategy = {
   },
 
   invalidateAllTaxonomy: (cache: MemoryCache) => {
-    cache.deletePattern("(masks|epochs|stages):.*");
+    // Delete all singular and plural taxonomy keys
+    cache.deletePattern("^mask:.*");
+    cache.deletePattern("^masks:.*");
+    cache.deletePattern("^epoch:.*");
+    cache.deletePattern("^epochs:.*");
+    cache.deletePattern("^stage:.*");
+    cache.deletePattern("^stages:.*");
   }
 };
 

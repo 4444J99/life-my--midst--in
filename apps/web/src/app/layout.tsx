@@ -1,18 +1,8 @@
 import type React from 'react';
-import { Fraunces, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 
-const displayFont = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-display',
-  weight: ['300', '400', '600', '700'],
-});
-
-const bodyFont = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  weight: ['300', '400', '500', '600', '700'],
-});
+// Use system fonts to avoid network calls during build
+// CSS variables --font-display and --font-sans are set in globals.css
 
 export default function RootLayout({
   children,
@@ -20,7 +10,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${displayFont.variable} ${bodyFont.variable}`}>
+    <html lang="en">
       <body className="app-body">{children}</body>
     </html>
   );

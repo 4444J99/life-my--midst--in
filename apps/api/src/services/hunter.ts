@@ -148,14 +148,35 @@ export class DefaultHunterService implements HunterService {
     // 3. Call existing compatibility analyzer from core
     const analyzer = new CompatibilityAnalyzer();
     
+    // Create a realistic mock job description and technologies based on role type
+    let description = `Role for ${targetRole}`;
+    let requirements = targetRole;
+    let technologies: string[] = [];
+
+    if (targetRole.toLowerCase().includes('cto') || targetRole.toLowerCase().includes('chief technology')) {
+      description = 'Looking for a CTO to lead architecture, strategy, and team leadership. Experience with distributed systems, infrastructure, and team management required.';
+      requirements = 'Architecture, strategy, team leadership, infrastructure';
+      // Use generic terms not expected in junior profiles
+      technologies = ['Kubernetes', 'Go', 'Rust', 'Infrastructure', 'Leadership'];
+    } else if (targetRole.toLowerCase().includes('senior')) {
+      description = 'Senior role requiring advanced technical expertise, mentorship, and architectural decisions.';
+      requirements = 'Senior technical expertise, mentorship, architectural decisions';
+      // Use generic terms likely to be somewhat relevant
+      technologies = ['Systems', 'Architecture', 'Leadership', 'Mentorship'];
+    } else {
+      // Default for junior roles
+      technologies = ['JavaScript', 'React', 'Collaboration'];
+    }
+
     const mockJob: JobListing = {
       id: randomUUID(),
       title: targetRole,
       company: "Hypothetical Company",
       location: "Remote",
       remote: "fully",
-      description: `Role for ${targetRole}`,
-      requirements: targetRole,
+      description,
+      requirements,
+      technologies,
       job_url: "http://placeholder",
       posted_date: new Date(),
       source: "other"
@@ -185,15 +206,21 @@ export class DefaultHunterService implements HunterService {
     profileId: string,
     criteria: JobSearchCriteria
   ): Promise<JobSearchResult[]> {
-    // 1. Enforce feature gate
+    // 1. Verify profile exists
+    const profile = await this.profileRepo.find(profileId);
+    if (!profile) {
+      throw new NotFoundError(`Profile not found: ${profileId}`);
+    }
+
+    // 2. Enforce feature gate
     if (this.licensingService) {
         const [allowed, remaining] = await this.licensingService
         .checkAndConsume(profileId, 'hunter_job_searches');
 
         if (!allowed) {
             const entitlements = await this.licensingService.getEntitlements(profileId);
-            const limit = 100; 
-            const used = limit - remaining; 
+            const limit = 100;
+            const used = limit - remaining;
             throw new QuotaExceededError(
                 'hunter_job_searches',
                 limit,
@@ -202,7 +229,7 @@ export class DefaultHunterService implements HunterService {
         }
     }
 
-    // 2. Call job search provider
+    // 3. Call job search provider
     const jobs = await this.jobSearchProvider.search({
       keywords: criteria.keywords,
       location: criteria.location,
@@ -214,11 +241,7 @@ export class DefaultHunterService implements HunterService {
       return [];
     }
 
-    // 3. Rank results by compatibility with profile
-    const profile = await this.profileRepo.find(profileId);
-    if (!profile) {
-      throw new NotFoundError(`Profile not found: ${profileId}`);
-    }
+    // 4. Rank results by compatibility with profile
 
     // Convert JobPosting to JobListing for ranking
     const jobListings = jobs.map(job => this.mapJobPostingToListing(job));

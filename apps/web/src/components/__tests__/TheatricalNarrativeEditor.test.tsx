@@ -1,21 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TheatricalNarrativeEditor from '../TheatricalNarrativeEditor';
-import type { NarrativeBlock, Scaena } from '@in-midst-my-life/schema';
+import type { NarrativeBlock, TabulaPersonarumEntry } from '@in-midst-my-life/schema';
 
-const mockScaenae: Scaena[] = [
-  {
-    id: 'scaena-1',
-    nomen: 'Technica',
-    emoji: '⚙️',
-    description: 'Technical',
-    immutable: true,
-    canonical: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-];
+const mockPersona: TabulaPersonarumEntry = {
+  id: 'persona-1',
+  nomen: 'Archimago',
+  everyday_name: 'The Engineer',
+  role_vector: 'Builds systems',
+  tone_register: 'Analytical',
+  visibility_scope: ['Technica'],
+  active: true,
+  created_at: new Date(),
+  updated_at: new Date(),
+};
 
 const mockNarrativeBlocks: NarrativeBlock[] = [
   {
@@ -23,8 +22,9 @@ const mockNarrativeBlocks: NarrativeBlock[] = [
     title: 'Technical Journey',
     content: 'Started coding at 14...',
     weight: 85,
+    type: 'experience',
     theatrical_metadata: {
-      scaena: 'scaena-1',
+      scaena: 'Technica',
       performance_note: 'Technical depth',
       authentic_caveat: 'Emphasizes technical skills',
     },
@@ -33,26 +33,28 @@ const mockNarrativeBlocks: NarrativeBlock[] = [
 
 describe('TheatricalNarrativeEditor', () => {
   const mockOnSave = vi.fn();
-  const mockOnRegenerate = vi.fn();
+  const mockOnGenerate = vi.fn();
 
   beforeEach(() => {
     mockOnSave.mockClear();
-    mockOnRegenerate.mockClear();
+    mockOnGenerate.mockClear();
   });
 
   it('displays theatrical preamble editor', () => {
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         theatricalPreamble="The following presents me as..."
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    expect(screen.getByText(/preamble|introduction/i)).toBeInTheDocument();
-    expect(screen.getByText(/following presents/i)).toBeInTheDocument();
+    expect(screen.getByText(/Theatrical Preamble/i)).toBeInTheDocument();
+    // The preamble text is in a textarea, check it's there
+    const preambleTextarea = screen.getByPlaceholderText(/following narrative is presented/i);
+    expect(preambleTextarea).toBeInTheDocument();
   });
 
   it('allows editing theatrical preamble', async () => {
@@ -60,35 +62,33 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         theatricalPreamble="Original preamble"
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    const preambleInput = screen.getByRole('textbox', {
-      name: /preamble|introduction/i,
-    });
-    await user.clear(preambleInput);
-    await user.type(preambleInput, 'New preamble');
+    const preambleTextarea = screen.getByPlaceholderText(/following narrative is presented/i);
+    await user.clear(preambleTextarea);
+    await user.type(preambleTextarea, 'New preamble');
 
-    expect(preambleInput).toHaveValue('New preamble');
+    expect(preambleTextarea).toHaveValue('New preamble');
   });
 
   it('displays authentic disclaimer editor', () => {
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
-        authenticDisclaimier="Emphasizes technical work"
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
+        authenticDisclaimer="Emphasizes technical work"
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    expect(screen.getByText(/disclaimer|caveat|authentic/i)).toBeInTheDocument();
+    expect(screen.getByText(/Authentic Disclaimer/i)).toBeInTheDocument();
   });
 
   it('allows editing authentic disclaimer', async () => {
@@ -96,35 +96,33 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
-        authenticDisclaimier="Original"
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
+        authenticDisclaimer="Original"
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    const disclaimerInput = screen.getByRole('textbox', {
-      name: /disclaimer|caveat|authentic/i,
-    });
-    await user.clear(disclaimerInput);
-    await user.type(disclaimerInput, 'Updated disclaimer');
+    const disclaimerTextarea = screen.getByPlaceholderText(/emphasizes/i);
+    await user.clear(disclaimerTextarea);
+    await user.type(disclaimerTextarea, 'Updated disclaimer');
 
-    expect(disclaimerInput).toHaveValue('Updated disclaimer');
+    expect(disclaimerTextarea).toHaveValue('Updated disclaimer');
   });
 
   it('renders narrative blocks with edit capability', () => {
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
     expect(screen.getByText('Technical Journey')).toBeInTheDocument();
-    expect(screen.getByText(/started coding/i)).toBeInTheDocument();
+    expect(screen.getByText(/Started coding/i)).toBeInTheDocument();
   });
 
   it('allows editing narrative block title', async () => {
@@ -132,19 +130,19 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    // Click edit mode
+    // Click edit button on the block
     const editButton = screen.getByRole('button', { name: /edit/i });
     await user.click(editButton);
 
-    // Edit title
-    const titleInput = screen.getByRole('textbox', { name: /title/i });
+    // Find and edit the title input
+    const titleInput = screen.getByDisplayValue('Technical Journey');
     await user.clear(titleInput);
     await user.type(titleInput, 'Updated Title');
 
@@ -156,23 +154,23 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    // Click edit mode
+    // Click edit button
     const editButton = screen.getByRole('button', { name: /edit/i });
     await user.click(editButton);
 
-    // Edit content
-    const contentInput = screen.getByRole('textbox', { name: /content|body/i });
-    await user.clear(contentInput);
-    await user.type(contentInput, 'New narrative content');
+    // Find and edit the content textarea
+    const contentTextarea = screen.getByDisplayValue('Started coding at 14...');
+    await user.clear(contentTextarea);
+    await user.type(contentTextarea, 'New narrative content');
 
-    expect(contentInput).toHaveValue('New narrative content');
+    expect(contentTextarea).toHaveValue('New narrative content');
   });
 
   it('allows adjusting narrative block weight', async () => {
@@ -180,46 +178,45 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    // Click edit mode
+    // Click edit button
     const editButton = screen.getByRole('button', { name: /edit/i });
     await user.click(editButton);
 
-    // Find weight slider
-    const weightSlider = screen.getByRole('slider', { name: /weight/i });
-    expect(weightSlider).toBeInTheDocument();
+    // Find weight input
+    const weightInput = screen.getByDisplayValue('85');
+    expect(weightInput).toBeInTheDocument();
 
-    await user.clear(weightSlider);
-    await user.type(weightSlider, '75');
+    await user.clear(weightInput);
+    await user.type(weightInput, '75');
 
-    expect(weightSlider).toHaveValue('75');
+    expect(weightInput).toHaveValue(75);
   });
 
-  it('displays scaena selector for theatrical metadata', async () => {
+  it('displays scaena field for theatrical metadata', async () => {
     const user = userEvent.setup();
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    // Click edit mode
+    // Click edit button
     const editButton = screen.getByRole('button', { name: /edit/i });
     await user.click(editButton);
 
-    // Should have scaena selector
-    const scaenaSelector = screen.getByRole('combobox', { name: /scaena|stage/i });
-    expect(scaenaSelector).toBeInTheDocument();
+    // Should have scaena input field
+    expect(screen.getByPlaceholderText(/Academica, Technica/i)).toBeInTheDocument();
   });
 
   it('displays performance note editor', async () => {
@@ -227,22 +224,19 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    // Click edit mode
+    // Click edit button
     const editButton = screen.getByRole('button', { name: /edit/i });
     await user.click(editButton);
 
     // Should have performance note field
-    const performanceInput = screen.getByRole('textbox', {
-      name: /performance|note/i,
-    });
-    expect(performanceInput).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Why is this block important/i)).toBeInTheDocument();
   });
 
   it('displays authentic caveat editor', async () => {
@@ -250,22 +244,19 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    // Click edit mode
+    // Click edit button
     const editButton = screen.getByRole('button', { name: /edit/i });
     await user.click(editButton);
 
     // Should have authentic caveat field
-    const caveatInput = screen.getByRole('textbox', {
-      name: /caveat|authentic|disclaimer/i,
-    });
-    expect(caveatInput).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/emphasized\/de-emphasized/i)).toBeInTheDocument();
   });
 
   it('allows saving changes', async () => {
@@ -273,24 +264,15 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    // Click edit mode
-    const editButton = screen.getByRole('button', { name: /edit/i });
-    await user.click(editButton);
-
-    // Make a change
-    const titleInput = screen.getByRole('textbox', { name: /title/i });
-    await user.clear(titleInput);
-    await user.type(titleInput, 'Updated Title');
-
-    // Save
-    const saveButton = screen.getByRole('button', { name: /save/i });
+    // Click save button
+    const saveButton = screen.getByRole('button', { name: /save narrative/i });
     await user.click(saveButton);
 
     expect(mockOnSave).toHaveBeenCalled();
@@ -301,44 +283,43 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    const regenerateButton = screen.getByRole('button', {
-      name: /regenerate|refresh/i,
-    });
+    const regenerateButton = screen.getByRole('button', { name: /regenerate/i });
     await user.click(regenerateButton);
 
-    expect(mockOnRegenerate).toHaveBeenCalled();
+    expect(mockOnGenerate).toHaveBeenCalled();
   });
 
   it('allows deleting narrative blocks', async () => {
     const user = userEvent.setup();
-    const mockOnDelete = vi.fn();
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
-        onDeleteBlock={mockOnDelete}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    // Click edit mode
+    // Click edit button to enter edit mode
     const editButton = screen.getByRole('button', { name: /edit/i });
     await user.click(editButton);
 
-    // Find delete button
-    const deleteButton = screen.getByRole('button', { name: /delete|remove/i });
+    // Find and click delete button
+    const deleteButton = screen.getByRole('button', { name: /delete block/i });
     await user.click(deleteButton);
 
-    expect(mockOnDelete).toHaveBeenCalledWith('block-1');
+    // Block should be removed from UI
+    await waitFor(() => {
+      expect(screen.queryByText('Technical Journey')).not.toBeInTheDocument();
+    });
   });
 
   it('shows display vs. edit mode toggle', async () => {
@@ -346,10 +327,10 @@ describe('TheatricalNarrativeEditor', () => {
 
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
@@ -361,11 +342,11 @@ describe('TheatricalNarrativeEditor', () => {
     await user.click(editButton);
 
     // Should show edit controls
-    expect(screen.getByRole('textbox', { name: /title/i })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Technical Journey')).toBeInTheDocument();
 
     // Toggle back to display mode
-    const viewButton = screen.getByRole('button', { name: /view|done/i });
-    await user.click(viewButton);
+    const doneButton = screen.getByRole('button', { name: /done editing/i });
+    await user.click(doneButton);
 
     // Should return to display mode
     expect(screen.getByText('Technical Journey')).toBeInTheDocument();
@@ -374,27 +355,40 @@ describe('TheatricalNarrativeEditor', () => {
   it('handles empty narrative blocks', () => {
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={[]}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={[]}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    expect(screen.getByText(/no narratives|create|empty/i)).toBeInTheDocument();
+    expect(screen.getByText(/No narrative blocks yet/i)).toBeInTheDocument();
   });
 
   it('displays loading state', () => {
     render(
       <TheatricalNarrativeEditor
-        narrativeBlocks={mockNarrativeBlocks}
-        scaenae={mockScaenae}
+        persona={mockPersona}
+        blocks={mockNarrativeBlocks}
         loading={true}
         onSave={mockOnSave}
-        onRegenerate={mockOnRegenerate}
+        onGenerate={mockOnGenerate}
       />,
     );
 
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loading/i)).toBeInTheDocument();
+  });
+
+  it('shows message when no persona is selected', () => {
+    render(
+      <TheatricalNarrativeEditor
+        persona={null}
+        blocks={mockNarrativeBlocks}
+        onSave={mockOnSave}
+        onGenerate={mockOnGenerate}
+      />,
+    );
+
+    expect(screen.getByText(/Select a persona/i)).toBeInTheDocument();
   });
 });

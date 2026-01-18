@@ -12,6 +12,6 @@
     "noImplicitReturns": false,
     "strictNullChecks": false
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]
 }

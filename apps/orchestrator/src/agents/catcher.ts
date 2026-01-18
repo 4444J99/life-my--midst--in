@@ -4,13 +4,15 @@ import { randomUUID } from "node:crypto";
 import type { Agent, AgentTask, AgentResult, AgentExecutor } from "../agents";
 import type { Artifact, CloudStorageIntegration, ArtifactSyncState, IntegrityProof, VerificationLog } from "@in-midst-my-life/schema";
 import {
+  hashPayload,
+  decrypt
+} from "@in-midst-my-life/core";
+import {
   type CloudStorageProvider,
   type CloudFile,
   type CloudCredentials,
-  hashPayload,
-  createCloudStorageProvider,
-  decrypt
-} from "@in-midst-my-life/core";
+  createCloudStorageProvider
+} from "@in-midst-my-life/core/server";
 import { processFile } from "../processors";
 import { classifyByHeuristics, aggregateConfidence } from "../classification/heuristics";
 import { classifyWithLLM } from "../prompts/artifact-classification";

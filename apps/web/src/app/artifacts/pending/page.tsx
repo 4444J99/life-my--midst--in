@@ -47,16 +47,6 @@ export default function PendingArtifactsPage() {
     router.push(`/artifacts/${artifactId}?profileId=${profileId}`);
   };
 
-  const handleToggleSelection = (artifactId: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(artifactId)) {
-      newSelected.delete(artifactId);
-    } else {
-      newSelected.add(artifactId);
-    }
-    setSelectedIds(newSelected);
-  };
-
   const handleApproveAll = async () => {
     for (const id of selectedIds) {
       try {

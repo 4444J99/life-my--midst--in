@@ -2,15 +2,16 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   FeatureNotAvailableError,
+  NotFoundError,
   QuotaExceededError,
   type LicensingService,
 } from "@in-midst-my-life/core";
 import { HunterSearchFilterSchema } from "@in-midst-my-life/schema";
 import type { Profile } from "@in-midst-my-life/schema";
 import { profileRepo, type ProfileRepo } from "../repositories/profiles";
+import { jobRepo as defaultJobRepo, type JobRepo } from "../repositories/jobs";
 import { createFeatureGateMiddleware } from "../middleware/feature-gate";
 import { createHunterService } from "../services/hunter";
-import { jobRepo } from "../repositories/jobs";
 
 /**
  * Hunter Protocol API Routes
@@ -19,17 +20,18 @@ import { jobRepo } from "../repositories/jobs";
 
 export async function registerHunterProtocolRoutes(
   fastify: FastifyInstance,
-  deps?: { repo?: ProfileRepo; licensingService?: LicensingService }
+  deps?: { repo?: ProfileRepo; jobRepo?: JobRepo; licensingService?: LicensingService }
 ) {
   const repo = deps?.repo ?? profileRepo;
-  
+  const jobRepoInstance = deps?.jobRepo ?? defaultJobRepo;
+
   // Use core hunter agent for logic
   // Use API service for orchestration and DB access
   const hunterService = createHunterService(
     repo,
     deps?.licensingService as LicensingService,
-    jobRepo,
-    jobRepo
+    jobRepoInstance,
+    jobRepoInstance
   );
 
   /**
@@ -290,34 +292,35 @@ export async function registerHunterProtocolRoutes(
     async (request, reply) => {
       const { id, jobId } = request.params;
       const body = request.body as any;
-      
+
       try {
-        let job = await jobRepo.findPosting(jobId);
-        
+        let job = await jobRepoInstance.findPosting(jobId);
+
         // Fallback to job provided in body if not in repo
         if (!job && body.job) {
-            job = body.job;
+          job = body.job;
         }
 
         if (!job) {
-             return reply.code(404).send({ error: "Job not found" });
+          return reply.code(404).send({ error: "Job not found" });
         }
 
         const report = await hunterService.analyzeGap(id, job.title);
 
         // Map CompatibilityReport to expected API response structure (partial CompatibilityAnalysis)
         const compatibility = {
-            overall_score: report.compatibility,
-            skill_gaps: report.gaps,
-            strengths: report.suggestions,
-            concerns: report.concerns,
-            recommendation: report.compatibility > 80 ? "apply_now" : "moderate_fit",
-            skill_match: report.compatibility, // simplified
-            cultural_match: 50,
-            growth_potential: 50,
-            compensation_fit: 50,
-            location_suitability: 50,
-            analysis_date: report.timestamp
+          overall_score: report.compatibility,
+          skill_gaps: report.gaps,
+          strengths: report.suggestions,
+          concerns: report.concerns,
+          recommendation:
+            report.compatibility > 80 ? "apply_now" : "moderate_fit",
+          skill_match: report.compatibility, // simplified
+          cultural_match: 50,
+          growth_potential: 50,
+          compensation_fit: 50,
+          location_suitability: 50,
+          analysis_date: report.timestamp,
         };
 
         reply.code(200).send({
@@ -327,6 +330,14 @@ export async function registerHunterProtocolRoutes(
         });
       } catch (error) {
         fastify.log.error(error);
+
+        if (error instanceof NotFoundError) {
+          return reply.code(404).send({
+            error: "not_found",
+            message: error.message,
+          });
+        }
+
         reply.code(500).send({
           error: "Failed to analyze job compatibility",
           message: error instanceof Error ? error.message : "Unknown error",
@@ -384,6 +395,16 @@ export async function registerHunterProtocolRoutes(
         });
       } catch (error) {
         fastify.log.error(error);
+
+        // Check for quota exceeded error
+        if (error instanceof QuotaExceededError) {
+          return reply.code(403).send({
+            ok: false,
+            error: "quota_exceeded",
+            message: error.message,
+          });
+        }
+
         reply.code(500).send({
           error: "Failed to tailor resume",
           message: error instanceof Error ? error.message : "Unknown error",
@@ -439,8 +460,8 @@ export async function registerHunterProtocolRoutes(
 
         // Extract personalized elements from notes (split comma-separated string)
         const personalizedElements = result.personalizationNotes
-          .split(', ')
-          .filter(note => note.trim().length > 0);
+          .split(", ")
+          .filter((note) => note.trim().length > 0);
 
         reply.code(200).send({
           coverLetter: result.coverLetter.content,
@@ -455,6 +476,25 @@ export async function registerHunterProtocolRoutes(
         });
       } catch (error) {
         fastify.log.error(error);
+
+        // Check for not found error
+        if (error instanceof NotFoundError) {
+          return reply.code(404).send({
+            ok: false,
+            error: "not_found",
+            message: error.message,
+          });
+        }
+
+        // Check for quota exceeded error
+        if (error instanceof QuotaExceededError) {
+          return reply.code(403).send({
+            ok: false,
+            error: "quota_exceeded",
+            message: error.message,
+          });
+        }
+
         reply.code(500).send({
           error: "Failed to generate cover letter",
           message: error instanceof Error ? error.message : "Unknown error",

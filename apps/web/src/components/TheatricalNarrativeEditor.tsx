@@ -371,3 +371,5 @@ export function TheatricalNarrativeEditor({
     </div>
   );
 }
+
+export default TheatricalNarrativeEditor;

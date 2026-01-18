@@ -484,3 +484,5 @@ export function InvertedInterviewInterface({
     </div>
   );
 }
+
+export default InvertedInterviewInterface;

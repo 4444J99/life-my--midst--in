@@ -671,3 +671,5 @@ export function CVEntryManager({
     </div>
   );
 }
+
+export default CVEntryManager;

@@ -1,8 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DIDKey, type KeyPair } from '@in-midst-my-life/core';
 import * as jose from 'jose';
+
+// Type matching @in-midst-my-life/core KeyPair for compatibility
+interface KeyPair {
+  did: string;
+  publicKey: jose.KeyLike;
+  privateKey: jose.KeyLike;
+}
 
 const STORAGE_KEY = 'midst:identity:v1';
 
@@ -44,20 +50,31 @@ export function useIdentity() {
   async function generateIdentity() {
     setLoading(true);
     try {
-      const keyPair = await DIDKey.generate();
+      // Generate EdDSA key pair using Web Crypto
+      const { publicKey, privateKey } = await jose.generateKeyPair('EdDSA');
+      
       // Export to JWK for storage
-      // @ts-expect-error - JoseKey type compatibility
-      const pubJwk = await jose.exportJWK(keyPair.publicKey);
-      // @ts-expect-error - JoseKey type compatibility
-      const privJwk = await jose.exportJWK(keyPair.privateKey);
+      const pubJwk = await jose.exportJWK(publicKey);
+      const privJwk = await jose.exportJWK(privateKey);
+
+      // Generate DID (simplified: use first 16 chars of public key thumbprint)
+      const thumbprint = await jose.calculateJwkThumbprint(pubJwk);
+      const did = `did:key:${thumbprint.slice(0, 16)}`;
 
       const storagePayload = {
-        did: keyPair.did,
+        did,
         publicKey: pubJwk,
         privateKey: privJwk,
       };
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(storagePayload));
+      
+      const keyPair: KeyPair = {
+        did,
+        publicKey,
+        privateKey,
+      };
+      
       setIdentity(keyPair);
     } catch (e) {
       console.error('Failed to generate identity', e);

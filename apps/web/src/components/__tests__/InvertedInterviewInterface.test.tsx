@@ -2,356 +2,274 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import InvertedInterviewInterface from '../InvertedInterviewInterface';
+import type { TabulaPersonarumEntry, PersonaResonance } from '@in-midst-my-life/schema';
 
-const mockQuestions = {
-  culture: [
-    {
-      id: 'q1',
-      category: 'culture',
-      emoji: '🏛️',
-      text: 'How would you describe your organizational culture?',
-      required: true,
-    },
-  ],
-  growth: [
-    {
-      id: 'q2',
-      category: 'growth',
-      emoji: '🚀',
-      text: 'What growth opportunities exist?',
-      required: true,
-    },
-  ],
-  sustainability: [
-    {
-      id: 'q3',
-      category: 'sustainability',
-      emoji: '🌱',
-      text: 'How sustainable is this role?',
-      required: true,
-    },
-  ],
-  impact: [
-    {
-      id: 'q4',
-      category: 'impact',
-      emoji: '⭐',
-      text: 'What impact would I have?',
-      required: true,
-    },
-  ],
-  values: [
-    {
-      id: 'q5',
-      category: 'values',
-      emoji: '💎',
-      text: 'What are your core values?',
-      required: true,
-    },
-  ],
+const mockPersona: TabulaPersonarumEntry = {
+  id: 'persona-1',
+  nomen: 'Archimago',
+  everyday_name: 'Engineer',
+  role_vector: 'Builds systems',
+  tone_register: 'Analytical',
+  visibility_scope: ['Technica'],
+  active: true,
+  created_at: new Date(),
+  updated_at: new Date(),
 };
 
 describe('InvertedInterviewInterface', () => {
-  const mockOnComplete = vi.fn();
-  const mockOnScoreCalculated = vi.fn();
+  const mockOnSubmitResponse = vi.fn();
+  const mockOnCalculateCompatibility = vi.fn<
+    [TabulaPersonarumEntry, any[]],
+    PersonaResonance
+  >().mockReturnValue({
+    persona_id: 'persona-1',
+    context: 'Test Interview',
+    fit_score: 85,
+    alignment_keywords: ['growth', 'learning'],
+    misalignment_keywords: ['rigid'],
+  });
 
   beforeEach(() => {
-    mockOnComplete.mockClear();
-    mockOnScoreCalculated.mockClear();
+    mockOnSubmitResponse.mockClear();
+    mockOnCalculateCompatibility.mockClear();
   });
 
-  it('renders all question categories with emojis', () => {
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
+  it('displays inverted interview title', () => {
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
 
-    expect(screen.getByText(/🏛️|culture/i)).toBeInTheDocument();
-    expect(screen.getByText(/🚀|growth/i)).toBeInTheDocument();
-    expect(screen.getByText(/🌱|sustainability/i)).toBeInTheDocument();
-    expect(screen.getByText(/⭐|impact/i)).toBeInTheDocument();
-    expect(screen.getByText(/💎|values/i)).toBeInTheDocument();
+    // May be multiple elements with this text
+    const elements = screen.getAllByText(/Inverted Interview/i);
+    expect(elements.length).toBeGreaterThan(0);
   });
 
-  it('displays progress bar showing completion status', () => {
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
+  it('shows persona name in header', () => {
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
 
-    // Should show progress indicator
-    const progressBar = screen.getByRole('progressbar');
-    expect(progressBar).toBeInTheDocument();
+    expect(screen.getByText(/Engineer/)).toBeInTheDocument();
   });
 
-  it('displays current question being answered', () => {
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
+  it('displays default interview questions', () => {
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
 
-    // Should display current question
-    expect(screen.getByText(/how would you describe|describe your|culture/i)).toBeInTheDocument();
+    // Should show the first default question
+    expect(screen.getByText(/learning and growth|organizational culture/i)).toBeInTheDocument();
   });
 
-  it('provides textarea for text answers', async () => {
+  it('provides textarea for answering questions', () => {
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
+
+    const textarea = screen.getByPlaceholderText(/Share your thoughts/i);
+    expect(textarea).toBeInTheDocument();
+  });
+
+  it('displays question progress indicator', () => {
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
+
+    // Should show "Question X of Y"
+    expect(screen.getByText(/Question 1 of 5/i)).toBeInTheDocument();
+  });
+
+  it('shows category emoji for questions', () => {
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
+
+    // Default questions include growth, values, sustainability, culture, impact
+    // Should see at least one category emoji
+    expect(screen.getByText(/🚀|💎|🌱|🏛️|⭐/)).toBeInTheDocument();
+  });
+
+  it('provides star rating for confidence', async () => {
     const user = userEvent.setup();
-
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
-
-    const answerInput = screen.getByRole('textbox', {
-      name: /answer|response|describe/i,
-    });
-    expect(answerInput).toBeInTheDocument();
-
-    await user.type(answerInput, 'Sample answer');
-    expect(answerInput).toHaveValue('Sample answer');
-  });
-
-  it('provides 5-star confidence rating', async () => {
-    const user = userEvent.setup();
-
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
 
     // Should have star rating buttons (1-5)
-    const stars = screen.getAllByRole('button', { name: /star|rating|confidence/i });
+    const stars = screen.getAllByText(/★|☆/);
     expect(stars.length).toBeGreaterThanOrEqual(5);
 
-    // Click 4 stars
+    // Click a star to change rating
     await user.click(stars[3]);
-
-    expect(stars[3]).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('allows previous/next navigation through questions', async () => {
+  it('allows navigation to next question after answering', async () => {
     const user = userEvent.setup();
+    render(
+      <InvertedInterviewInterface
+        profilePersona={mockPersona}
+        onSubmitResponse={mockOnSubmitResponse}
+      />,
+    );
 
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
+    // Type an answer
+    const textarea = screen.getByPlaceholderText(/Share your thoughts/i);
+    await user.type(textarea, 'This organization values growth');
 
-    // Should have next button initially
-    const nextButton = screen.getByRole('button', { name: /next/i });
-    expect(nextButton).toBeInTheDocument();
-
-    // Click next
+    // Click next question
+    const nextButton = screen.getByRole('button', { name: /Next Question/i });
     await user.click(nextButton);
 
-    // Should now show growth question
-    expect(screen.getByText(/growth opportunities|what growth/i)).toBeInTheDocument();
-
-    // Should have previous button now
-    const prevButton = screen.getByRole('button', { name: /previous|back/i });
-    expect(prevButton).toBeInTheDocument();
+    // Should show question 2
+    expect(screen.getByText(/Question 2 of 5/i)).toBeInTheDocument();
   });
 
-  it('enforces required questions before proceeding', async () => {
+  it('shows previous button after first question', async () => {
     const user = userEvent.setup();
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
 
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
+    // Answer first question
+    const textarea = screen.getByPlaceholderText(/Share your thoughts/i);
+    await user.type(textarea, 'Test answer');
 
-    // Try to skip without answering
-    const nextButton = screen.getByRole('button', { name: /next/i });
+    const nextButton = screen.getByRole('button', { name: /Next Question/i });
     await user.click(nextButton);
 
-    // Should show error or remain on same question
-    expect(screen.getByText(/required|answer this|must|cannot skip/i)).toBeInTheDocument();
+    // Should now have previous button
+    expect(screen.getByRole('button', { name: /Previous/i })).toBeInTheDocument();
   });
 
-  it('calculates compatibility score in real-time', async () => {
-    const user = userEvent.setup();
+  it('disables next button when answer is empty', () => {
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
 
+    const nextButton = screen.getByRole('button', { name: /Next Question/i });
+    expect(nextButton).toBeDisabled();
+  });
+
+  it('shows Calculate Fit button on last question', async () => {
+    const user = userEvent.setup();
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
+
+    // Answer all questions to get to the last one
+    for (let i = 0; i < 4; i++) {
+      const textarea = screen.getByPlaceholderText(/Share your thoughts/i);
+      await user.clear(textarea);
+      await user.type(textarea, `Answer ${i + 1}`);
+
+      const nextButton = screen.getByRole('button', { name: /Next Question/i });
+      await user.click(nextButton);
+    }
+
+    // Last question should have "Calculate Fit" button instead of "Next"
+    expect(screen.getByRole('button', { name: /Calculate Fit/i })).toBeInTheDocument();
+  });
+
+  it('shows results after completing interview', async () => {
+    const user = userEvent.setup();
     render(
       <InvertedInterviewInterface
-        questions={mockQuestions}
-        onComplete={mockOnComplete}
-        onScoreCalculated={mockOnScoreCalculated}
+        profilePersona={mockPersona}
+        onCalculateCompatibility={mockOnCalculateCompatibility}
       />,
     );
 
-    // Answer first question with high confidence
-    const answerInput = screen.getByRole('textbox', {
-      name: /answer|response/i,
-    });
-    await user.type(answerInput, 'Perfect alignment');
+    // Complete all 5 questions
+    for (let i = 0; i < 5; i++) {
+      const textarea = screen.getByPlaceholderText(/Share your thoughts/i);
+      await user.clear(textarea);
+      await user.type(textarea, `Answer ${i + 1}`);
 
-    // Set 5-star rating
-    const stars = screen.getAllByRole('button', { name: /star|rating/i });
-    await user.click(stars[4]); // 5 stars
+      const button = screen.getByRole('button', { name: /Next Question|Calculate Fit/i });
+      await user.click(button);
+    }
 
-    // Should calculate score
+    // Should show results
     await waitFor(() => {
-      expect(mockOnScoreCalculated).toHaveBeenCalled();
+      expect(screen.getByText(/Interview Results/i)).toBeInTheDocument();
     });
   });
 
-  it('displays fit score (0-100%) after questions answered', async () => {
+  it('displays fit score in results', async () => {
     const user = userEvent.setup();
+    render(
+      <InvertedInterviewInterface
+        profilePersona={mockPersona}
+        onCalculateCompatibility={mockOnCalculateCompatibility}
+      />,
+    );
 
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
-
-    // Answer all questions
-    for (let i = 0; i < Object.values(mockQuestions).flat().length; i++) {
-      const answerInput = screen.getByRole('textbox', {
-        name: /answer|response/i,
-      });
-      await user.clear(answerInput);
-      await user.type(answerInput, `Answer ${i}`);
-
-      const stars = screen.getAllByRole('button', { name: /star|rating/i });
-      await user.click(stars[3]); // 4 stars
-
-      if (i < Object.values(mockQuestions).flat().length - 1) {
-        const nextButton = screen.getByRole('button', { name: /next/i });
-        await user.click(nextButton);
-      }
+    // Complete interview
+    for (let i = 0; i < 5; i++) {
+      const textarea = screen.getByPlaceholderText(/Share your thoughts/i);
+      await user.clear(textarea);
+      await user.type(textarea, `Answer ${i + 1}`);
+      const button = screen.getByRole('button', { name: /Next Question|Calculate Fit/i });
+      await user.click(button);
     }
 
-    // Should show fit score
+    // Should show fit score percentage
     await waitFor(() => {
-      expect(screen.getByText(/%|fit score|compatibility/i)).toBeInTheDocument();
+      expect(screen.getByText(/85%/)).toBeInTheDocument();
     });
   });
 
-  it('analyzes alignment and misalignment keywords', () => {
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
-
-    // Component should analyze response content for keywords
-    // This is shown after completion
-    expect(screen.getByText(/alignment|keywords|match/i)).toBeTruthy();
-  });
-
-  it('allows downloading results', async () => {
+  it('shows alignment keywords in results', async () => {
     const user = userEvent.setup();
-
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
-
-    // Mock window functions
-    const mockDownload = vi.fn();
-    global.URL.createObjectURL = vi.fn();
-
-    const downloadButton = screen.queryByRole('button', {
-      name: /download|export|save/i,
-    });
-
-    if (downloadButton) {
-      await user.click(downloadButton);
-      expect(mockDownload).toHaveBeenCalled();
-    }
-  });
-
-  it('allows restarting interview', async () => {
-    const user = userEvent.setup();
-
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
-
-    // Answer one question
-    const answerInput = screen.getByRole('textbox', {
-      name: /answer|response/i,
-    });
-    await user.type(answerInput, 'Answer 1');
-
-    // Find and click restart
-    const restartButton = screen.queryByRole('button', {
-      name: /restart|reset|clear|start over/i,
-    });
-
-    if (restartButton) {
-      await user.click(restartButton);
-
-      // Should reset to first question with empty answer
-      await waitFor(() => {
-        const newInput = screen.getByRole('textbox', {
-          name: /answer|response/i,
-        });
-        expect(newInput).toHaveValue('');
-      });
-    }
-  });
-
-  it('tracks questions with alignment keywords', async () => {
-    const user = userEvent.setup();
-
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
-
-    // Answer with keywords
-    const answerInput = screen.getByRole('textbox', {
-      name: /answer|response/i,
-    });
-    await user.type(answerInput, 'growth opportunity learning development');
-
-    // Keywords should be highlighted/tracked
-    const keywordElements = screen.queryAllByText(/growth|opportunity|learning|development/i);
-    expect(keywordElements.length).toBeGreaterThan(0);
-  });
-
-  it('supports category filtering/focus', async () => {
-    const user = userEvent.setup();
-
     render(
       <InvertedInterviewInterface
-        questions={mockQuestions}
-        onComplete={mockOnComplete}
-        allowCategoryFocus={true}
+        profilePersona={mockPersona}
+        onCalculateCompatibility={mockOnCalculateCompatibility}
       />,
     );
 
-    // Should be able to filter by category
-    const cultureFilter = screen.queryByRole('button', { name: /culture|🏛️/i });
-    if (cultureFilter) {
-      await user.click(cultureFilter);
-
-      // Should show only culture questions
-      expect(screen.getByText(/how would you describe|culture/i)).toBeInTheDocument();
+    // Complete interview
+    for (let i = 0; i < 5; i++) {
+      const textarea = screen.getByPlaceholderText(/Share your thoughts/i);
+      await user.clear(textarea);
+      await user.type(textarea, `Answer ${i + 1}`);
+      const button = screen.getByRole('button', { name: /Next Question|Calculate Fit/i });
+      await user.click(button);
     }
+
+    // Should show alignment keywords - may be multiple elements
+    await waitFor(() => {
+      const growthElements = screen.getAllByText(/growth/i);
+      const learningElements = screen.getAllByText(/learning/i);
+      expect(growthElements.length).toBeGreaterThan(0);
+      expect(learningElements.length).toBeGreaterThan(0);
+    });
   });
 
-  it('displays loading state during score calculation', () => {
+  it('allows restarting interview from results', async () => {
+    const user = userEvent.setup();
     render(
       <InvertedInterviewInterface
-        questions={mockQuestions}
-        loading={true}
-        onComplete={mockOnComplete}
+        profilePersona={mockPersona}
+        onCalculateCompatibility={mockOnCalculateCompatibility}
       />,
     );
 
-    expect(screen.getByText(/loading|calculating|analyzing/i)).toBeInTheDocument();
-  });
-
-  it('handles completion callback', async () => {
-    const user = userEvent.setup();
-
-    render(<InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />);
-
-    // Answer all questions quickly
-    const answerInput = screen.getByRole('textbox', {
-      name: /answer|response/i,
-    });
-
-    // Mock quick completion
-    await user.type(answerInput, 'Quick answer');
-
-    const completeButton = screen.queryByRole('button', {
-      name: /complete|submit|done|finish/i,
-    });
-
-    if (completeButton) {
-      await user.click(completeButton);
-
-      await waitFor(() => {
-        expect(mockOnComplete).toHaveBeenCalled();
-      });
+    // Complete interview
+    for (let i = 0; i < 5; i++) {
+      const textarea = screen.getByPlaceholderText(/Share your thoughts/i);
+      await user.clear(textarea);
+      await user.type(textarea, `Answer ${i + 1}`);
+      const button = screen.getByRole('button', { name: /Next Question|Calculate Fit/i });
+      await user.click(button);
     }
+
+    // Click restart
+    await waitFor(() => {
+      const restartButton = screen.getByRole('button', { name: /Restart Interview/i });
+      return user.click(restartButton);
+    });
+
+    // Should be back at first question
+    expect(screen.getByText(/Question 1 of 5/i)).toBeInTheDocument();
   });
 
-  it('shows interview summary on completion', async () => {
-    const user = userEvent.setup();
+  it('displays loading state', () => {
+    render(<InvertedInterviewInterface profilePersona={mockPersona} loading={true} />);
 
-    const { rerender } = render(
-      <InvertedInterviewInterface questions={mockQuestions} onComplete={mockOnComplete} />,
-    );
+    expect(screen.getByText(/Loading/i)).toBeInTheDocument();
+  });
 
-    // Simulate completion
-    rerender(
-      <InvertedInterviewInterface
-        questions={mockQuestions}
-        onComplete={mockOnComplete}
-        isComplete={true}
-        fitScore={82}
-        alignmentKeywords={['culture', 'growth']}
-      />,
-    );
+  it('shows message when no persona selected', () => {
+    render(<InvertedInterviewInterface profilePersona={null} />);
 
-    // Should show summary
-    expect(screen.getByText(/82|summary|results/i)).toBeInTheDocument();
+    expect(screen.getByText(/Select your theatrical persona/i)).toBeInTheDocument();
+  });
+
+  it('displays tip about inverted interview purpose', () => {
+    render(<InvertedInterviewInterface profilePersona={mockPersona} />);
+
+    expect(screen.getByText(/Tip:/i)).toBeInTheDocument();
+    expect(screen.getByText(/give you power in the hiring process/i)).toBeInTheDocument();
   });
 });

@@ -22,6 +22,7 @@ import { registerCurriculumVitaeMultiplexRoutes } from "./routes/curriculum-vita
 import { registerNarrativeRoutes } from "./routes/narratives";
 import { registerAetasRoutes } from "./routes/aetas";
 import { registerExportRoutes } from "./routes/exports";
+import { registerBackupRoutes } from "./routes/backups";
 import { registerAgentRoutes } from "./routes/agent-interface";
 import { registerAttestationBlockRoutes } from "./routes/attestation-blocks";
 import { jobRoutes } from "./routes/jobs";
@@ -36,6 +37,8 @@ import { profileRepo } from "./repositories/profiles";
 import type { CvRepos } from "./repositories/cv";
 import { cvRepos } from "./repositories/cv";
 import type { BackupRepo } from "./repositories/backups";
+import type { JobRepo } from "./repositories/jobs";
+import { jobRepo as defaultJobRepo } from "./repositories/jobs";
 import { registerBillingRoutes } from "./routes/billing";
 import { registerAdminLicensingRoutes } from "./routes/admin-licensing";
 import { subscriptionRepo as defaultSubscriptionRepo, type SubscriptionRepo } from "./repositories/subscriptions";
@@ -53,6 +56,7 @@ export interface ApiServerOptions {
   stageRepo?: StageRepo;
   cvRepos?: CvRepos;
   backupRepo?: BackupRepo;
+  jobRepo?: JobRepo;
   subscriptionRepo?: SubscriptionRepo;
   rateLimitStore?: RateLimitStore;
   billingService?: BillingService;
@@ -223,12 +227,19 @@ export function buildServer(options: ApiServerOptions = {}) {
   fastify.register(registerAetasRoutes, { prefix: "/profiles" });
   fastify.register(registerExportRoutes, {
     prefix: "/profiles",
+    profileRepo: options.profileRepo ?? profileRepo,
     cvRepos: options.cvRepos ?? cvRepos,
     backupRepo: options.backupRepo,
     maskRepo,
     epochRepo,
     stageRepo
   } as any);
+  fastify.register(registerBackupRoutes, {
+    prefix: "/profiles",
+    profileRepo: options.profileRepo ?? profileRepo,
+    cvRepos: options.cvRepos ?? cvRepos,
+    backupRepo: options.backupRepo
+  });
   fastify.register(registerAgentRoutes, { prefix: "/agent" });
   fastify.register(registerMaskRoutes, {
     prefix: "/taxonomy",
@@ -239,9 +250,10 @@ export function buildServer(options: ApiServerOptions = {}) {
   fastify.register(registerAttestationBlockRoutes);
     fastify.register(jobRoutes);
     fastify.register(interviewRoutes);
-    fastify.register(registerHunterProtocolRoutes, { 
+    fastify.register(registerHunterProtocolRoutes, {
       prefix: "/profiles",
       repo: options.profileRepo ?? profileRepo,
+      jobRepo: options.jobRepo ?? defaultJobRepo,
       licensingService
     });
     fastify.register(registerBillingRoutes, {

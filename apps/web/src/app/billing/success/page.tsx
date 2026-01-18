@@ -1,18 +1,17 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { getSubscription } from '@/lib/api-client';
 import { NeoCard } from '@in-midst-my-life/design-system';
 
 function SuccessContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [subscription, setSubscription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const sessionId = searchParams.get('session_id');
+  // Note: searchParams.get('session_id') would be used for Stripe session verification in production
   const profileId = '00000000-0000-0000-0000-000000000001'; // TODO: Get from auth context
 
   useEffect(() => {

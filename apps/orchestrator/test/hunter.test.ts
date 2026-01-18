@@ -1,12 +1,32 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { HunterAgent } from "../src/agents/hunter";
 import { MockJobSearchProvider } from "@in-midst-my-life/core";
 import type { AgentTask } from "../src/agents";
+
+// Mock global fetch for API calls
+global.fetch = vi.fn();
 
 describe("HunterAgent", () => {
   let hunter: HunterAgent;
 
   beforeEach(() => {
+    // Mock fetch to return a test profile
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/profiles/profile-123")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: "profile-123",
+            skills: ["TypeScript", "React", "JavaScript", "HTML", "CSS", "Git"],
+            education: [],
+            experience: [],
+            certifications: []
+          })
+        });
+      }
+      return Promise.reject(new Error(`Unexpected fetch to ${url}`));
+    });
+
     hunter = new HunterAgent({
       searchProvider: new MockJobSearchProvider(),
       apiBaseUrl: "http://localhost:3001"

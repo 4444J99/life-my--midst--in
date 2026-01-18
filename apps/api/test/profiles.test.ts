@@ -1,13 +1,14 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildServer } from "../src/index";
+import { buildTestApp } from "./app-builder";
 import { createProfileRepo, type ProfileRepo } from "../src/repositories/profiles";
 
-let server: ReturnType<typeof buildServer>;
+let server: ReturnType<typeof buildTestApp>;
 let repo: ProfileRepo;
 beforeAll(async () => {
   repo = createProfileRepo({ kind: "memory" });
   await repo.reset();
-  server = buildServer({ profileRepo: repo });
+  server = await buildTestApp({ profileRepo: repo });
 });
 
 describe("profiles routes", () => {
@@ -96,7 +97,11 @@ describe("profiles routes", () => {
     expect(patch.statusCode).toBe(200);
     expect(patch.json().data.title).toBe("Senior Engineer");
 
-    const del = await server.inject({ method: "DELETE", url: `/profiles/${payload.id}` });
+    const del = await server.inject({ 
+      method: "DELETE", 
+      url: `/profiles/${payload.id}`,
+      headers: { 'x-mock-user-id': payload.id }
+    });
     expect(del.statusCode).toBe(200);
   });
 
