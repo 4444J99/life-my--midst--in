@@ -14,6 +14,36 @@ info:
     - **Authentication**: JWT bearer tokens with role-based access control
     - **Caching**: Redis-backed (with in-memory fallback) for taxonomy endpoints
 
+    ## API Versioning
+
+    This API uses hybrid URL + header versioning per [ADR-017](../DECISION-LOG.md).
+
+    ### Version Detection Priority
+    1. **URL path** (`/v1/profiles`) — highest priority
+    2. **Accept-Version header** — for programmatic version selection
+    3. **Default** — falls back to latest stable version (v1)
+
+    ### Version Lifecycle
+
+    | Version | Status | Deprecation | Sunset |
+    |---------|--------|-------------|--------|
+    | v1 | **Current** | — | — |
+
+    ### Response Headers
+
+    All responses include:
+    - `X-API-Version` - The resolved version number
+    - `Deprecation` - RFC 8594 deprecation date (if applicable)
+    - `Sunset` - RFC 8594 sunset date (if applicable)
+    - `Link` - Successor version URL with `rel="successor-version"` (if applicable)
+
+    ### Migration Notes
+
+    Root paths (without `/v1/` prefix) are deprecated and will be removed after 90 days.
+    Clients should migrate to versioned URLs:
+    - `/profiles/:id` → `/v1/profiles/:id`
+    - `/taxonomy/masks` → `/v1/taxonomy/masks`
+
     ## Authentication
 
     Most endpoints require JWT bearer token authentication. Include in request:
@@ -23,18 +53,29 @@ info:
 
     Tokens include permission claims for fine-grained access control.
 
-  version: 0.2.0
+  version: 1.0.0
   contact:
     name: API Support
     url: https://github.com/anthropics/in-midst-my-life
   license:
     name: MIT
+  x-api-version:
+    current: 1
+    supported: [1]
+    deprecatedRootPaths: true
+    sunsetDate: null
 
 servers:
+  - url: http://localhost:3001/v1
+    description: Local development server (v1)
+  - url: https://api.inmidstmylife.com/v1
+    description: Production server (v1)
   - url: http://localhost:3001
-    description: Local development server
+    description: Local development (deprecated root paths)
+    x-deprecated: true
   - url: https://api.inmidstmylife.com
-    description: Production server
+    description: Production (deprecated root paths)
+    x-deprecated: true
 
 tags:
   - name: System
@@ -4095,6 +4136,52 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: AI agent token for autonomous operations
+
+  parameters:
+    AcceptVersion:
+      name: Accept-Version
+      in: header
+      description: |
+        Request a specific API version. Formats supported:
+        - `1` (major only)
+        - `1.0` (major.minor)
+        - `v1` (prefixed)
+        Falls back to latest stable version if not specified or invalid.
+      required: false
+      schema:
+        type: string
+        example: "1"
+
+  headers:
+    X-API-Version:
+      description: The resolved API version used for this response
+      schema:
+        type: string
+        example: "1"
+
+    Deprecation:
+      description: |
+        RFC 8594 deprecation indicator. Present when using a deprecated endpoint.
+        Value is "true" or the deprecation date.
+      schema:
+        type: string
+        example: "Sat, 19 Apr 2026 00:00:00 GMT"
+
+    Sunset:
+      description: |
+        RFC 8594 sunset date. After this date, the endpoint will be removed.
+      schema:
+        type: string
+        format: date-time
+        example: "Sat, 19 Jul 2026 00:00:00 GMT"
+
+    Link:
+      description: |
+        Link to successor version endpoint (RFC 8288).
+        Format: `<url>; rel="successor-version"`
+      schema:
+        type: string
+        example: '</v1/profiles>; rel="successor-version"'
 
 security:
   - bearerAuth: []
