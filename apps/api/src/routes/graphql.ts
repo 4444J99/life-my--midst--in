@@ -4,12 +4,14 @@ import { graphqlSchema } from '../services/graphql-schema';
 import {
   queryResolvers,
   mutationResolvers,
+  subscriptionResolvers,
   type GraphQLContext,
 } from '../services/graphql-resolvers';
 import type { ProfileRepo } from '../repositories/profiles';
 import type { MaskRepo, EpochRepo, StageRepo } from '../repositories/masks';
 import type { CvRepos } from '../repositories/cv';
 import type { NarrativeRepo } from '../repositories/narratives';
+import type { PubSubEngine } from '../services/pubsub';
 
 /**
  * GraphQL route handler
@@ -23,6 +25,7 @@ interface GraphQLPluginDeps {
   stageRepo?: StageRepo;
   cvRepos?: CvRepos;
   narrativeRepo?: NarrativeRepo;
+  pubsub?: PubSubEngine;
 }
 
 /** Maximum allowed query depth to prevent abuse */
@@ -58,10 +61,11 @@ export function registerGraphQLRoute(
     return;
   }
 
-  // Merge query + mutation resolvers into root value
+  // Merge query + mutation + subscription resolvers into root value
   const rootValue = {
     ...queryResolvers,
     ...mutationResolvers,
+    ...subscriptionResolvers,
   };
 
   const isProduction = process.env['NODE_ENV'] === 'production';
@@ -119,6 +123,7 @@ export function registerGraphQLRoute(
           stageRepo: deps.stageRepo,
           cvRepos: deps.cvRepos,
           narrativeRepo: deps.narrativeRepo,
+          pubsub: deps.pubsub,
         };
 
         const result = await graphql({
@@ -191,6 +196,7 @@ export function registerGraphQLRoute(
         maskRepo: deps.maskRepo,
         epochRepo: deps.epochRepo,
         stageRepo: deps.stageRepo,
+        pubsub: deps.pubsub,
       };
 
       const result = await graphql({

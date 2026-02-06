@@ -23,6 +23,8 @@ import type { CvRepos } from '../repositories/cv';
 import type { NarrativeRepo } from '../repositories/narratives';
 import { renderTimeline, renderTimelineForMask } from '@in-midst-my-life/content-model';
 import { hashPayload } from '@in-midst-my-life/core';
+import type { PubSubEngine } from './pubsub';
+import { profileUpdatedTopic, narrativeGeneratedTopic } from './pubsub';
 
 export interface GraphQLContext {
   profileRepo?: ProfileRepo;
@@ -31,6 +33,7 @@ export interface GraphQLContext {
   stageRepo?: StageRepo;
   cvRepos?: CvRepos;
   narrativeRepo?: NarrativeRepo;
+  pubsub?: PubSubEngine;
 }
 
 export interface TimelineEntry {
@@ -235,6 +238,7 @@ export const queryResolvers = {
       await context.narrativeRepo.create(snapshot);
     }
 
+    void context.pubsub?.publish(narrativeGeneratedTopic(snapshot.profileId), snapshot);
     return snapshot;
   },
 
@@ -307,7 +311,9 @@ export const mutationResolvers = {
       agentSettings: { enabled: false },
     };
 
-    return context.profileRepo.add(profile as unknown as Profile);
+    const created = await context.profileRepo.add(profile as unknown as Profile);
+    void context.pubsub?.publish(profileUpdatedTopic(created.id), created);
+    return created;
   },
 
   updateProfile: async (
@@ -323,7 +329,11 @@ export const mutationResolvers = {
     if (args.title) updates.title = args.title;
     if (args.summaryMarkdown) updates.summaryMarkdown = args.summaryMarkdown;
 
-    return (await context.profileRepo.update(args.id, updates)) ?? null;
+    const updated = (await context.profileRepo.update(args.id, updates)) ?? null;
+    if (updated) {
+      void context.pubsub?.publish(profileUpdatedTopic(updated.id), updated);
+    }
+    return updated;
   },
 
   createMask: async (
@@ -438,7 +448,9 @@ export const mutationResolvers = {
       updatedAt: now,
     });
 
-    return updated ?? existing;
+    const result = updated ?? existing;
+    void context.pubsub?.publish(narrativeGeneratedTopic(result.profileId), result);
+    return result;
   },
 
   rejectNarrative: async (
@@ -469,6 +481,58 @@ export const mutationResolvers = {
       updatedAt: now,
     });
 
-    return updated ?? existing;
+    const result = updated ?? existing;
+    void context.pubsub?.publish(narrativeGeneratedTopic(result.profileId), result);
+    return result;
   },
 };
+
+/**
+ * Root Subscription resolvers
+ *
+ * With buildSchema + root resolvers, subscription fields work like
+ * query/mutation: the root value field is called as (args, context)
+ * and must return an AsyncIterable. Each yielded value is wrapped
+ * with the field name key (e.g., { profileUpdated: <payload> }).
+ */
+export const subscriptionResolvers = {
+  profileUpdated: (args: { profileId: string }, context: GraphQLContext) => {
+    if (!context.pubsub) throw new Error('PubSub not available');
+    const topic = profileUpdatedTopic(args.profileId);
+    const source = context.pubsub.subscribe(topic);
+    return mapAsyncIterator(source, (payload) => ({ profileUpdated: payload }));
+  },
+
+  narrativeGenerated: (args: { profileId: string }, context: GraphQLContext) => {
+    if (!context.pubsub) throw new Error('PubSub not available');
+    const topic = narrativeGeneratedTopic(args.profileId);
+    const source = context.pubsub.subscribe(topic);
+    return mapAsyncIterator(source, (payload) => ({ narrativeGenerated: payload }));
+  },
+};
+
+/**
+ * Map over an AsyncIterable, transforming each value.
+ */
+function mapAsyncIterator<T, R>(source: AsyncIterable<T>, fn: (value: T) => R): AsyncIterable<R> {
+  return {
+    [Symbol.asyncIterator]() {
+      const iterator = source[Symbol.asyncIterator]();
+      return {
+        async next(): Promise<IteratorResult<R>> {
+          const result = await iterator.next();
+          if (result.done) return { value: undefined as R, done: true };
+          return { value: fn(result.value), done: false };
+        },
+        async return(): Promise<IteratorResult<R>> {
+          if (iterator.return) await iterator.return();
+          return { value: undefined as R, done: true };
+        },
+        async throw(err?: unknown): Promise<IteratorResult<R>> {
+          if (iterator.throw) return iterator.throw(err) as Promise<IteratorResult<R>>;
+          throw err;
+        },
+      };
+    },
+  };
+}
