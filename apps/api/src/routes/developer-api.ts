@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -72,7 +73,10 @@ export function developerApiRoutes(fastify: FastifyInstance, _opts: unknown, don
     async (request, reply) => {
       try {
         const createRequest = CreateOAuthAppSchema.parse(request.body);
-        const userId = request.user?.sub || 'user-id';
+        if (!request.user?.sub) {
+          return reply.code(401).send({ error: 'Authentication required' });
+        }
+        const userId = request.user.sub;
 
         const appId = crypto.randomUUID();
         const clientId = `imml_${crypto.getRandomValues(new Uint8Array(16)).join('')}`;
@@ -145,7 +149,10 @@ export function developerApiRoutes(fastify: FastifyInstance, _opts: unknown, don
       },
     },
     async (request, reply) => {
-      const userId = request.user?.sub || 'user-id';
+      if (!request.user?.sub) {
+        return reply.code(401).send({ error: 'Authentication required' });
+      }
+      const userId = request.user.sub;
 
       const userApps = Array.from(oauthApps.values())
         .filter((app) => app.userId === userId && !app.revokedAt)
@@ -219,7 +226,10 @@ export function developerApiRoutes(fastify: FastifyInstance, _opts: unknown, don
       // In production, show user consent screen here
       // For now, generate auth code
       const authCode = crypto.randomUUID();
-      const userId = request.user?.sub || 'user-id';
+      if (!request.user?.sub) {
+        return reply.code(401).send({ error: 'Authentication required' });
+      }
+      const userId = request.user.sub;
 
       authorizationCodes.set(authCode, {
         userId,
@@ -497,7 +507,10 @@ export function developerApiRoutes(fastify: FastifyInstance, _opts: unknown, don
     },
     async (request, reply) => {
       const { appId } = request.params;
-      const userId = request.user?.sub || 'user-id';
+      if (!request.user?.sub) {
+        return reply.code(401).send({ error: 'Authentication required' });
+      }
+      const userId = request.user.sub;
 
       const app = oauthApps.get(appId);
 
