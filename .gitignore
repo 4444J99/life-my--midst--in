@@ -12,4 +12,5 @@ build/
 .turbo/
 coverage/
 .vitest/
-*.env.op.sh.pnpm-store/
+*.env.op.sh
+.pnpm-store/
