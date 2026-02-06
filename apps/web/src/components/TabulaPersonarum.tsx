@@ -84,7 +84,7 @@ export function TabulaPersonarum({
       }
     };
 
-    loadMasks();
+    void loadMasks();
   }, [profileId, initialMasks]);
 
   return (

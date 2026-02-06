@@ -327,7 +327,7 @@ export default function OnboardingWizard({ profileId, onComplete }: OnboardingWi
     },
   ];
 
-  const handleNext = useCallback(async () => {
+  const handleNext = useCallback(() => {
     if (currentStep < steps.length - 1) {
       setCompletedSteps((prev) => new Set([...prev, steps[currentStep]!.id]));
       setCurrentStep(currentStep + 1);

@@ -34,8 +34,13 @@ export default function ProfilePage() {
     updatePersona: _updatePersona,
     deletePersona: _deletePersona,
   } = usePersonae(profileId);
-  const { canonicalAetas, profileAetas, currentAetasId, addProfileAetas: _addProfileAetas, setCurrentAetas } =
-    useAetas(profileId);
+  const {
+    canonicalAetas,
+    profileAetas,
+    currentAetasId,
+    addProfileAetas: _addProfileAetas,
+    setCurrentAetas,
+  } = useAetas(profileId);
   const { scaenae: _scaenae, canonicalScaenae } = useScaenae();
 
   const selectedPersona = personas.find((p) => p.id === selectedPersonaId) || null;
@@ -195,15 +200,15 @@ export default function ProfilePage() {
                 personas={personas}
                 aetas={canonicalAetas}
                 scaenae={canonicalScaenae}
-                onAddEntry={async (entry) => {
+                onAddEntry={(entry) => {
                   // In a real app, would call API
                   console.log('Add entry:', entry);
                 }}
-                onUpdateEntry={async (id, patch) => {
+                onUpdateEntry={(id, patch) => {
                   // In a real app, would call API
                   console.log('Update entry:', id, patch);
                 }}
-                onDeleteEntry={async (id) => {
+                onDeleteEntry={(id) => {
                   // In a real app, would call API
                   console.log('Delete entry:', id);
                 }}

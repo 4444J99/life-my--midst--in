@@ -22,7 +22,7 @@ export default function IntegrationsPage() {
     const pid = urlParams.get('profileId') || '';
     setProfileId(pid);
     if (pid) {
-      loadIntegrations(pid);
+      void loadIntegrations(pid);
     }
   }, []);
 
@@ -47,7 +47,7 @@ export default function IntegrationsPage() {
       await fetch(`${apiBase}/profiles/${profileId}/integrations/${integrationId}/sync`, {
         method: 'POST',
       });
-      loadIntegrations(profileId);
+      void loadIntegrations(profileId);
     } catch (err) {
       console.error('Failed to refresh integration:', err);
       throw err;
@@ -64,7 +64,7 @@ export default function IntegrationsPage() {
       await fetch(`${apiBase}/profiles/${profileId}/integrations/${integrationId}`, {
         method: 'DELETE',
       });
-      loadIntegrations(profileId);
+      void loadIntegrations(profileId);
     } catch (err) {
       console.error('Failed to disconnect integration:', err);
       throw err;
@@ -78,7 +78,7 @@ export default function IntegrationsPage() {
 
   const handleConnectionComplete = () => {
     setShowConnectModal(false);
-    loadIntegrations(profileId);
+    void loadIntegrations(profileId);
   };
 
   return (

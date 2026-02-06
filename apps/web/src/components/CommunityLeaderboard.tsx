@@ -37,7 +37,7 @@ export default function CommunityLeaderboard() {
   const [filterBy, setFilterBy] = useState<'overall' | 'feedback' | 'mentoring'>('overall');
 
   useEffect(() => {
-    loadLeaderboard();
+    void loadLeaderboard();
   }, [timeframe, filterBy]);
 
   const loadLeaderboard = async () => {

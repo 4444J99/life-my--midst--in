@@ -48,7 +48,7 @@ export default function DiscoveryFeed() {
   ];
 
   useEffect(() => {
-    loadProfiles();
+    void loadProfiles();
   }, []);
 
   useEffect(() => {

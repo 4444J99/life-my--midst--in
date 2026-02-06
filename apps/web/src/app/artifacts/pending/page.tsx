@@ -22,7 +22,7 @@ export default function PendingArtifactsPage() {
     const pid = urlParams.get('profileId') || '';
     setProfileId(pid);
     if (pid) {
-      loadArtifacts(pid);
+      void loadArtifacts(pid);
     }
   }, []);
 
@@ -58,7 +58,7 @@ export default function PendingArtifactsPage() {
       }
     }
     setSelectedIds(new Set());
-    loadArtifacts(profileId);
+    void loadArtifacts(profileId);
   };
 
   const handleRejectAll = async () => {
@@ -72,7 +72,7 @@ export default function PendingArtifactsPage() {
       }
     }
     setSelectedIds(new Set());
-    loadArtifacts(profileId);
+    void loadArtifacts(profileId);
   };
 
   const handleArchiveAll = async () => {
@@ -86,7 +86,7 @@ export default function PendingArtifactsPage() {
       }
     }
     setSelectedIds(new Set());
-    loadArtifacts(profileId);
+    void loadArtifacts(profileId);
   };
 
   const filteredArtifacts =

@@ -22,7 +22,7 @@ export default function ArtifactDetailPage() {
     const pid = urlParams.get('profileId') || '';
     setProfileId(pid);
     if (pid && params['id']) {
-      loadArtifact(pid, params['id'] as string);
+      void loadArtifact(pid, params['id'] as string);
     }
   }, [params]);
 

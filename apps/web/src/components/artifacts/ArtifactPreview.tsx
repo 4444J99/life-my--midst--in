@@ -120,11 +120,15 @@ export function ArtifactPreview({
           </div>
           <div>
             <span className="label">Created</span>
-            <p>{artifact.createdDate ? new Date(artifact.createdDate).toLocaleDateString() : 'N/A'}</p>
+            <p>
+              {artifact.createdDate ? new Date(artifact.createdDate).toLocaleDateString() : 'N/A'}
+            </p>
           </div>
           <div>
             <span className="label">Modified</span>
-            <p>{artifact.modifiedDate ? new Date(artifact.modifiedDate).toLocaleDateString() : 'N/A'}</p>
+            <p>
+              {artifact.modifiedDate ? new Date(artifact.modifiedDate).toLocaleDateString() : 'N/A'}
+            </p>
           </div>
         </div>
       </div>

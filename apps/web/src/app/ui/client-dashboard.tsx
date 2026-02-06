@@ -222,7 +222,8 @@ export default function ClientDashboard() {
   const [exportedKey, setExportedKey] = useState('');
   const [lastMintedCID, setLastMintedCID] = useState('');
 
-  const handleExportKey = async (passphrase: string) => { // allow-secret
+  const handleExportKey = async (passphrase: string) => {
+    // allow-secret
     const key = await exportIdentityEncrypted(passphrase);
     setExportedKey(key);
   };

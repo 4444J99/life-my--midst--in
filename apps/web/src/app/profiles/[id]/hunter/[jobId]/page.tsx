@@ -40,7 +40,7 @@ export default function TailorResumeViewer({ params }: PageProps) {
 
   // Load job details, compatibility analysis, and tailored resume
   useEffect(() => {
-    const loadData = async () => {
+    const loadData = () => {
       try {
         setLoading(true);
         setError(null);
@@ -200,7 +200,7 @@ and observability (DataDog, Prometheus), automated testing
 
   const handleCopyResume = () => {
     if (tailoredResume) {
-      navigator.clipboard.writeText(tailoredResume.resume);
+      void navigator.clipboard.writeText(tailoredResume.resume);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -218,7 +218,7 @@ and observability (DataDog, Prometheus), automated testing
     }
   };
 
-  const handleGenerateCoverLetter = async () => {
+  const handleGenerateCoverLetter = () => {
     try {
       // In real implementation, call API endpoint
       const mockLetter = `Dear Hiring Manager,
@@ -575,7 +575,7 @@ Jane Doe`;
               <div className="border-t border-slate-200 p-6 flex gap-3">
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(coverLetter);
+                    void navigator.clipboard.writeText(coverLetter);
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}

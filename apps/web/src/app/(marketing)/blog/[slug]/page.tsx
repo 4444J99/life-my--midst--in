@@ -8,6 +8,7 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await
 export async function generateStaticParams() {
   return getPostSlugs().map((slug) => ({ slug }));
 }

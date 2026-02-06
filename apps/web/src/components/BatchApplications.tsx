@@ -52,7 +52,7 @@ export default function BatchApplications({
 
   // Load jobs and compatibility data
   useEffect(() => {
-    const loadJobs = async () => {
+    const loadJobs = () => {
       try {
         setLoading(true);
 

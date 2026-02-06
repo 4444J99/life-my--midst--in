@@ -23,7 +23,10 @@ interface MentorProfilesProps {
   onRequestMentorship?: (mentorId: string) => void;
 }
 
-export default function MentorProfiles({ userId: _userId, onRequestMentorship }: MentorProfilesProps) {
+export default function MentorProfiles({
+  userId: _userId,
+  onRequestMentorship,
+}: MentorProfilesProps) {
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [filteredMentors, setFilteredMentors] = useState<MentorProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +53,7 @@ export default function MentorProfiles({ userId: _userId, onRequestMentorship }:
     filterMentors();
   }, [mentors, selectedExpertise, availabilityFilter]);
 
-  const loadMentors = async () => {
+  const loadMentors = () => {
     try {
       setIsLoading(true);
       // Mock data - in production, fetch from API

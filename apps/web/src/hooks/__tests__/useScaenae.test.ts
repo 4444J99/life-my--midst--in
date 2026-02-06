@@ -9,7 +9,7 @@ global.fetch = vi.fn();
 interface TestScaena {
   id: string;
   name?: string;
-  nomen?: string;  // Legacy alias for name
+  nomen?: string; // Legacy alias for name
   emoji?: string;
   description: string;
   immutable?: boolean;

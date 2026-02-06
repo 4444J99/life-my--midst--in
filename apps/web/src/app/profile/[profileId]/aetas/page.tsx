@@ -105,7 +105,7 @@ export default function AetasEditorPage({ params }: PageProps) {
   };
 
   // Set as current aeta
-  const handleSetCurrent = async (id: string) => {
+  const handleSetCurrent = (id: string) => {
     try {
       setCurrentAetas(id);
     } catch (err) {

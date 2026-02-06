@@ -100,7 +100,8 @@ export function useIdentity() {
 
   const toBase64 = (buffer: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buffer)));
 
-  async function exportIdentityEncrypted(passphrase: string): Promise<string> { // allow-secret
+  async function exportIdentityEncrypted(passphrase: string): Promise<string> {
+    // allow-secret
     if (!identity) return '';
     const encoder = new TextEncoder();
     const salt = crypto.getRandomValues(new Uint8Array(16));

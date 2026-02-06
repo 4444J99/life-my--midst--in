@@ -67,7 +67,7 @@ export default function FeedbackPage({ params }: { params: { profileId: string }
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   useEffect(() => {
-    loadFeedback();
+    void loadFeedback();
   }, [params.profileId]);
 
   const loadFeedback = async () => {
@@ -161,7 +161,7 @@ export default function FeedbackPage({ params }: { params: { profileId: string }
                 userId="current-user-id" // In production, use actual user ID from auth
                 onSubmitSuccess={() => {
                   setShowForm(false);
-                  loadFeedback();
+                  void loadFeedback();
                 }}
               />
             </div>

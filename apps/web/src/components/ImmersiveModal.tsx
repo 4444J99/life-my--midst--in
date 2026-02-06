@@ -36,7 +36,7 @@ export function ImmersiveModal({ item, onClose }: ImmersiveModalProps) {
     // Note: Cryptographic verification is done server-side to avoid bundling crypto modules
     // Client receives pre-verified artifacts from the API
     // This useEffect just marks items as "self-attested" by default
-    const verify = async () => {
+    const verify = () => {
       if (!item.integrity) {
         if (active) setVerification('unverified');
         return;
@@ -45,7 +45,7 @@ export function ImmersiveModal({ item, onClose }: ImmersiveModalProps) {
       // Actual verification happens in the API layer
       if (active) setVerification('verified');
     };
-    void verify();
+    verify();
     return () => {
       active = false;
     };

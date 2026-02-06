@@ -25,7 +25,7 @@ export default function PersonaCollaborationCard({
   const [showLink, setShowLink] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  const generateShareLink = useCallback(async () => {
+  const generateShareLink = useCallback(() => {
     try {
       setIsSubmitting(true);
       const token = crypto.randomUUID(); // allow-secret
@@ -89,7 +89,7 @@ export default function PersonaCollaborationCard({
 
   const copyToClipboard = () => {
     if (shareLink) {
-      navigator.clipboard.writeText(shareLink);
+      void navigator.clipboard.writeText(shareLink);
       // Show confirmation
     }
   };

@@ -45,7 +45,7 @@ export default function InterviewPage() {
       setQuestions(data.questions);
     };
 
-    fetchQuestions();
+    void fetchQuestions();
   }, [profileId]);
 
   const handleStartInterview = async (e: React.FormEvent) => {
@@ -111,7 +111,7 @@ export default function InterviewPage() {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      completeInterview();
+      void completeInterview();
     }
   };
 
@@ -264,9 +264,7 @@ export default function InterviewPage() {
                   if (currentQuestionIndex > 0) {
                     setCurrentQuestionIndex(currentQuestionIndex - 1);
                     const prevQ = questions[currentQuestionIndex - 1];
-                    setCurrentAnswer(
-                      answers.find((a) => a.questionId === prevQ?.id)?.answer || '',
-                    );
+                    setCurrentAnswer(answers.find((a) => a.questionId === prevQ?.id)?.answer || '');
                   }
                 }}
                 className="px-6 py-2 rounded-lg border border-white/20 text-white hover:bg-white/10 transition"

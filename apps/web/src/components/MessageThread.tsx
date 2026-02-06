@@ -28,7 +28,7 @@ export default function MessageThread({ threadId, participantName, onBack }: Mes
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadMessages();
+    void loadMessages();
   }, [threadId]);
 
   useEffect(() => {
@@ -163,8 +163,7 @@ export default function MessageThread({ threadId, participantName, onBack }: Mes
             const showTimestamp =
               index === 0 ||
               (prevMessage &&
-                new Date(prevMessage.createdAt).getTime() -
-                  new Date(message.createdAt).getTime() >
+                new Date(prevMessage.createdAt).getTime() - new Date(message.createdAt).getTime() >
                   300000); // 5 minutes
 
             return (
@@ -237,7 +236,7 @@ export default function MessageThread({ threadId, participantName, onBack }: Mes
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                handleSendMessage(e as any);
+                void handleSendMessage(e as any);
               }
             }}
           />

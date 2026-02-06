@@ -35,8 +35,8 @@ export default function MessageInbox({ userId }: { userId: string }) {
   const [selectedThreadId, _setSelectedThreadId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadThreads();
-    loadNotifications();
+    void loadThreads();
+    void loadNotifications();
   }, [userId]);
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function MessageInbox({ userId }: { userId: string }) {
     } catch (error) {
       console.error('Failed to archive thread:', error);
       // Revert on error
-      loadThreads();
+      void loadThreads();
     }
   };
 
@@ -116,7 +116,7 @@ export default function MessageInbox({ userId }: { userId: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ read: true }),
       });
-      loadNotifications();
+      void loadNotifications();
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
@@ -233,7 +233,7 @@ export default function MessageInbox({ userId }: { userId: string }) {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      handleArchiveThread(thread.id);
+                      void handleArchiveThread(thread.id);
                     }}
                     className="p-1 hover:bg-gray-200 rounded transition-colors"
                     title="Archive conversation"

@@ -48,7 +48,7 @@ export default function BetaDashboard() {
     loadDashboardData();
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = () => {
     try {
       setIsLoading(true);
 

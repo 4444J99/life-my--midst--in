@@ -75,9 +75,9 @@ export default function HunterDashboard({ profileId, onApplyJob }: HunterDashboa
   const [quotaInfo, setQuotaInfo] = useState<any>(null);
 
   useEffect(() => {
-    fetchSubscription();
+    void fetchSubscription();
     if (activeTab === 'schedule') {
-      fetchScheduledHunts();
+      void fetchScheduledHunts();
     }
   }, [activeTab]);
 
@@ -137,7 +137,7 @@ export default function HunterDashboard({ profileId, onApplyJob }: HunterDashboa
         return;
       }
 
-      fetchScheduledHunts();
+      void fetchScheduledHunts();
       alert('Job hunt scheduled!');
     } catch (err) {
       alert('Failed to schedule hunt');
@@ -147,7 +147,7 @@ export default function HunterDashboard({ profileId, onApplyJob }: HunterDashboa
   const handleDeleteSchedule = async () => {
     try {
       await fetch(`/api/scheduler/job-hunts/${profileId}`, { method: 'DELETE' });
-      fetchScheduledHunts();
+      void fetchScheduledHunts();
     } catch (err) {
       alert('Failed to delete schedule');
     }
@@ -197,7 +197,7 @@ export default function HunterDashboard({ profileId, onApplyJob }: HunterDashboa
       setCompatibilities({});
       setSelectedJob(null);
       // Refresh subscription to update usage metrics
-      fetchSubscription();
+      void fetchSubscription();
     } catch (error) {
       console.error('Search failed:', error);
     } finally {
@@ -237,7 +237,7 @@ export default function HunterDashboard({ profileId, onApplyJob }: HunterDashboa
         [job.id]: data.compatibility,
       }));
       setSelectedJob(job);
-      fetchSubscription();
+      void fetchSubscription();
     } catch (error) {
       console.error('Analysis failed:', error);
     } finally {
