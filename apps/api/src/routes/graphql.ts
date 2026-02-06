@@ -1,5 +1,13 @@
 import type { FastifyInstance } from 'fastify';
-import { buildSchema, graphql, type GraphQLSchema } from 'graphql';
+import {
+  buildSchema,
+  graphql,
+  execute as graphqlExecute,
+  subscribe as graphqlSubscribe,
+  validate as graphqlValidate,
+  parse as graphqlParse,
+  type GraphQLSchema,
+} from 'graphql';
 import { graphqlSchema } from '../services/graphql-schema';
 import {
   queryResolvers,
@@ -16,6 +24,7 @@ import type { PubSubEngine } from '../services/pubsub';
 /**
  * GraphQL route handler
  * Provides a unified GraphQL API gateway for querying profiles, masks, narratives, etc.
+ * Supports HTTP POST/GET for queries and mutations, plus WebSocket for subscriptions.
  */
 
 interface GraphQLPluginDeps {
@@ -46,19 +55,29 @@ function estimateQueryDepth(query: string): number {
   return maxDepth;
 }
 
-export function registerGraphQLRoute(
+function buildContext(deps: GraphQLPluginDeps): GraphQLContext {
+  return {
+    profileRepo: deps.profileRepo,
+    maskRepo: deps.maskRepo,
+    epochRepo: deps.epochRepo,
+    stageRepo: deps.stageRepo,
+    cvRepos: deps.cvRepos,
+    narrativeRepo: deps.narrativeRepo,
+    pubsub: deps.pubsub,
+  };
+}
+
+export async function registerGraphQLRoute(
   fastify: FastifyInstance,
   deps: GraphQLPluginDeps,
-  done: (err?: Error) => void,
-): void {
+): Promise<void> {
   // Build GraphQL schema once at startup
   let schema: GraphQLSchema;
   try {
     schema = buildSchema(graphqlSchema);
   } catch (error) {
     fastify.log.error(error, 'Failed to build GraphQL schema');
-    done(error instanceof Error ? error : new Error(String(error)));
-    return;
+    throw error instanceof Error ? error : new Error(String(error));
   }
 
   // Merge query + mutation + subscription resolvers into root value
@@ -69,6 +88,83 @@ export function registerGraphQLRoute(
   };
 
   const isProduction = process.env['NODE_ENV'] === 'production';
+
+  // ──── WebSocket transport for subscriptions ─────────────────────────
+  // Register @fastify/websocket to handle upgrade requests
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- CJS plugin
+  const websocket = require('@fastify/websocket') as typeof import('@fastify/websocket');
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Fastify plugin type mismatch
+  await fastify.register(websocket.default as any);
+
+  // graphql-ws server handles the subscription protocol over WebSocket.
+  // We use require() for CJS resolution and supply onSubscribe to perform
+  // our own parse/validate using our app's graphql import. This avoids the
+  // "Cannot use GraphQLSchema from another module or realm" error that
+  // occurs when graphql-ws's bundled require('graphql') resolves to a
+  // different module instance (ESM vs CJS) in test/bundler environments.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- CJS needed to avoid dual graphql instance
+  const { makeServer } = require('graphql-ws') as typeof import('graphql-ws');
+  const wsServer = makeServer({
+    schema,
+    context: () => buildContext(deps),
+    onSubscribe: (_ctx, _id, payload) => {
+      const document = graphqlParse(payload.query ?? '');
+      const errors = graphqlValidate(schema, document);
+      if (errors.length > 0) return errors;
+      return {
+        schema,
+        document,
+        rootValue,
+        contextValue: buildContext(deps),
+        variableValues: payload.variables as Record<string, unknown> | undefined,
+        operationName: payload.operationName ?? undefined,
+      };
+    },
+    execute: (args) => graphqlExecute(args),
+    subscribe: (args) => graphqlSubscribe(args),
+  });
+
+  /**
+   * GET /graphql/ws — WebSocket endpoint for GraphQL subscriptions
+   *
+   * Bridges Fastify's @fastify/websocket to graphql-ws protocol handler.
+   */
+  fastify.get('/graphql/ws', { websocket: true }, (socket) => {
+    // opened() returns a cleanup function: (code?, reason?) => Promise<void>
+    const closed = wsServer.opened(
+      {
+        protocol: socket.protocol,
+        send: (data: string) =>
+          new Promise<void>((resolve, reject) => {
+            socket.send(data, (err?: Error) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          }),
+        close: (code?: number, reason?: string) => {
+          socket.close(code, reason);
+        },
+        onMessage: (cb: (message: string) => Promise<void>) => {
+          socket.on('message', (data: Buffer) => {
+            void cb(data.toString());
+          });
+        },
+        onPing: () => {
+          socket.ping();
+        },
+        onPong: () => {
+          /* pong received — no action needed */
+        },
+      },
+      { socket },
+    );
+
+    socket.on('close', (code: number, reason: Buffer) => {
+      void closed(code, reason.toString());
+    });
+  });
+
+  // ──── HTTP endpoints ────────────────────────────────────────────────
 
   /**
    * POST /graphql
@@ -116,15 +212,7 @@ export function registerGraphQLRoute(
       }
 
       try {
-        const context: GraphQLContext = {
-          profileRepo: deps.profileRepo,
-          maskRepo: deps.maskRepo,
-          epochRepo: deps.epochRepo,
-          stageRepo: deps.stageRepo,
-          cvRepos: deps.cvRepos,
-          narrativeRepo: deps.narrativeRepo,
-          pubsub: deps.pubsub,
-        };
+        const context = buildContext(deps);
 
         const result = await graphql({
           schema,
@@ -191,13 +279,7 @@ export function registerGraphQLRoute(
     }
 
     try {
-      const context: GraphQLContext = {
-        profileRepo: deps.profileRepo,
-        maskRepo: deps.maskRepo,
-        epochRepo: deps.epochRepo,
-        stageRepo: deps.stageRepo,
-        pubsub: deps.pubsub,
-      };
+      const context = buildContext(deps);
 
       const result = await graphql({
         schema,
@@ -220,6 +302,4 @@ export function registerGraphQLRoute(
       });
     }
   });
-
-  done();
 }

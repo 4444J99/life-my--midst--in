@@ -30,6 +30,7 @@ import { registerIntegrationRoutes } from './routes/integrations';
 import { registerSearchRoutes } from './routes/search';
 import { registerDidRoutes } from './routes/did';
 import { registerGraphQLRoute } from './routes/graphql';
+import { InMemoryPubSub } from './services/pubsub';
 import type { ProfileRepo } from './repositories/profiles';
 import type { MaskRepo, EpochRepo, StageRepo } from './repositories/masks';
 import { createMaskRepo } from './repositories/masks';
@@ -154,6 +155,9 @@ export function buildServer(options: ApiServerOptions = {}) {
       },
       webhookSecret: process.env['STRIPE_WEBHOOK_SECRET'] || 'whsec_test_mock',
     });
+
+  // PubSub engine for GraphQL subscriptions
+  const pubsub = new InMemoryPubSub();
 
   // JWT authentication — uses env var or a dev-only default for test/development
   const jwtSecret =
@@ -462,6 +466,7 @@ export function buildServer(options: ApiServerOptions = {}) {
       stageRepo,
       cvRepos,
       narrativeRepo,
+      pubsub,
     });
   };
 
