@@ -2,6 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "inmidst.orchestratorName" . }}
+  labels:
+    app: {{ include "inmidst.orchestratorName" . }}
+    app.kubernetes.io/component: orchestrator
 spec:
   replicas: {{ .Values.orchestrator.replicaCount }}
   selector:
@@ -11,6 +14,7 @@ spec:
     metadata:
       labels:
         app: {{ include "inmidst.orchestratorName" . }}
+        app.kubernetes.io/component: orchestrator
     spec:
       containers:
         - name: orchestrator
@@ -23,11 +27,26 @@ spec:
             {{- end }}
           ports:
             - containerPort: {{ .Values.orchestrator.service.port }}
+              name: http
+          {{- with .Values.orchestrator.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.orchestrator.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.orchestrator.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "inmidst.orchestratorName" . }}
+  labels:
+    app: {{ include "inmidst.orchestratorName" . }}
 spec:
   selector:
     app: {{ include "inmidst.orchestratorName" . }}
@@ -35,3 +54,24 @@ spec:
     - name: http
       port: {{ .Values.orchestrator.service.port }}
       targetPort: {{ .Values.orchestrator.service.port }}
+{{- if .Values.orchestrator.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "inmidst.orchestratorName" . }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "inmidst.orchestratorName" . }}
+  minReplicas: {{ .Values.orchestrator.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.orchestrator.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.orchestrator.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

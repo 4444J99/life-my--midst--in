@@ -1,0 +1,172 @@
+groups:
+  - name: api_alerts
+    rules:
+      # API error rate exceeds 5% over 5 minutes
+      - alert: HighAPIErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "API error rate above 5%"
+          description: "{{ $value | humanizePercentage }} of requests returning 5xx over the last 5 minutes."
+          runbook: "docs/ON_CALL_RUNBOOK.md#high-api-error-rate"
+
+      # P95 request latency exceeds 1 second
+      - alert: HighAPILatency
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+          > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "API P95 latency above 1s"
+          description: "P95 latency is {{ $value | humanizeDuration }}."
+          runbook: "docs/ON_CALL_RUNBOOK.md#high-api-latency"
+
+      # No successful requests for 2 minutes (service down)
+      - alert: APIDown
+        expr: |
+          sum(rate(http_requests_total{status_code=~"2.."}[2m])) == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "API is not serving successful requests"
+          description: "No 2xx responses in the last 2 minutes."
+          runbook: "docs/ON_CALL_RUNBOOK.md#api-down"
+
+  - name: database_alerts
+    rules:
+      # PostgreSQL connections above 80% of max
+      - alert: HighDatabaseConnections
+        expr: |
+          pg_stat_activity_count
+          /
+          pg_settings_max_connections
+          > 0.80
+        for: 5m
+        labels:
+          severity: warning
+          service: postgres
+        annotations:
+          summary: "Database connections above 80%"
+          description: "{{ $value | humanizePercentage }} of max connections in use."
+          runbook: "docs/ON_CALL_RUNBOOK.md#high-database-connections"
+
+      # Database query P95 latency exceeds 500ms
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le, table))
+          > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: postgres
+        annotations:
+          summary: "Database P95 query latency above 500ms"
+          description: "P95 query duration is {{ $value | humanizeDuration }} for table {{ $labels.table }}."
+          runbook: "docs/ON_CALL_RUNBOOK.md#slow-database-queries"
+
+      # PostgreSQL is down
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: postgres
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL exporter cannot reach the database."
+          runbook: "docs/ON_CALL_RUNBOOK.md#postgresql-down"
+
+  - name: redis_alerts
+    rules:
+      # Redis memory usage above 90%
+      - alert: HighRedisMemory
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis memory usage above 90%"
+          description: "Redis is using {{ $value | humanizePercentage }} of max memory."
+          runbook: "docs/ON_CALL_RUNBOOK.md#high-redis-memory"
+
+      # Redis is down
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis exporter cannot reach the Redis instance."
+          runbook: "docs/ON_CALL_RUNBOOK.md#redis-down"
+
+      # Redis operation P95 latency exceeds 100ms
+      - alert: SlowRedisOperations
+        expr: |
+          histogram_quantile(0.95, sum(rate(redis_operation_duration_seconds_bucket[5m])) by (le))
+          > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis P95 operation latency above 100ms"
+          description: "P95 Redis operation latency is {{ $value | humanizeDuration }}."
+          runbook: "docs/ON_CALL_RUNBOOK.md#slow-redis-operations"
+
+  - name: infrastructure_alerts
+    rules:
+      # High active HTTP connections (potential connection leak)
+      - alert: HighActiveConnections
+        expr: active_connections{type="http"} > 500
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High number of active HTTP connections"
+          description: "{{ $value }} active connections. Possible connection leak."
+          runbook: "docs/ON_CALL_RUNBOOK.md#high-active-connections"
+
+      # Low cache hit ratio (below 50%)
+      - alert: LowCacheHitRatio
+        expr: |
+          sum(rate(cache_hits_total[10m]))
+          /
+          (sum(rate(cache_hits_total[10m])) + sum(rate(cache_misses_total[10m])))
+          < 0.50
+        for: 15m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "Cache hit ratio below 50%"
+          description: "Only {{ $value | humanizePercentage }} of cache lookups are hits."
+          runbook: "docs/ON_CALL_RUNBOOK.md#low-cache-hit-ratio"
+
+      # Scrape target is down
+      - alert: TargetDown
+        expr: up == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scrape target {{ $labels.job }} is down"
+          description: "Prometheus cannot reach {{ $labels.instance }}."
+          runbook: "docs/ON_CALL_RUNBOOK.md#target-down"

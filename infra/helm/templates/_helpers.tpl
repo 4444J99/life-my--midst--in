@@ -2,6 +2,10 @@
 inmidst
 {{- end }}
 
+{{- define "inmidst.fullname" -}}
+{{ include "inmidst.name" . }}
+{{- end }}
+
 {{- define "inmidst.apiName" -}}
 {{ include "inmidst.name" . }}-api
 {{- end }}

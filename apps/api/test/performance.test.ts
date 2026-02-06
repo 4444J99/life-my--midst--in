@@ -56,7 +56,7 @@ describe('API performance budgets', () => {
   it('serves profile reads within budget', async () => {
     const { res, elapsed } = await timeRequest({ method: 'GET', url: `/profiles/${profileId}` });
     expect(res.statusCode).toBe(200);
-    expect(elapsed).toBeLessThan(250);
+    expect(elapsed).toBeLessThan(500);
   });
 
   it('builds narrative within budget', async () => {

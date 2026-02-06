@@ -1,0 +1,163 @@
+# Default values for inmidst Helm chart
+# Override per environment via -f values-production.yaml
+
+image:
+  repository: ghcr.io/4444j99/inmidst
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# --- API Service ---
+api:
+  replicaCount: 2
+  service:
+    port: 3001
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 3001
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 3001
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  env:
+    NODE_ENV: production
+    PORT: "3001"
+
+# --- Web (Next.js) ---
+web:
+  replicaCount: 2
+  service:
+    port: 3000
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  env:
+    NODE_ENV: production
+
+# --- Orchestrator (Worker) ---
+orchestrator:
+  replicaCount: 1
+  service:
+    port: 3002
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 3002
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 3002
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 80
+  env:
+    NODE_ENV: production
+    PORT: "3002"
+    ORCH_WORKER_ENABLED: "true"
+    ORCH_SCHEDULER_ENABLED: "true"
+
+# --- PostgreSQL ---
+postgres:
+  enabled: true
+  image: pgvector/pgvector:pg15
+  storage: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+# --- Redis ---
+redis:
+  enabled: true
+  image: redis:7-alpine
+  storage: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# --- Ingress ---
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: app.example.com
+      paths:
+        - path: /
+          service: web
+        - path: /api
+          service: api
+  tls: []

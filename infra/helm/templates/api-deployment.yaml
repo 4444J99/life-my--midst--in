@@ -2,6 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "inmidst.apiName" . }}
+  labels:
+    app: {{ include "inmidst.apiName" . }}
+    app.kubernetes.io/component: api
 spec:
   replicas: {{ .Values.api.replicaCount }}
   selector:
@@ -11,6 +14,7 @@ spec:
     metadata:
       labels:
         app: {{ include "inmidst.apiName" . }}
+        app.kubernetes.io/component: api
     spec:
       containers:
         - name: api
@@ -23,11 +27,26 @@ spec:
             {{- end }}
           ports:
             - containerPort: {{ .Values.api.service.port }}
+              name: http
+          {{- with .Values.api.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.api.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.api.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "inmidst.apiName" . }}
+  labels:
+    app: {{ include "inmidst.apiName" . }}
 spec:
   selector:
     app: {{ include "inmidst.apiName" . }}
@@ -35,3 +54,24 @@ spec:
     - name: http
       port: {{ .Values.api.service.port }}
       targetPort: {{ .Values.api.service.port }}
+{{- if .Values.api.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "inmidst.apiName" . }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "inmidst.apiName" . }}
+  minReplicas: {{ .Values.api.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.api.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

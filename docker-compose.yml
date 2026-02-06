@@ -19,23 +19,6 @@ services:
       timeout: 5s
       retries: 5
 
-  neo4j:
-    image: neo4j:5-community
-    container_name: inmidst-neo4j
-    restart: unless-stopped
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    environment:
-      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/password}
-    volumes:
-      - neo4jdata:/data
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: inmidst-redis
@@ -66,6 +49,7 @@ services:
       - "9090:9090"
     volumes:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
     depends_on:
       - api
@@ -238,6 +222,5 @@ services:
 volumes:
   pgdata:
   redisdata:
-  neo4jdata:
   prometheus-data:
   grafana-data:
