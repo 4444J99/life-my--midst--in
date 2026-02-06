@@ -26,7 +26,7 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.210.0",
     "@opentelemetry/resources": "^2.4.0",
     "@opentelemetry/sdk-node": "^0.210.0",
-    "@opentelemetry/sdk-trace-node": "^2.4.0",
+    "@opentelemetry/sdk-trace-node": "^2.5.0",
     "@opentelemetry/semantic-conventions": "^1.39.0",
     "@scalar/fastify-api-reference": "1.44.14",
     "@sentry/node": "^10.34.0",
