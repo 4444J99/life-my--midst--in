@@ -8,6 +8,8 @@ import {
 } from '../services/graphql-resolvers';
 import type { ProfileRepo } from '../repositories/profiles';
 import type { MaskRepo, EpochRepo, StageRepo } from '../repositories/masks';
+import type { CvRepos } from '../repositories/cv';
+import type { NarrativeRepo } from '../repositories/narratives';
 
 /**
  * GraphQL route handler
@@ -19,6 +21,8 @@ interface GraphQLPluginDeps {
   maskRepo?: MaskRepo;
   epochRepo?: EpochRepo;
   stageRepo?: StageRepo;
+  cvRepos?: CvRepos;
+  narrativeRepo?: NarrativeRepo;
 }
 
 /** Maximum allowed query depth to prevent abuse */
@@ -113,6 +117,8 @@ export function registerGraphQLRoute(
           maskRepo: deps.maskRepo,
           epochRepo: deps.epochRepo,
           stageRepo: deps.stageRepo,
+          cvRepos: deps.cvRepos,
+          narrativeRepo: deps.narrativeRepo,
         };
 
         const result = await graphql({

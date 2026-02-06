@@ -1,17 +1,35 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 /**
  * GraphQL Resolvers for the API gateway.
  * Implements query and mutation resolvers for unified data access.
+ *
+ * Timeline resolvers delegate to CvRepos.timelineEvents.
+ * Narrative resolvers delegate to NarrativeRepo for persistence
+ * and content-model for generation.
  */
 
-import type { Mask, Profile, Epoch, Stage } from '@in-midst-my-life/schema';
+import { randomUUID } from 'node:crypto';
+import type {
+  Mask,
+  Profile,
+  Epoch,
+  Stage,
+  NarrativeSnapshot,
+  TimelineEvent,
+} from '@in-midst-my-life/schema';
 import type { ProfileRepo } from '../repositories/profiles';
 import type { MaskRepo, EpochRepo, StageRepo } from '../repositories/masks';
+import type { CvRepos } from '../repositories/cv';
+import type { NarrativeRepo } from '../repositories/narratives';
+import { renderTimeline, renderTimelineForMask } from '@in-midst-my-life/content-model';
 
 export interface GraphQLContext {
   profileRepo?: ProfileRepo;
   maskRepo?: MaskRepo;
   epochRepo?: EpochRepo;
   stageRepo?: StageRepo;
+  cvRepos?: CvRepos;
+  narrativeRepo?: NarrativeRepo;
 }
 
 export interface TimelineEntry {
@@ -26,18 +44,18 @@ export interface TimelineEntry {
   settingId?: string;
 }
 
-interface NarrativeSnapshot {
-  id: string;
-  profileId: string;
-  maskId?: string;
-  status: 'draft' | 'approved' | 'rejected';
-  blocks: { title: string; body: string; tags: string[] }[];
-  meta?: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-  revisionNote?: string;
+/**
+ * Map a schema TimelineEvent to the GraphQL TimelineEntry shape.
+ */
+function toTimelineEntry(event: TimelineEvent): TimelineEntry {
+  return {
+    id: event.id,
+    title: event.title,
+    summary: event.descriptionMarkdown,
+    start: event.startDate,
+    end: event.endDate,
+    tags: event.tags,
+  };
 }
 
 /**
@@ -103,7 +121,15 @@ export const queryResolvers = {
     if (!context.profileRepo) return [];
     const profile = await context.profileRepo.find(args.profileId);
     if (!profile) return [];
-    return [];
+
+    // Fetch timeline events from CV repos
+    if (!context.cvRepos) return [];
+    const limit = Math.min(args.limit || 50, 200);
+    const result = await context.cvRepos.timelineEvents.list(args.profileId, 0, limit);
+    const entries = result.data.map(toTimelineEntry);
+
+    // Use content-model to sort/render
+    return renderTimeline(entries, 'desc');
   },
 
   timelineForMask: async (
@@ -116,7 +142,15 @@ export const queryResolvers = {
       context.maskRepo.get(args.maskId),
     ]);
     if (!profile || !mask) return [];
-    return [];
+
+    // Fetch timeline events
+    if (!context.cvRepos) return [];
+    const limit = Math.min(args.limit || 50, 200);
+    const result = await context.cvRepos.timelineEvents.list(args.profileId, 0, limit);
+    const entries = result.data.map(toTimelineEntry);
+
+    // Filter and weight through mask using content-model
+    return renderTimelineForMask(entries, mask, { limit });
   },
 
   generateNarrative: async (
@@ -128,56 +162,86 @@ export const queryResolvers = {
     },
     context: GraphQLContext,
   ): Promise<NarrativeSnapshot> => {
+    const now = new Date().toISOString();
+
     if (!context.profileRepo) {
       return {
-        id: 'snapshot-error',
+        id: randomUUID(),
         profileId: args.profileId,
         status: 'draft',
         blocks: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
       };
     }
 
     const profile = await context.profileRepo.find(args.profileId);
     if (!profile) {
       return {
-        id: 'snapshot-notfound',
+        id: randomUUID(),
         profileId: args.profileId,
         status: 'draft',
         blocks: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
       };
     }
 
-    return {
-      id: `snapshot-${Date.now()}`,
+    // Build narrative blocks from profile data
+    const blocks = [
+      {
+        title: 'Professional Summary',
+        body: profile.summaryMarkdown || `Professional narrative for ${profile.displayName}`,
+      },
+    ];
+
+    // If we have a mask, add mask context
+    if (args.maskId && context.maskRepo) {
+      const mask = await context.maskRepo.get(args.maskId);
+      if (mask) {
+        blocks.push({
+          title: `${mask.name} Perspective`,
+          body: `Narrative filtered through the ${mask.name} persona (${mask.ontology}): ${mask.functional_scope}`,
+        });
+      }
+    }
+
+    const snapshot: NarrativeSnapshot = {
+      id: randomUUID(),
       profileId: args.profileId,
       maskId: args.maskId,
       status: 'draft',
-      blocks: [
-        {
-          title: 'Generated Narrative',
-          body: `Narrative for ${profile.displayName}`,
-          tags: args.tags || [],
-        },
-      ],
+      blocks,
       meta: {
         contexts: args.contexts,
         tags: args.tags,
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     };
+
+    // Persist if narrative repo is available
+    if (context.narrativeRepo) {
+      await context.narrativeRepo.create(snapshot);
+    }
+
+    return snapshot;
   },
 
-  narrativeSnapshot: (): Promise<NarrativeSnapshot | null> => {
-    return Promise.resolve(null);
+  narrativeSnapshot: async (
+    args: { id: string },
+    context: GraphQLContext,
+  ): Promise<NarrativeSnapshot | null> => {
+    if (!context.narrativeRepo) return null;
+    return (await context.narrativeRepo.get(args.id)) ?? null;
   },
 
-  narrativeSnapshots: (): Promise<NarrativeSnapshot[]> => {
-    return Promise.resolve([]);
+  narrativeSnapshots: async (
+    args: { profileId: string; status?: string; maskId?: string },
+    context: GraphQLContext,
+  ): Promise<NarrativeSnapshot[]> => {
+    if (!context.narrativeRepo) return [];
+    return context.narrativeRepo.list(args.profileId, args.status, args.maskId);
   },
 
   epoch: async (args: { id: string }, context: GraphQLContext): Promise<Epoch | null> => {
@@ -296,44 +360,105 @@ export const mutationResolvers = {
     return (await context.maskRepo.update(args.id, updates)) ?? null;
   },
 
-  addTimelineEntry: (args: {
-    profileId: string;
-    title: string;
-    start: string;
-    summary?: string;
-    tags?: string[];
-  }): Promise<TimelineEntry> => {
-    return Promise.resolve({
-      id: `entry-${Date.now()}`,
+  addTimelineEntry: async (
+    args: {
+      profileId: string;
+      title: string;
+      start: string;
+      summary?: string;
+      tags?: string[];
+    },
+    context: GraphQLContext,
+  ): Promise<TimelineEntry> => {
+    if (!context.cvRepos) {
+      // Fallback: return unsaved entry
+      return {
+        id: randomUUID(),
+        title: args.title,
+        summary: args.summary,
+        start: args.start,
+        tags: args.tags || [],
+      };
+    }
+
+    const event: TimelineEvent = {
+      id: randomUUID(),
+      profileId: args.profileId,
+      entityKind: 'experience',
       title: args.title,
-      summary: args.summary,
-      start: args.start,
+      startDate: args.start,
+      descriptionMarkdown: args.summary,
       tags: args.tags || [],
-    });
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const created = await context.cvRepos.timelineEvents.create(event);
+    return toTimelineEntry(created);
   },
 
-  approveNarrative: (args: { id: string; approvedBy: string }): Promise<NarrativeSnapshot> => {
-    return Promise.resolve({
-      id: args.id,
-      profileId: '',
-      status: 'approved' as const,
-      blocks: [],
-      approvedAt: new Date().toISOString(),
+  approveNarrative: async (
+    args: { id: string; approvedBy: string },
+    context: GraphQLContext,
+  ): Promise<NarrativeSnapshot> => {
+    if (!context.narrativeRepo) {
+      // Fallback for when repo is not wired
+      return {
+        id: args.id,
+        profileId: '',
+        status: 'approved' as const,
+        blocks: [],
+        approvedAt: new Date().toISOString(),
+        approvedBy: args.approvedBy,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    const existing = await context.narrativeRepo.get(args.id);
+    if (!existing) {
+      throw new Error(`Narrative snapshot ${args.id} not found`);
+    }
+
+    const now = new Date().toISOString();
+    const updated = await context.narrativeRepo.update(args.id, {
+      status: 'approved',
+      approvedAt: now,
       approvedBy: args.approvedBy,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     });
+
+    return updated ?? existing;
   },
 
-  rejectNarrative: (args: { id: string; revisionNote?: string }): Promise<NarrativeSnapshot> => {
-    return Promise.resolve({
-      id: args.id,
-      profileId: '',
-      status: 'rejected' as const,
-      blocks: [],
+  rejectNarrative: async (
+    args: { id: string; revisionNote?: string },
+    context: GraphQLContext,
+  ): Promise<NarrativeSnapshot> => {
+    if (!context.narrativeRepo) {
+      return {
+        id: args.id,
+        profileId: '',
+        status: 'rejected' as const,
+        blocks: [],
+        revisionNote: args.revisionNote,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    const existing = await context.narrativeRepo.get(args.id);
+    if (!existing) {
+      throw new Error(`Narrative snapshot ${args.id} not found`);
+    }
+
+    const now = new Date().toISOString();
+    const updated = await context.narrativeRepo.update(args.id, {
+      status: 'rejected',
       revisionNote: args.revisionNote,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     });
+
+    return updated ?? existing;
   },
 };

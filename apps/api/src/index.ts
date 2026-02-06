@@ -36,6 +36,7 @@ import { createMaskRepo } from './repositories/masks';
 import { profileRepo } from './repositories/profiles';
 import type { CvRepos } from './repositories/cv';
 import { cvRepos } from './repositories/cv';
+import { narrativeRepo } from './repositories/narratives';
 import type { BackupRepo } from './repositories/backups';
 import type { JobRepo } from './repositories/jobs';
 import { jobRepo as defaultJobRepo } from './repositories/jobs';
@@ -446,6 +447,8 @@ export function buildServer(options: ApiServerOptions = {}) {
       maskRepo,
       epochRepo,
       stageRepo,
+      cvRepos,
+      narrativeRepo,
     });
   };
 
