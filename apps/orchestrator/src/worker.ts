@@ -1,10 +1,10 @@
-import type { Agent } from "./agents";
-import type { TaskQueue } from "./queue";
-import type { TaskStore } from "./persistence";
-import type { AgentTask } from "./agents";
-import type { TaskStatus } from "./tasks";
-import { deriveRunStatus, type RunStore } from "./runs";
-import { FatalError, RateLimitError } from "@in-midst-my-life/core";
+import type { Agent } from './agents';
+import type { TaskQueue } from './queue';
+import type { TaskStore } from './persistence';
+import type { AgentTask } from './agents';
+import type { TaskStatus } from './tasks';
+import { deriveRunStatus, type RunStore } from './runs';
+import { FatalError, RateLimitError } from '@in-midst-my-life/core';
 
 export interface WorkerOptions {
   pollIntervalMs?: number;
@@ -30,7 +30,7 @@ export const createWorkerMetrics = (): WorkerMetrics => ({
   completed: 0,
   failed: 0,
   retries: 0,
-  deadLettered: 0
+  deadLettered: 0,
 });
 
 export class TaskWorker {
@@ -39,7 +39,7 @@ export class TaskWorker {
   private agents: Agent[];
   private runStore?: RunStore;
   private timer?: NodeJS.Timeout;
-  private options: Required<Pick<WorkerOptions, "pollIntervalMs" | "maxRetries" | "backoffMs">> & {
+  private options: Required<Pick<WorkerOptions, 'pollIntervalMs' | 'maxRetries' | 'backoffMs'>> & {
     metrics: WorkerMetrics;
     deadLetterQueue?: TaskQueue;
   };
@@ -54,15 +54,16 @@ export class TaskWorker {
       maxRetries: opts.maxRetries ?? 3,
       backoffMs: opts.backoffMs ?? 2000,
       metrics: opts.metrics ?? createWorkerMetrics(),
-      deadLetterQueue: opts.deadLetterQueue
+      deadLetterQueue: opts.deadLetterQueue,
     };
   }
 
   start() {
     if (this.timer) return;
-    const loop = async () => {
-      await this.tick();
-      this.timer = setTimeout(loop, this.options.pollIntervalMs);
+    const loop = () => {
+      void this.tick().then(() => {
+        this.timer = setTimeout(loop, this.options.pollIntervalMs);
+      });
     };
     this.timer = setTimeout(loop, this.options.pollIntervalMs);
   }
@@ -84,25 +85,25 @@ export class TaskWorker {
     const task = await this.queue.dequeue();
     if (!task) return;
     this.options.metrics.dispatched += 1;
-    await this.store.setStatus(task.id, "running");
-    await this.updateRunStatus(task, "running");
+    await this.store.setStatus(task.id, 'running');
+    await this.updateRunStatus(task, 'running');
 
     const agent = this.agents.find((a) => a.role === task.role);
     if (!agent) {
-      await this.fail(task, { notes: "no_agent" });
+      await this.fail(task, { notes: 'no_agent' });
       return;
     }
 
     try {
       const result = await agent.execute(task);
-      const status = result.status === "completed" ? "completed" : "failed";
+      const status = result.status === 'completed' ? 'completed' : 'failed';
       await this.store.setStatus(task.id, status, {
         notes: result.notes,
         output: result.output,
-        llm: result.llm
+        llm: result.llm,
       });
       await this.updateRunStatus(task, status);
-      this.options.metrics[status === "completed" ? "completed" : "failed"] += 1;
+      this.options.metrics[status === 'completed' ? 'completed' : 'failed'] += 1;
     } catch (err) {
       await this.retry(task, err);
     }
@@ -119,7 +120,7 @@ export class TaskWorker {
 
     const existing = await this.store.get(task.id);
     const attempts = (existing?.attempts ?? 0) + 1;
-    
+
     if (attempts > this.options.maxRetries) {
       await this.fail(task, { notes: `max_retries exceeded: ${String(err)}`, deadLetter: true });
       if (this.options.deadLetterQueue) {
@@ -128,24 +129,33 @@ export class TaskWorker {
       return;
     }
 
-    let backoff = this.options.backoffMs;
+    let backoff: number;
     if (err instanceof RateLimitError) {
       backoff = err.retryAfterMs;
+    } else {
+      // Exponential backoff: baseDelay * 2^(attempt-1) with jitter
+      const exponential = this.options.backoffMs * Math.pow(2, attempts - 1);
+      const jitter = Math.random() * this.options.backoffMs * 0.5;
+      backoff = exponential + jitter;
     }
 
     this.options.metrics.retries += 1;
-    await this.store.setStatus(task.id, "failed", { notes: `retrying: ${String(err)}`, attempts });
-    setTimeout(async () => {
-      await this.queue.enqueue(task);
-      this.options.metrics.enqueued += 1;
+    await this.store.setStatus(task.id, 'failed', {
+      notes: `retrying (attempt ${attempts}/${this.options.maxRetries}): ${String(err)}`,
+      attempts,
+    });
+    setTimeout(() => {
+      void this.queue.enqueue(task).then(() => {
+        this.options.metrics.enqueued += 1;
+      });
     }, backoff);
   }
 
   private async fail(task: AgentTask, result?: Record<string, unknown>) {
-    await this.store.setStatus(task.id, "failed", result);
-    await this.updateRunStatus(task, "failed");
+    await this.store.setStatus(task.id, 'failed', result);
+    await this.updateRunStatus(task, 'failed');
     this.options.metrics.failed += 1;
-    if (result && "deadLetter" in result) {
+    if (result && 'deadLetter' in result) {
       this.options.metrics.deadLettered += 1;
     }
   }
@@ -160,7 +170,7 @@ export class TaskWorker {
     await this.runStore.updateStatus(task.runId, runStatus, {
       lastTaskId: task.id,
       lastTaskStatus: status,
-      taskCount: tasks.length
+      taskCount: tasks.length,
     });
   }
 }
