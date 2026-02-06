@@ -10,9 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@in-midst-my-life/schema": "workspace:*"
+    "@in-midst-my-life/schema": "workspace:*",
+    "minimatch": "10.1.2"
   },
   "devDependencies": {
+    "@types/minimatch": "6.0.0",
     "@types/node": "^20",
     "typescript": "^5.3.3",
     "vitest": "^3.0.9"

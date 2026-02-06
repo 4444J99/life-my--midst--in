@@ -297,7 +297,13 @@ importers:
       '@in-midst-my-life/schema':
         specifier: workspace:*
         version: link:../schema
+      minimatch:
+        specifier: 10.1.2
+        version: 10.1.2
     devDependencies:
+      '@types/minimatch':
+        specifier: 6.0.0
+        version: 6.0.0
       '@types/node':
         specifier: ^20
         version: 20.19.27
@@ -2522,6 +2528,10 @@ packages:
 
   '@types/memcached@2.2.10':
     resolution: {integrity: sha512-AM9smvZN55Gzs2wRrqeMHVP7KE8KWgCJO/XL5yCly2xF6EKa4YlbpK+cLSAH4NG/Ah64HrlegmGqW8kYws7Vxg==}
+
+  '@types/minimatch@6.0.0':
+    resolution: {integrity: sha512-zmPitbQ8+6zNutpwgcQuLcsEpn/Cj54Kbn7L5pX0Os5kdWplB7xPgEh/g+SWOB/qmows2gpuCaPyduq8ZZRnxA==}
+    deprecated: This is a stub types definition. minimatch provides its own type definitions, so you do not need this installed.
 
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
@@ -8619,6 +8629,10 @@ snapshots:
   '@types/memcached@2.2.10':
     dependencies:
       '@types/node': 20.19.27
+
+  '@types/minimatch@6.0.0':
+    dependencies:
+      minimatch: 10.1.2
 
   '@types/ms@2.1.0': {}
 

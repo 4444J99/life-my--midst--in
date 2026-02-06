@@ -22,6 +22,7 @@ import type { MaskRepo, EpochRepo, StageRepo } from '../repositories/masks';
 import type { CvRepos } from '../repositories/cv';
 import type { NarrativeRepo } from '../repositories/narratives';
 import { renderTimeline, renderTimelineForMask } from '@in-midst-my-life/content-model';
+import { hashPayload } from '@in-midst-my-life/core';
 
 export interface GraphQLContext {
   profileRepo?: ProfileRepo;
@@ -206,6 +207,14 @@ export const queryResolvers = {
       }
     }
 
+    // Compute SHA256 checksum of the narrative content for integrity verification
+    const snapshotPayload = {
+      profileId: args.profileId,
+      maskId: args.maskId ?? '',
+      blocks: blocks.map((b) => ({ title: b.title, body: b.body })),
+    };
+    const checksum = await hashPayload(snapshotPayload as Record<string, unknown>);
+
     const snapshot: NarrativeSnapshot = {
       id: randomUUID(),
       profileId: args.profileId,
@@ -215,6 +224,7 @@ export const queryResolvers = {
       meta: {
         contexts: args.contexts,
         tags: args.tags,
+        checksum,
       },
       createdAt: now,
       updatedAt: now,

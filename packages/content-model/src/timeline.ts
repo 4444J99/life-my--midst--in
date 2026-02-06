@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Timeline Processing Module
  *
@@ -11,16 +12,17 @@
  * connecting experiences to stages, epochs, and settings.
  */
 
-import type { Epoch, Mask, Stage, Setting } from "@in-midst-my-life/schema";
-import type { TimelineEntry, TimelineRenderOptions, NarrativeViewConfig } from "./types";
+import { minimatch } from 'minimatch';
+import type { Epoch, Mask, Stage, Setting } from '@in-midst-my-life/schema';
+import type { TimelineEntry, TimelineRenderOptions, NarrativeViewConfig } from './types';
 import {
   EPOCH_MASK_MODIFIERS,
   EPOCH_TAXONOMY,
   MASK_STAGE_AFFINITIES,
   SETTING_TAXONOMY,
   STAGE_SETTING_RELATIONS,
-  STAGE_TAXONOMY
-} from "./taxonomy";
+  STAGE_TAXONOMY,
+} from './taxonomy';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RESOLVER FUNCTIONS
@@ -29,21 +31,30 @@ import {
 /**
  * Resolves stages from options, view config, or falls back to default taxonomy.
  */
-export function resolveStages(options?: TimelineRenderOptions, view?: NarrativeViewConfig): Stage[] {
+export function resolveStages(
+  options?: TimelineRenderOptions,
+  view?: NarrativeViewConfig,
+): Stage[] {
   return options?.stages ?? view?.stages ?? STAGE_TAXONOMY;
 }
 
 /**
  * Resolves epochs from options, view config, or falls back to default taxonomy.
  */
-export function resolveEpochs(options?: TimelineRenderOptions, view?: NarrativeViewConfig): Epoch[] {
+export function resolveEpochs(
+  options?: TimelineRenderOptions,
+  view?: NarrativeViewConfig,
+): Epoch[] {
   return options?.epochs ?? view?.epochs ?? EPOCH_TAXONOMY;
 }
 
 /**
  * Resolves settings from options, view config, or falls back to default taxonomy.
  */
-export function resolveSettings(options?: TimelineRenderOptions, view?: NarrativeViewConfig): Setting[] {
+export function resolveSettings(
+  options?: TimelineRenderOptions,
+  view?: NarrativeViewConfig,
+): Setting[] {
   return options?.settings ?? view?.settings ?? SETTING_TAXONOMY;
 }
 
@@ -98,7 +109,10 @@ export function buildStageEpochMap(epochs: Epoch[], stages: Stage[]): Map<string
  * @param key - Which ID field to extract (stageId, epochId, or settingId)
  * @returns Ordered array of unique IDs representing the arc
  */
-export function buildArc(entries: TimelineEntry[], key: "stageId" | "epochId" | "settingId"): string[] {
+export function buildArc(
+  entries: TimelineEntry[],
+  key: 'stageId' | 'epochId' | 'settingId',
+): string[] {
   const arc: string[] = [];
   entries.forEach((entry) => {
     const value = entry[key];
@@ -136,7 +150,10 @@ export function recencyWeight(date: string | undefined): number {
  * @param stages - Available stages to match against
  * @returns The best-matching stage and its overlap score
  */
-export function inferStageForEntry(entry: TimelineEntry, stages: Stage[]): { stage?: Stage; score: number } {
+export function inferStageForEntry(
+  entry: TimelineEntry,
+  stages: Stage[],
+): { stage?: Stage; score: number } {
   const tags = new Set((entry.tags ?? []).map((t) => t.toLowerCase()));
   let match: Stage | undefined;
   let score = 0;
@@ -169,16 +186,23 @@ export function maskStageAffinity(mask: Mask | undefined, stageId?: string): num
  * @param mask - Mask to evaluate against
  * @returns Relevance score (0 if excluded, positive otherwise)
  */
-export function maskWeightForEntry(entry: TimelineEntry, mask: Mask | undefined, _stageId?: string): number {
+export function maskWeightForEntry(
+  entry: TimelineEntry,
+  mask: Mask | undefined,
+  _stageId?: string,
+): number {
   if (!mask) return 0;
   const tags = new Set((entry.tags ?? []).map((t) => t.toLowerCase()));
   const includes = new Set(mask.filters.include_tags.map((t) => t.toLowerCase()));
   const excludes = new Set(mask.filters.exclude_tags.map((t) => t.toLowerCase()));
   if ([...tags].some((t) => excludes.has(t))) return 0;
   const includeScore = [...tags].filter((t) => includes.has(t)).length;
-  const priorityScore = Object.entries(mask.filters.priority_weights ?? {}).reduce((acc, [tag, weight]) => {
-    return acc + (tags.has(tag.toLowerCase()) ? weight : 0);
-  }, 0);
+  const priorityScore = Object.entries(mask.filters.priority_weights ?? {}).reduce(
+    (acc, [tag, weight]) => {
+      return acc + (tags.has(tag.toLowerCase()) ? weight : 0);
+    },
+    0,
+  );
   return includeScore + priorityScore;
 }
 
@@ -198,7 +222,7 @@ export function maskWeightForEntry(entry: TimelineEntry, mask: Mask | undefined,
 export function enrichTimelineEntry(
   entry: TimelineEntry,
   mask: Mask | undefined,
-  options: TimelineRenderOptions
+  options: TimelineRenderOptions,
 ): TimelineEntry {
   const stages = resolveStages(options);
   const epochs = resolveEpochs(options);
@@ -221,7 +245,7 @@ export function enrichTimelineEntry(
     stageId,
     settingId,
     epochId,
-    weight: recency + score + maskScore + tagScore + epochBoost + stageAffinity
+    weight: recency + score + maskScore + tagScore + epochBoost + stageAffinity,
   };
 }
 
@@ -235,8 +259,8 @@ export function enrichTimelineEntry(
 export function formatStage(stage: Stage, settingMap: Map<string, Setting>): string {
   const settingId = STAGE_SETTING_RELATIONS[stage.id];
   const settingLabel = settingId ? settingMap.get(settingId)?.title : undefined;
-  const settingSuffix = settingLabel ? ` (${settingLabel})` : "";
-  return `• ${stage.title}${stage.summary ? ` — ${stage.summary}` : ""}${settingSuffix}`;
+  const settingSuffix = settingLabel ? ` (${settingLabel})` : '';
+  return `• ${stage.title}${stage.summary ? ` — ${stage.summary}` : ''}${settingSuffix}`;
 }
 
 /**
@@ -245,7 +269,7 @@ export function formatStage(stage: Stage, settingMap: Map<string, Setting>): str
 export function formatEpoch(epoch: Epoch, settingMap: Map<string, Setting>): string {
   const stageLines = (epoch.stages ?? []).map((stage) => formatStage(stage, settingMap));
   const header = `Epoch: ${epoch.name}`;
-  return [header, ...stageLines].join("\n");
+  return [header, ...stageLines].join('\n');
 }
 
 /**
@@ -256,17 +280,17 @@ export function formatTimelineEntry(
   entry: TimelineEntry,
   stageMap: Map<string, Stage>,
   settingMap: Map<string, Setting>,
-  epochMap: Map<string, Epoch>
+  epochMap: Map<string, Epoch>,
 ): string {
-  const end = entry.end ? ` – ${entry.end}` : "";
-  const stageLabel = entry.stageId ? stageMap.get(entry.stageId)?.title ?? "" : "";
-  const stageSuffix = stageLabel ? ` [${stageLabel}]` : "";
-  const settingLabel = entry.settingId ? settingMap.get(entry.settingId)?.title ?? "" : "";
-  const settingSuffix = settingLabel ? ` @ ${settingLabel}` : "";
-  const epochLabel = entry.epochId ? epochMap.get(entry.epochId)?.name ?? "" : "";
-  const epochSuffix = epochLabel ? ` · ${epochLabel}` : "";
+  const end = entry.end ? ` – ${entry.end}` : '';
+  const stageLabel = entry.stageId ? (stageMap.get(entry.stageId)?.title ?? '') : '';
+  const stageSuffix = stageLabel ? ` [${stageLabel}]` : '';
+  const settingLabel = entry.settingId ? (settingMap.get(entry.settingId)?.title ?? '') : '';
+  const settingSuffix = settingLabel ? ` @ ${settingLabel}` : '';
+  const epochLabel = entry.epochId ? (epochMap.get(entry.epochId)?.name ?? '') : '';
+  const epochSuffix = epochLabel ? ` · ${epochLabel}` : '';
   return `${entry.title}${stageSuffix}${settingSuffix}${epochSuffix} (${entry.start}${end})${
-    entry.summary ? `: ${entry.summary}` : ""
+    entry.summary ? `: ${entry.summary}` : ''
   }`;
 }
 
@@ -277,9 +301,11 @@ export function formatTimeline(
   entries: TimelineEntry[],
   stageMap: Map<string, Stage>,
   settingMap: Map<string, Setting>,
-  epochMap: Map<string, Epoch>
+  epochMap: Map<string, Epoch>,
 ): string {
-  return entries.map((entry) => formatTimelineEntry(entry, stageMap, settingMap, epochMap)).join("\n");
+  return entries
+    .map((entry) => formatTimelineEntry(entry, stageMap, settingMap, epochMap))
+    .join('\n');
 }
 
 /**
@@ -289,11 +315,11 @@ export function buildEvidenceLine(entry: TimelineEntry): string {
   const parts = [
     entry.title,
     entry.summary,
-    entry.tags?.length ? `tags: ${entry.tags.join(", ")}` : undefined,
+    entry.tags?.length ? `tags: ${entry.tags.join(', ')}` : undefined,
     entry.stageId ? `stage: ${entry.stageId}` : undefined,
-    entry.epochId ? `epoch: ${entry.epochId}` : undefined
+    entry.epochId ? `epoch: ${entry.epochId}` : undefined,
   ].filter(Boolean);
-  return parts.join(" | ");
+  return parts.join(' | ');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -309,21 +335,25 @@ export function buildEvidenceLine(entry: TimelineEntry): string {
  */
 export function renderTimeline(
   entries: TimelineEntry[],
-  order: "asc" | "desc" = "desc"
+  order: 'asc' | 'desc' = 'desc',
 ): TimelineEntry[] {
   const normalizeDate = (value?: string): number => {
-    if (!value) return order === "asc" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+    if (!value) return order === 'asc' ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
     const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? parsed : order === "asc" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+    return Number.isFinite(parsed)
+      ? parsed
+      : order === 'asc'
+        ? Number.POSITIVE_INFINITY
+        : Number.NEGATIVE_INFINITY;
   };
 
   return [...entries].sort((a, b) => {
     if (a.weight !== undefined && b.weight !== undefined && a.weight !== b.weight) {
-      return order === "asc" ? a.weight - b.weight : b.weight - a.weight;
+      return order === 'asc' ? a.weight - b.weight : b.weight - a.weight;
     }
     const aDate = normalizeDate(a.start);
     const bDate = normalizeDate(b.start);
-    return order === "asc" ? aDate - bDate : bDate - aDate;
+    return order === 'asc' ? aDate - bDate : bDate - aDate;
   });
 }
 
@@ -339,12 +369,12 @@ export function renderTimeline(
 export function renderTimelineForMask(
   entries: TimelineEntry[],
   mask: Mask | undefined,
-  options: TimelineRenderOptions = {}
+  options: TimelineRenderOptions = {},
 ): TimelineEntry[] {
-  const order = options.order ?? "desc";
-  const tags = new Set(options.tagFilter?.map((t) => t.toLowerCase()) ?? []);
-  const includeTags = new Set(mask?.filters.include_tags?.map((t) => t.toLowerCase()) ?? []);
-  const excludeTags = new Set(mask?.filters.exclude_tags?.map((t) => t.toLowerCase()) ?? []);
+  const order = options.order ?? 'desc';
+  const tagPatterns = options.tagFilter?.map((t) => t.toLowerCase()) ?? [];
+  const includeTagPatterns = mask?.filters.include_tags?.map((t) => t.toLowerCase()) ?? [];
+  const excludeTagPatterns = mask?.filters.exclude_tags?.map((t) => t.toLowerCase()) ?? [];
   const includeStages = new Set(options.includeStages ?? []);
   const excludeStages = new Set(options.excludeStages ?? []);
   const includeEpochs = new Set(options.includeEpochs ?? []);
@@ -357,15 +387,31 @@ export function renderTimelineForMask(
     .filter((entry) => {
       const entryTags = (entry.tags ?? []).map((t) => t.toLowerCase());
       const hasExplicitStage = Boolean(entry.stageId);
-      if (excludeTags.size && entryTags.some((t) => excludeTags.has(t))) return false;
-      if (!hasExplicitStage && includeTags.size && !entryTags.some((t) => includeTags.has(t))) return false;
-      if (!hasExplicitStage && tags.size && !entryTags.some((t) => tags.has(t))) return false;
+      if (
+        excludeTagPatterns.length &&
+        entryTags.some((t) => excludeTagPatterns.some((p) => minimatch(t, p)))
+      )
+        return false;
+      if (
+        !hasExplicitStage &&
+        includeTagPatterns.length &&
+        !entryTags.some((t) => includeTagPatterns.some((p) => minimatch(t, p)))
+      )
+        return false;
+      if (
+        !hasExplicitStage &&
+        tagPatterns.length &&
+        !entryTags.some((t) => tagPatterns.some((p) => minimatch(t, p)))
+      )
+        return false;
       if (includeStages.size && (!entry.stageId || !includeStages.has(entry.stageId))) return false;
       if (excludeStages.size && entry.stageId && excludeStages.has(entry.stageId)) return false;
       if (includeEpochs.size && (!entry.epochId || !includeEpochs.has(entry.epochId))) return false;
       if (excludeEpochs.size && entry.epochId && excludeEpochs.has(entry.epochId)) return false;
-      if (includeSettings.size && (!entry.settingId || !includeSettings.has(entry.settingId))) return false;
-      if (excludeSettings.size && entry.settingId && excludeSettings.has(entry.settingId)) return false;
+      if (includeSettings.size && (!entry.settingId || !includeSettings.has(entry.settingId)))
+        return false;
+      if (excludeSettings.size && entry.settingId && excludeSettings.has(entry.settingId))
+        return false;
       return true;
     });
 
