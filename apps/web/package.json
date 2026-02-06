@@ -2,6 +2,8 @@
   "name": "@in-midst-my-life/web",
   "version": "0.1.0",
   "private": true,
+  "description": "Next.js 15 dashboard for interactive CV management and narrative generation",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

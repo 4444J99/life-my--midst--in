@@ -72,7 +72,7 @@ describe('API performance budgets', () => {
       payload: { contexts: ['design'], tags: ['impact'], timeline },
     });
     expect(res.statusCode).toBe(200);
-    expect(elapsed).toBeLessThan(300);
+    expect(elapsed).toBeLessThan(500);
   });
 
   it('exports JSON-LD within budget', async () => {

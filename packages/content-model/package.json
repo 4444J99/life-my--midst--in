@@ -1,6 +1,8 @@
 {
   "name": "@in-midst-my-life/content-model",
   "version": "0.1.0",
+  "description": "Narrative generation engine and JSON-LD transforms for profile content",
+  "license": "MIT",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {

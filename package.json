@@ -2,6 +2,8 @@
   "name": "in-midst-my-life",
   "version": "0.1.0",
   "private": true,
+  "description": "Interactive CV/resume system with mask-based identity filtering and narrative generation",
+  "license": "MIT",
   "workspaces": [
     "apps/*",
     "packages/*"

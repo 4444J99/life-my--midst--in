@@ -2,6 +2,8 @@
   "name": "@in-midst-my-life/api",
   "version": "0.1.0",
   "private": true,
+  "description": "Fastify REST API with GraphQL, DID resolution, and mask-based identity filtering",
+  "license": "MIT",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",

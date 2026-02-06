@@ -2,6 +2,8 @@
   "name": "@in-midst-my-life/orchestrator",
   "version": "0.1.0",
   "private": true,
+  "description": "Node.js worker service for task queue processing and agent orchestration",
+  "license": "MIT",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
