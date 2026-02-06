@@ -41,7 +41,6 @@ Complete deployment guide for the **In Midst My Life** platform covering Docker 
 | Web | 0.5-1 cores | 512MB-1GB | - |
 | PostgreSQL | 1-2 cores | 2GB-8GB | 20GB-100GB |
 | Redis | 0.5-1 cores | 512MB-2GB | 5GB-20GB |
-| Neo4j (optional) | 1-2 cores | 2GB-4GB | 10GB-50GB |
 
 ---
 
@@ -75,9 +74,6 @@ POSTGRES_DB=midst
 # Redis
 REDIS_URL=redis://redis:6379
 REDIS_PORT=6379
-
-# Neo4j (optional)
-NEO4J_AUTH=neo4j/<secure-password>
 
 # API Configuration
 DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -180,6 +176,45 @@ Open http://localhost:3000 in your browser to access:
 - Graph visualization
 - Gallery mode
 - Admin Studio
+
+---
+
+## Production Docker Compose
+
+For production or staging without Kubernetes, use the dedicated production compose file:
+
+```bash
+# Required env vars
+export POSTGRES_PASSWORD=<secure-password>
+export JWT_SECRET=<min-32-char-secret>
+
+# Optional external services
+export STRIPE_SECRET_KEY=sk_live_...
+export OPENAI_API_KEY=sk-...
+export SENTRY_DSN=https://...
+
+# Start all services
+docker compose -f docker-compose.prod.yml up -d
+```
+
+This uses individual Dockerfiles for each service (API, Web, Orchestrator) with:
+- **HEALTHCHECK** on every container (Postgres, Redis, API, Web, Orchestrator)
+- **pgvector** PostgreSQL image for semantic search support
+- **Non-root** users in all application containers
+- **dumb-init** as PID 1 for proper signal handling
+
+### Verify Health
+
+```bash
+# Check all containers are healthy
+docker compose -f docker-compose.prod.yml ps
+
+# API health check
+curl http://localhost:3001/health
+
+# Service status (requires admin JWT)
+curl -H "Authorization: Bearer <token>" http://localhost:3001/v1/admin/service-status
+```
 
 ---
 
@@ -500,6 +535,25 @@ kubectl port-forward svc/inmidst-api 3001:3001 -n inmidst
 curl http://localhost:3001/health
 ```
 
+### CI/CD: GitHub Actions Deploy Workflow
+
+The `.github/workflows/deploy.yml` workflow automates container builds and Kubernetes deployment:
+
+1. **Build phase** — builds and pushes three Docker images (API, Web, Orchestrator) to GHCR with layer caching
+2. **Deploy phase** — uses `helm upgrade --install` with `--set` flags to inject the Git SHA as the image tag:
+
+```bash
+helm upgrade --install in-midst-my-life ./infra/helm \
+  --set "api.image.tag=${IMAGE_TAG}" \
+  --set "web.image.tag=${IMAGE_TAG}" \
+  --set "orchestrator.image.tag=${IMAGE_TAG}"
+```
+
+**Required secrets:**
+- `KUBECONFIG` — base64-encoded kubeconfig for the target cluster
+
+The workflow runs on pushes to `master` and can be triggered manually via `workflow_dispatch`.
+
 ---
 
 ## Environment Configuration
@@ -517,7 +571,12 @@ curl http://localhost:3001/health
 | `NODE_ENV` | Yes | `development` | Environment (development/production) |
 | `PORT` | No | `3001` | API server port |
 | `LOG_LEVEL` | No | `info` | Logging level |
-| `JWT_SECRET` | Yes | - | JWT signing secret |
+| `JWT_SECRET` | Yes | - | JWT signing secret (min 32 chars) |
+| `STRIPE_SECRET_KEY` | No | `sk_test_mock` | Stripe API key (mock if omitted) |
+| `STRIPE_WEBHOOK_SECRET` | No | `whsec_test_mock` | Stripe webhook signing secret |
+| `OPENAI_API_KEY` | No | `sk-test-mock` | OpenAI key for embeddings (mock if omitted) |
+| `SENTRY_DSN` | No | - | Sentry error reporting DSN |
+| `ALLOWED_ORIGINS` | No | localhost | Comma-separated CORS origins |
 
 #### Orchestrator Service
 

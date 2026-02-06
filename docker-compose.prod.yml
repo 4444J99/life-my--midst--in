@@ -1,8 +1,12 @@
 version: "3.9"
 
+# Production Docker Compose — uses individual service Dockerfiles
+# Usage: docker compose -f docker-compose.prod.yml up -d
+# Requires: POSTGRES_PASSWORD env var
+
 services:
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: midst-postgres-prod
     restart: always
     environment:
@@ -10,7 +14,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-midst}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
     healthcheck:
@@ -23,9 +27,9 @@ services:
     image: redis:7-alpine
     container_name: midst-redis-prod
     restart: always
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-}"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redisdata_prod:/data
     healthcheck:
@@ -34,26 +38,61 @@ services:
       timeout: 5s
       retries: 5
 
-  # In production, we'd ideally have separate Dockerfiles for API and ORCH
-  # For this phase, we use the standalone web build as the runner and 
-  # provide a shared production environment.
-  
-  app:
+  api:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: midst-app-prod
+      dockerfile: apps/api/Dockerfile
+    container_name: midst-api-prod
     restart: always
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-midstsvc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-midst}
       REDIS_URL: redis://redis:6379
-      PORT: 3000
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    ports:
+      - "3001:3001"
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: apps/orchestrator/Dockerfile
+    container_name: midst-orchestrator-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-midstsvc}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-midst}
+      REDIS_URL: redis://redis:6379
+      PORT: 3002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: midst-web-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_BASE_URL: ${API_BASE_URL:-http://api:3001}
+    depends_on:
+      - api
     ports:
       - "3000:3000"
 

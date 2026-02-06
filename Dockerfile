@@ -13,6 +13,8 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV production
 
+RUN apk add --no-cache dumb-init curl
+
 # Don't run production as root
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -27,4 +29,8 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
+
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "apps/web/server.js"]

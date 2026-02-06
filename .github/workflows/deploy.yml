@@ -42,9 +42,9 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push API image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
-          context: ./apps/api
+          context: .
           file: ./apps/api/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}-api
@@ -53,9 +53,9 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-api,mode=max
 
       - name: Build and push Web image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
-          context: ./apps/web
+          context: .
           file: ./apps/web/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}-web
@@ -64,9 +64,9 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-web,mode=max
 
       - name: Build and push Orchestrator image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
-          context: ./apps/orchestrator
+          context: .
           file: ./apps/orchestrator/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}-orchestrator
@@ -85,21 +85,26 @@ jobs:
       - name: Deploy to Kubernetes
         env:
           KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
-          IMAGE_SHA: ${{ github.sha }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
+          if [ -z "$KUBECONFIG_CONTENT" ]; then
+            echo "::error::KUBECONFIG secret is not set. Skipping deployment."
+            exit 1
+          fi
+
           mkdir -p "$HOME/.kube"
           echo "$KUBECONFIG_CONTENT" | base64 -d > "$HOME/.kube/config"
           chmod 600 "$HOME/.kube/config"
 
-          # Update image tags in Helm values
-          sed -i "s|IMAGE_TAG|${IMAGE_SHA}|g" infra/helm/values.yaml
-
-          # Deploy using Helm
+          # Deploy using Helm with dynamic image tag (avoids mutating values.yaml)
           helm upgrade --install in-midst-my-life ./infra/helm \
             --namespace production \
             --create-namespace \
             --values infra/helm/values.yaml \
-            --timeout 5m
+            --set "api.image.tag=${IMAGE_TAG}" \
+            --set "web.image.tag=${IMAGE_TAG}" \
+            --set "orchestrator.image.tag=${IMAGE_TAG}" \
+            --timeout 10m
 
           # Wait for rollout
           kubectl -n production rollout status deployment/api --timeout=5m

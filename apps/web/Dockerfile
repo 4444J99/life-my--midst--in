@@ -43,7 +43,7 @@ RUN pnpm build
 # ── Stage 4: Runner ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
 
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init curl
 
 WORKDIR /app
 ENV NODE_ENV=production
@@ -67,6 +67,9 @@ COPY --from=build --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 USER nextjs
 
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "apps/web/server.js"]
