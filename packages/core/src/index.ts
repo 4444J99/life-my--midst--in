@@ -3,6 +3,8 @@ export * from './masks';
 export * from './crypto';
 export * from './vc';
 export * from './did/registry';
+export * from './did/resolver-registry';
+export * from './did/resolvers/web';
 export * from './errors';
 export * from './jobs';
 export * from './search';
