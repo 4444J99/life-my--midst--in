@@ -326,23 +326,33 @@ export function buildServer(options: ApiServerOptions = {}) {
     });
 
     // ── Auth middleware (secure by default) ────────────────────────────
-    // Routes listed here are publicly accessible without a token.
-    // Everything else requires a valid JWT Bearer token.
-    const publicRoutes = new Set([
-      // Stripe webhooks use their own signature verification
-      '/billing/webhooks/stripe',
-      // Agent interface has its own bearer-token auth (agent tokens, not JWT)
-      '/agent/v1/query',
-    ]);
+    //
+    // Strategy:
+    //   1. Public routes: No auth required (webhooks, agent interface,
+    //      GraphQL schema introspection in dev)
+    //   2. Optional auth routes: GET requests on public-read prefixes
+    //      enrich request.user if a token is present, but don't block
+    //   3. Everything else: Requires a valid JWT Bearer token
+    //
+    // Note: /health, /ready, /metrics are registered outside this scope
+    // and are always public.
 
-    // Routes that accept optional auth (enrich request.user if present, but don't block)
-    const optionalAuthRoutes = new Set([
-      // Public profile reads — guests can view, authenticated users get extra data
+    // Exact routes that skip auth entirely (use their own verification)
+    const publicRoutes = new Set(['/billing/webhooks/stripe', '/agent/v1/query']);
+
+    // Prefix-based routes that skip auth (matched with startsWith)
+    const publicPrefixes = [
+      '/graphql', // GraphQL endpoint (has its own introspection guards)
+    ];
+
+    // Prefix-based routes that use optional auth on GET requests
+    // (enrich request.user if present, don't block anonymous access)
+    const optionalAuthPrefixes = [
       '/profiles',
       '/taxonomy/masks',
       '/taxonomy/epochs',
       '/taxonomy/stages',
-    ]);
+    ];
 
     if (jwtAuth && !options.disableAuth) {
       const authMiddleware = createAuthMiddleware(jwtAuth);
@@ -354,13 +364,16 @@ export function buildServer(options: ApiServerOptions = {}) {
 
         const url = request.url.split('?')[0] ?? '';
 
-        // Skip auth for exact public route matches
+        // 1. Exact public route match
         if (publicRoutes.has(url)) return;
 
-        // Check prefix-based optional auth (GET on taxonomy/profiles listing)
+        // 2. Prefix-based public route match
+        if (publicPrefixes.some((p) => url === p || url.startsWith(p + '/'))) return;
+
+        // 3. Optional auth for GET on public-read prefixes
         const isOptional =
           request.method === 'GET' &&
-          [...optionalAuthRoutes].some((prefix) => url === prefix || url.startsWith(prefix + '/'));
+          optionalAuthPrefixes.some((prefix) => url === prefix || url.startsWith(prefix + '/'));
 
         if (isOptional) {
           await optionalAuth(request, reply);
