@@ -27,6 +27,7 @@ import { interviewRoutes } from './routes/interviews';
 import { registerHunterProtocolRoutes } from './routes/hunter-protocol';
 import { registerArtifactRoutes } from './routes/artifacts';
 import { registerIntegrationRoutes } from './routes/integrations';
+import { registerSearchRoutes } from './routes/search';
 import type { ProfileRepo } from './repositories/profiles';
 import type { MaskRepo, EpochRepo, StageRepo } from './repositories/masks';
 import { createMaskRepo } from './repositories/masks';
@@ -46,7 +47,18 @@ import {
   PostgresRateLimitStore,
   InMemoryRateLimitStore as LocalInMemoryRateLimitStore,
 } from './repositories/rate-limits';
-import { BillingService, LicensingService, type RateLimitStore } from '@in-midst-my-life/core';
+import {
+  PostgresEmbeddingsRepo,
+  InMemoryEmbeddingsRepo,
+  type EmbeddingsRepo,
+} from './repositories/embeddings';
+import {
+  BillingService,
+  LicensingService,
+  setRegistry,
+  type RateLimitStore,
+} from '@in-midst-my-life/core';
+import { PostgresDIDRegistry } from './repositories/did-registry';
 import { versionPrefix } from './middleware/versioning';
 
 initializeTracing();
@@ -65,6 +77,7 @@ export interface ApiServerOptions {
   rateLimitStore?: RateLimitStore;
   billingService?: BillingService;
   licensingService?: LicensingService;
+  embeddingsRepo?: EmbeddingsRepo;
 }
 
 export function buildServer(options: ApiServerOptions = {}) {
@@ -88,6 +101,25 @@ export function buildServer(options: ApiServerOptions = {}) {
             connectionString: process.env['DATABASE_URL'] ?? process.env['POSTGRES_URL'],
           }),
         );
+
+  // Initialize persistent DID registry (replaces in-memory default)
+  if (process.env['NODE_ENV'] !== 'test') {
+    const didPool = new Pool({
+      connectionString: process.env['DATABASE_URL'] ?? process.env['POSTGRES_URL'],
+    });
+    setRegistry(new PostgresDIDRegistry(didPool));
+  }
+
+  // Initialize embeddings repository for semantic search
+  const embeddingsRepo: EmbeddingsRepo =
+    options.embeddingsRepo ??
+    (process.env['NODE_ENV'] === 'test'
+      ? new InMemoryEmbeddingsRepo()
+      : new PostgresEmbeddingsRepo(
+          new Pool({
+            connectionString: process.env['DATABASE_URL'] ?? process.env['POSTGRES_URL'],
+          }),
+        ));
 
   // Initialize services if not provided
   const licensingService =
@@ -318,6 +350,13 @@ export function buildServer(options: ApiServerOptions = {}) {
     scope.register(registerAdminLicensingRoutes, licensingService);
     scope.register(registerArtifactRoutes);
     scope.register(registerIntegrationRoutes);
+    scope.register(registerSearchRoutes, {
+      prefix: '/search',
+      embeddingsRepo,
+      embeddingsConfig: {
+        apiKey: process.env['OPENAI_API_KEY'] || 'sk-test-mock',
+      },
+    });
   };
 
   // Register v1 API routes (canonical)

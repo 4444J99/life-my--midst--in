@@ -1,9 +1,9 @@
 /**
  * DID Registry
- * 
+ *
  * Manages decentralized identifiers (DIDs) and their associated DID documents.
  * Supports both in-memory and persistent storage backends.
- * 
+ *
  * Implements W3C DID Core specification concepts:
  * - DID document resolution
  * - Verification method management
@@ -13,8 +13,6 @@
 import type { KeyPair } from '../crypto';
 
 import * as jose from 'jose';
-
-
 
 /**
 
@@ -102,9 +100,9 @@ export class MemoryDIDRegistry implements IDIDRegistry {
   private documents = new Map<string, DIDDocument>();
   private metadata = new Map<string, { created: string; updated: string; deactivated: boolean }>();
 
-  async register(did: string, document: DIDDocument): Promise<void> {
+  register(did: string, document: DIDDocument): Promise<void> {
     if (this.documents.has(did)) {
-      throw new Error(`DID ${did} already registered`);
+      return Promise.reject(new Error(`DID ${did} already registered`));
     }
 
     const now = new Date().toISOString();
@@ -112,62 +110,63 @@ export class MemoryDIDRegistry implements IDIDRegistry {
       ...document,
       id: did,
       created: now,
-      updated: now
+      updated: now,
     });
 
     this.metadata.set(did, {
       created: now,
       updated: now,
-      deactivated: false
+      deactivated: false,
     });
+    return Promise.resolve();
   }
 
-  async resolve(did: string): Promise<DIDResolutionResult> {
+  resolve(did: string): Promise<DIDResolutionResult> {
     const document = this.documents.get(did);
     const meta = this.metadata.get(did);
 
     if (!document || !meta) {
-      return {
+      return Promise.resolve({
         didDocument: null,
         didDocumentMetadata: {},
         didResolutionMetadata: {
           error: 'notFound',
-          message: `DID ${did} not found in registry`
-        }
-      };
+          message: `DID ${did} not found in registry`,
+        },
+      });
     }
 
     if (meta.deactivated) {
-      return {
+      return Promise.resolve({
         didDocument: document,
         didDocumentMetadata: {
           ...meta,
-          deactivated: true
+          deactivated: true,
         },
         didResolutionMetadata: {
           error: 'deactivated',
-          message: `DID ${did} has been deactivated`
-        }
-      };
+          message: `DID ${did} has been deactivated`,
+        },
+      });
     }
 
-    return {
+    return Promise.resolve({
       didDocument: document,
       didDocumentMetadata: meta,
-      didResolutionMetadata: {}
-    };
+      didResolutionMetadata: {},
+    });
   }
 
-  async update(did: string, updates: Partial<DIDDocument>): Promise<void> {
+  update(did: string, updates: Partial<DIDDocument>): Promise<void> {
     const existing = this.documents.get(did);
     const meta = this.metadata.get(did);
 
     if (!existing || !meta) {
-      throw new Error(`DID ${did} not found`);
+      return Promise.reject(new Error(`DID ${did} not found`));
     }
 
     if (meta.deactivated) {
-      throw new Error(`Cannot update deactivated DID ${did}`);
+      return Promise.reject(new Error(`Cannot update deactivated DID ${did}`));
     }
 
     const now = new Date().toISOString();
@@ -175,30 +174,32 @@ export class MemoryDIDRegistry implements IDIDRegistry {
       ...existing,
       ...updates,
       id: did, // Prevent ID changes
-      updated: now
+      updated: now,
     });
 
     this.metadata.set(did, {
       ...meta,
-      updated: now
+      updated: now,
     });
+    return Promise.resolve();
   }
 
-  async deactivate(did: string): Promise<void> {
+  deactivate(did: string): Promise<void> {
     const meta = this.metadata.get(did);
     if (!meta) {
-      throw new Error(`DID ${did} not found`);
+      return Promise.reject(new Error(`DID ${did} not found`));
     }
 
     this.metadata.set(did, {
       ...meta,
       deactivated: true,
-      updated: new Date().toISOString()
+      updated: new Date().toISOString(),
     });
+    return Promise.resolve();
   }
 
-  async list(): Promise<string[]> {
-    return Array.from(this.documents.keys());
+  list(): Promise<string[]> {
+    return Promise.resolve(Array.from(this.documents.keys()));
   }
 
   // Helper for testing
@@ -216,25 +217,28 @@ export class DIDDocumentBuilder {
    * Create a DID document from a KeyPair
    */
   static async fromKeyPair(keyPair: KeyPair): Promise<DIDDocument> {
-    const publicKeyJwk = (await jose.exportJWK(keyPair.publicKey as any)) as Record<string, unknown>;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- jose KeyLike type mismatch
+    const publicKeyJwk = (await jose.exportJWK(
+      keyPair.publicKey as Parameters<typeof jose.exportJWK>[0],
+    )) as Record<string, unknown>;
 
     const verificationMethod: VerificationMethod = {
       id: `${keyPair.did}#keys-1`,
       type: 'Ed25519VerificationKey2018',
       controller: keyPair.did,
-      publicKeyJwk
+      publicKeyJwk,
     };
 
     return {
       '@context': [
         'https://www.w3.org/ns/did/v1',
-        'https://w3id.org/security/suites/ed25519-2018/v1'
+        'https://w3id.org/security/suites/ed25519-2018/v1',
       ],
       id: keyPair.did,
       verificationMethod: [verificationMethod],
       authentication: [verificationMethod.id],
       assertionMethod: [verificationMethod.id],
-      created: new Date().toISOString()
+      created: new Date().toISOString(),
     };
   }
 
@@ -246,33 +250,30 @@ export class DIDDocumentBuilder {
     id: string,
     type: string,
     serviceEndpoint: string | Record<string, unknown>,
-    description?: string
+    description?: string,
   ): DIDDocument {
     const service: ServiceEndpoint = {
       id: `${document.id}#${id}`,
       type,
       serviceEndpoint,
-      description
+      description,
     };
 
     return {
       ...document,
       service: [...(document.service || []), service],
-      updated: new Date().toISOString()
+      updated: new Date().toISOString(),
     };
   }
 
   /**
    * Add a verification method
    */
-  static addVerificationMethod(
-    document: DIDDocument,
-    method: VerificationMethod
-  ): DIDDocument {
+  static addVerificationMethod(document: DIDDocument, method: VerificationMethod): DIDDocument {
     return {
       ...document,
       verificationMethod: [...(document.verificationMethod || []), method],
-      updated: new Date().toISOString()
+      updated: new Date().toISOString(),
     };
   }
 }
@@ -283,7 +284,8 @@ export class DIDDocumentBuilder {
 let globalRegistry: IDIDRegistry | null = null;
 
 /**
- * Get or create the global DID registry
+ * Get or create the global DID registry.
+ * Defaults to MemoryDIDRegistry; call setRegistry() to use PostgresDIDRegistry.
  */
 export function getRegistry(): IDIDRegistry {
   if (!globalRegistry) {
