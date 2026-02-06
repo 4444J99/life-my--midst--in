@@ -31,6 +31,12 @@ const nextConfig = {
   // TypeScript strict mode
   typescript: {
     tsconfigPath: './tsconfig.json'
+  },
+
+  // Lint in a dedicated CI step (`pnpm lint`), not during `next build`.
+  // This avoids treating ESLint warnings as build-breaking errors.
+  eslint: {
+    ignoreDuringBuilds: true,
   }
 };
 
