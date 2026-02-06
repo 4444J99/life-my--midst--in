@@ -1,0 +1,58 @@
+---
+title: "A Primer on DID and Verifiable Credentials"
+date: "2026-02-01"
+author: "The Team"
+excerpt: "Decentralized Identifiers and Verifiable Credentials are the backbone of trustless professional verification. Here's how they work."
+tags: [did, verifiable-credentials, security, web3]
+---
+
+## The trust problem
+
+When you claim "5 years of React experience" on your résumé, who verifies that? Today, the answer is: *the hiring manager calls your references, maybe*. That's a trust model built on phone calls and gut feelings.
+
+Verifiable Credentials (VCs) flip this. Instead of trusting the *claim*, you verify the *proof*.
+
+## Decentralized Identifiers (DIDs)
+
+A DID is a globally unique identifier that you control. Unlike a LinkedIn URL or email address, no company can deactivate your DID or change its meaning.
+
+A DID looks like this:
+
+```
+did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK
+```
+
+The key parts:
+- `did` — it's a DID
+- `key` — the DID method (how to resolve it)
+- `z6Mkha...` — the method-specific identifier (in this case, a public key)
+
+Our system currently supports `did:key` (self-sovereign, no network needed) and we're adding `did:web` (domain-anchored, HTTP-resolvable) next.
+
+## Verifiable Credentials
+
+A VC is a signed claim about a subject. For example:
+
+> "Alice has a Bachelor of Science in Computer Science from MIT, graduated 2020."
+
+This claim is:
+1. **Issued** by MIT (the issuer signs it with their DID)
+2. **Held** by Alice (she stores it in her identity wallet)
+3. **Verified** by anyone (they check the issuer's signature against MIT's public DID)
+
+No intermediary needed. No API call to MIT's servers. The math checks out or it doesn't.
+
+## How we use DID/VC
+
+In our system, every profile can:
+
+1. **Generate a DID** — create a `did:key` pair with one click
+2. **Issue self-attested VCs** — sign claims about your own experience
+3. **Import third-party VCs** — attach credentials issued by employers, schools, or certification bodies
+4. **Export VC bundles** — share a verifiable credential package via the API
+
+The `/profiles/:id/export/vc` endpoint returns a W3C-compliant Verifiable Presentation that any standards-compliant verifier can validate.
+
+## What's next
+
+We're working on `did:web` support, which anchors your DID to a domain you control. This means verifiers can resolve your identity by fetching `https://yourdomain.com/.well-known/did.json` — combining the self-sovereignty of DIDs with the trust signals of domain ownership.

@@ -1,0 +1,49 @@
+---
+title: "Understanding Identity Masks"
+date: "2026-01-22"
+author: "The Team"
+excerpt: "How mask-based identity filtering works — and why presenting one face to every audience is a design flaw, not a virtue."
+tags: [masks, identity, architecture]
+---
+
+## The mask metaphor
+
+In classical theater, a *persona* was literally a mask — an amplifier that let actors project different voices to different parts of the audience. We borrow that metaphor deliberately.
+
+An Identity Mask in our system is not deception. It's *contextual emphasis*. The same professional — with the same skills, experiences, and credentials — might present very differently to:
+
+- A venture capital partner evaluating leadership acumen
+- A hiring manager screening for technical depth
+- A potential collaborator looking for creative range
+
+## How masks work
+
+Each mask defines three things:
+
+1. **Voice** — the rhetorical mode (analytical, narrative, provocative, conciliatory)
+2. **Focus Tags** — which skills, projects, and experiences to foreground
+3. **Filtering Rules** — what to include, exclude, or de-emphasize
+
+When you generate a narrative through a mask, the Narrator agent uses these parameters to shape the output. The underlying data doesn't change — only its presentation.
+
+## The 15+ built-in masks
+
+Our system ships with a rich set of default masks:
+
+- **Analyst** — precise, metrics-aware, minimal flourish
+- **Strategist** — directional, tradeoff framing, prioritization language
+- **Artisan** — craft-focused, tactile detail, quality signals
+- **Executor** — concise, action/result oriented, operational clarity
+- **Provoker** — incisive, contrarian, tension-forward
+- **Mediator** — empathetic, alignment language, stakeholder emphasis
+- **Synthesist** — connects disparate ideas, systems-level perspective
+
+And more. Each mask has a dedicated system prompt that guides the LLM narrative engine.
+
+## Custom masks
+
+Beyond the defaults, you can define your own masks with custom voice parameters, focus tags, and filtering rules. This is particularly powerful for niche audiences — a conference talk proposal needs a very different voice than a grant application.
+
+## What's next
+
+In the next post, we'll dive into the **DID/VC verification layer** — how we're making professional credentials cryptographically verifiable without centralized authorities.
