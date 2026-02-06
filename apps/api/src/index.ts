@@ -409,7 +409,12 @@ export function buildServer(options: ApiServerOptions = {}) {
     });
     scope.register(registerCvRoutes, { prefix: '/profiles', repos: options.cvRepos ?? cvRepos });
     scope.register(registerCurriculumVitaeMultiplexRoutes, { prefix: '/profiles' });
-    scope.register(registerNarrativeRoutes, { prefix: '/profiles' });
+    scope.register(registerNarrativeRoutes, {
+      prefix: '/profiles',
+      maskRepo,
+      cvRepos: options.cvRepos ?? cvRepos,
+      narrativeRepo,
+    });
     scope.register(registerAetasRoutes, { prefix: '/profiles' });
     scope.register(registerExportRoutes, {
       prefix: '/profiles',

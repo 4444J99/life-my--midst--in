@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unused-vars */
 /**
  * Narrative Routes
  *
@@ -19,10 +18,18 @@ import type {
 } from '@in-midst-my-life/schema';
 import { NarrativeBlockSchema } from '@in-midst-my-life/schema';
 import { createOwnershipMiddleware } from '../middleware/auth';
+import type { MaskRepo } from '../repositories/masks';
+import type { CvRepos } from '../repositories/cv';
+import type { NarrativeRepo } from '../repositories/narratives';
+import {
+  generateNarrativeBlocks,
+  scoreTimelineEntryRelevance,
+  type TimelineEntry,
+} from '../services/narrative';
 
 // Validation schemas for narrative endpoints
 const NarrativeFilterSchema = z.object({
-  maskId: z.string().uuid().describe('Persona ID to filter narratives by'),
+  maskId: z.string().describe('Mask ID to filter narratives by'),
   includeAetas: z
     .array(z.string())
     .optional()
@@ -50,14 +57,26 @@ const NarrativeFilterSchema = z.object({
 
 const NarrativeUpdateSchema = z.object({
   blocks: z.array(NarrativeBlockSchema).describe('Narrative blocks to update'),
-  maskId: z.string().uuid().describe('Persona ID these narratives target'),
+  maskId: z.string().describe('Persona ID these narratives target'),
   customPreamble: z.string().optional().describe('Override auto-generated theatrical preamble'),
   customDisclaimer: z.string().optional().describe('Override auto-generated authentic disclaimer'),
 });
 
-export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise<void> {
-  // Ownership guard for all write operations — uses preHandler so it runs
-  // after onRequest auth hooks have populated request.user
+export interface NarrativeRouteOptions {
+  prefix?: string;
+  maskRepo: MaskRepo;
+  cvRepos: CvRepos;
+  narrativeRepo: NarrativeRepo;
+}
+
+export function registerNarrativeRoutes(
+  fastify: FastifyInstance,
+  opts: NarrativeRouteOptions,
+  done: (err?: Error) => void,
+): void {
+  const { maskRepo, cvRepos, narrativeRepo } = opts;
+
+  // Ownership guard for all write operations
   const ownershipCheck = createOwnershipMiddleware();
   fastify.addHook('preHandler', (request, reply, done) => {
     if (request.method === 'GET') {
@@ -71,30 +90,9 @@ export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise
    * GET /profiles/:id/narrative/:maskId
    *
    * Retrieves narrative blocks filtered by a specific persona/mask.
-   * Enriches response with:
-   * - Theatrical preamble explaining the persona lens
-   * - Authentic disclaimer about what's emphasized/de-emphasized
-   * - Performance notes for each block
-   * - Resonance data (fit_score, success metrics)
-   *
-   * Query Parameters:
-   * - includeAetas?: string[] - life-stages to include
-   * - excludeAetas?: string[] - life-stages to exclude
-   * - minWeight?: number - minimum block weight (0-100)
-   * - sortBy?: 'weight' | 'priority' | 'date' | 'relevance'
-   * - limit?: number (1-100, default 50)
-   *
-   * Response:
-   * {
-   *   mask: TabulaPersonarumEntry,
-   *   theatrical_preamble: string,
-   *   authentic_disclaimer: string,
-   *   resonance?: PersonaResonance,
-   *   blocks: NarrativeBlock[],
-   *   block_count: number,
-   *   filter_applied: boolean,
-   *   generated_at: ISO8601 timestamp
-   * }
+   * Fetches real timeline data and mask definitions from the database,
+   * generates narrative blocks through the narrative service, and enriches
+   * with theatrical metadata.
    */
   fastify.get<{
     Params: { id: string; maskId: string };
@@ -102,18 +100,10 @@ export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise
   }>('/profiles/:id/narrative/:maskId', async (request, reply) => {
     const { id, maskId } = request.params;
 
-    // Validate profile ID format (should be UUID)
     if (!isValidUUID(id)) {
       return reply.status(400).send({
         error: 'Invalid profile ID format',
         code: 'INVALID_PROFILE_ID',
-      });
-    }
-
-    if (!isValidUUID(maskId)) {
-      return reply.status(400).send({
-        error: 'Invalid mask ID format',
-        code: 'INVALID_MASK_ID',
       });
     }
 
@@ -150,65 +140,73 @@ export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise
       });
     }
 
-    // TODO: In production, fetch from:
-    // 1. TabulaPersonarumRepo.getPersona(id, maskId)
-    // 2. ProfileNarrativesRepo.getNarratives(id)
-    // 3. Calculate theatrical metadata dynamically
+    // 1. Fetch mask from taxonomy repository
+    const mask = await maskRepo.get(maskId);
+    if (!mask) {
+      return reply.status(404).send({
+        error: `Mask '${maskId}' not found`,
+        code: 'MASK_NOT_FOUND',
+      });
+    }
 
-    // For now, return structured response shape with mocked data
-    const persona: TabulaPersonarumEntry = {
-      id: maskId,
-      nomen: 'Vir Investigationis',
-      everyday_name: 'Researcher',
-      role_vector: 'Original research, publication, knowledge advancement',
-      tone_register: 'Scholarly, precise, evidence-driven',
-      visibility_scope: ['Academica', 'Technica'],
-      motto: 'Veritas est lux mea',
-      description: 'The research-focused persona',
-      active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    // 2. Check for an existing approved narrative snapshot
+    const existingSnapshot = await narrativeRepo.latestApproved(id, maskId);
 
-    // Generate theatrical preamble dynamically
-    const theatricalPreamble = generateTheatricalPreamble(persona, filter.includeAetas);
+    // 3. Fetch timeline events for this profile
+    const { data: timelineRaw } = await cvRepos.timelineEvents.list(id, 0, 200);
 
-    // Generate authentic disclaimer about what's emphasized/de-emphasized
-    const authenticDisclaimer = generateAuthenticDisclaimer(persona, filter);
+    // Convert DB timeline events to service TimelineEntry format
+    const timeline: TimelineEntry[] = timelineRaw.map((evt) => {
+      const data = evt as Record<string, unknown>;
+      return {
+        id: (data['id'] as string) || '',
+        title: (data['title'] as string) || '',
+        summary: (data['descriptionMarkdown'] as string) || undefined,
+        start: (data['startDate'] as string) || '',
+        end: (data['endDate'] as string) || undefined,
+        tags: (data['tags'] as string[]) || [],
+        stageId: (data['stageId'] as string) || undefined,
+        epochId: (data['epochId'] as string) || undefined,
+      };
+    });
 
-    // Mock narrative blocks (filtered)
-    const narrativeBlocks: NarrativeBlock[] = [
-      {
-        title: 'Doctoral Research in Distributed Systems',
-        body: 'Conducted original research on Byzantine fault tolerance in distributed consensus protocols...',
+    // 4. Generate narrative blocks from real data
+    let narrativeBlocks: NarrativeBlock[];
+
+    if (existingSnapshot) {
+      // Use previously approved narrative blocks
+      narrativeBlocks = existingSnapshot.blocks || [];
+    } else {
+      // Generate fresh narrative blocks from timeline + mask
+      const generated = generateNarrativeBlocks({
+        maskId: mask.id,
+        mask,
+        contexts: mask.activation_rules.contexts,
+        tags: mask.filters.include_tags,
+        timeline,
+        limit: filter.limit,
+        includeMeta: true,
+      });
+
+      // Enrich each generated block with theatrical metadata
+      narrativeBlocks = generated.map((block, idx) => ({
+        ...block,
         theatrical_metadata: {
-          mask_name: persona.everyday_name,
-          scaena: 'Academica',
-          aetas: 'Consolidation',
-          performance_note: 'This research exemplifies technical depth and theoretical rigor',
+          mask_name: mask.name,
+          scaena: mask.activation_rules.contexts[0] || 'General',
+          performance_note: `Filtered through ${mask.name} (${mask.ontology}) perspective`,
           authentic_caveat:
-            'Emphasizes academic contribution; de-emphasizes parallel teaching responsibilities',
+            `Emphasizes ${mask.filters.include_tags.join(', ')}; ` +
+            (mask.filters.exclude_tags.length > 0
+              ? `de-emphasizes ${mask.filters.exclude_tags.join(', ')}`
+              : 'no exclusions applied'),
         },
-        weight: 95,
-        priority: 1,
-      },
-      {
-        title: 'Published 12 peer-reviewed papers',
-        body: 'First-author publications in ACM Transactions on Computing Systems, IEEE Software, and PLDI...',
-        theatrical_metadata: {
-          mask_name: persona.everyday_name,
-          scaena: 'Academica',
-          aetas: 'Expansion',
-          performance_note: 'Demonstrates sustained scholarly contribution',
-          authentic_caveat:
-            "Shows breadth of publication; doesn't detail rejection/iteration process",
-        },
-        weight: 90,
-        priority: 2,
-      },
-    ];
+        weight: block.weight ?? Math.max(50, 95 - idx * 8),
+        priority: block.priority ?? idx + 1,
+      }));
+    }
 
-    // Filter by aetas if specified
+    // 5. Apply filters
     let filteredBlocks = narrativeBlocks;
     if (filter.includeAetas && filter.includeAetas.length > 0) {
       filteredBlocks = filteredBlocks.filter((block) => {
@@ -226,13 +224,11 @@ export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise
         return !blockAetas.some((a) => filter.excludeAetas!.includes(a));
       });
     }
-
-    // Filter by minimum weight
     if (filter.minWeight !== undefined) {
       filteredBlocks = filteredBlocks.filter((block) => (block.weight || 0) >= filter.minWeight!);
     }
 
-    // Sort by specified criteria
+    // 6. Sort
     switch (filter.sortBy) {
       case 'weight':
         filteredBlocks.sort((a, b) => (b.weight || 0) - (a.weight || 0));
@@ -240,26 +236,73 @@ export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise
       case 'priority':
         filteredBlocks.sort((a, b) => (a.priority || 0) - (b.priority || 0));
         break;
-      case 'relevance':
-        // Relevance = weight * (1 + match_score)
-        // For now, same as weight
-        filteredBlocks.sort((a, b) => (b.weight || 0) - (a.weight || 0));
+      case 'relevance': {
+        const priorityTags = mask.filters.include_tags;
+        filteredBlocks.sort((a, b) => {
+          const scoreA = scoreTimelineEntryRelevance(
+            {
+              id: '',
+              title: a.title,
+              body: a.body,
+              tags: a.tags,
+              start: '',
+            } as unknown as TimelineEntry,
+            priorityTags,
+          );
+          const scoreB = scoreTimelineEntryRelevance(
+            {
+              id: '',
+              title: b.title,
+              body: b.body,
+              tags: b.tags,
+              start: '',
+            } as unknown as TimelineEntry,
+            priorityTags,
+          );
+          return scoreB - scoreA;
+        });
         break;
+      }
     }
 
-    // Apply limit
     filteredBlocks = filteredBlocks.slice(0, filter.limit);
 
-    // Mock resonance data (in production, from PersonaResonanceRepo)
+    // 7. Build persona entry for response
+    const persona: TabulaPersonarumEntry = {
+      id: mask.id,
+      nomen: mask.nomen || `Vir ${mask.name}is`,
+      everyday_name: mask.name,
+      role_vector: mask.functional_scope,
+      tone_register: `${mask.stylistic_parameters.tone}, ${mask.stylistic_parameters.rhetorical_mode}`,
+      visibility_scope: mask.activation_rules.contexts,
+      motto: mask.motto || '',
+      description: mask.functional_scope,
+      active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const theatricalPreamble = generateTheatricalPreamble(persona, filter.includeAetas);
+    const authenticDisclaimer = generateAuthenticDisclaimer(persona);
+
+    // Calculate resonance from timeline tag overlap
+    const timelineTags = new Set(timeline.flatMap((t) => t.tags || []));
+    const maskTags = new Set(mask.filters.include_tags);
+    const overlap = [...maskTags].filter((t) => timelineTags.has(t));
+    const fitScore = maskTags.size > 0 ? Math.round((overlap.length / maskTags.size) * 100) : 50;
+
     const resonance: PersonaResonance = {
       persona_id: maskId,
-      context: 'Academic/research contexts',
-      fit_score: 88,
-      alignment_keywords: ['research', 'publication', 'theoretical', 'innovation'],
-      misalignment_keywords: ['management', 'operations', 'sales'],
+      context: mask.activation_rules.contexts.join(', '),
+      fit_score: fitScore,
+      alignment_keywords: overlap,
+      misalignment_keywords: [...maskTags].filter((t) => !timelineTags.has(t)),
       last_used: new Date().toISOString(),
-      success_count: 5,
-      feedback: 'Consistently successful in academic hiring contexts',
+      success_count: existingSnapshot ? 1 : 0,
+      feedback:
+        fitScore > 70
+          ? 'Strong alignment between profile data and this persona'
+          : 'Moderate alignment — consider enriching timeline with more relevant entries',
     };
 
     return reply.send({
@@ -281,25 +324,9 @@ export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise
   /**
    * POST /profiles/:id/narrative/:maskId
    *
-   * Updates narrative blocks for a specific persona or generates theatrical narrative
-   * if not provided. Used for enriching narratives with mask-specific framing.
-   *
-   * Request Body:
-   * {
-   *   blocks: NarrativeBlock[],
-   *   maskId: string (UUID),
-   *   customPreamble?: string,
-   *   customDisclaimer?: string
-   * }
-   *
-   * Response:
-   * {
-   *   ok: true,
-   *   blocks_updated: number,
-   *   theatrical_metadata_added: number,
-   *   persona: TabulaPersonarumEntry,
-   *   sample_block: NarrativeBlock
-   * }
+   * Updates narrative blocks for a specific persona. Enriches provided blocks
+   * with theatrical metadata from the mask definition and persists as a
+   * narrative snapshot.
    */
   fastify.post<{
     Params: { id: string; maskId: string };
@@ -307,7 +334,6 @@ export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise
   }>('/profiles/:id/narrative/:maskId', async (request, reply) => {
     const { id, maskId } = request.params;
 
-    // Validate IDs
     if (!isValidUUID(id)) {
       return reply.status(400).send({
         error: 'Invalid profile ID format',
@@ -315,14 +341,6 @@ export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise
       });
     }
 
-    if (!isValidUUID(maskId)) {
-      return reply.status(400).send({
-        error: 'Invalid mask ID format',
-        code: 'INVALID_MASK_ID',
-      });
-    }
-
-    // Validate request body
     let payload: z.infer<typeof NarrativeUpdateSchema>;
     try {
       payload = NarrativeUpdateSchema.parse(request.body);
@@ -334,44 +352,54 @@ export async function registerNarrativeRoutes(fastify: FastifyInstance): Promise
       });
     }
 
-    // TODO: In production:
-    // 1. Fetch persona from TabulaPersonarumRepo
-    // 2. For each block in payload.blocks:
-    //    - Enhance theatrical_metadata with mask_name, performance_note, authentic_caveat
-    //    - Save to ProfileNarrativesRepo.updateNarrativeBlock()
-    // 3. Emit event to recalculate resonance scores
+    // Fetch mask for enrichment
+    const mask = await maskRepo.get(maskId);
 
-    // Mock response showing enriched narratives
+    // Enrich blocks with theatrical metadata
     const enrichedBlocks = payload.blocks.map((block) => ({
       ...block,
       theatrical_metadata: {
         ...block.theatrical_metadata,
-        mask_name: 'Researcher',
-        performance_note: 'Emphasized in Researcher persona context',
+        mask_name: mask?.name || maskId,
+        performance_note: mask
+          ? `Emphasized in ${mask.name} (${mask.ontology}) persona context`
+          : 'Enriched with persona context',
       },
     }));
 
+    // Persist as narrative snapshot
+    const snapshot = await narrativeRepo.create({
+      id: crypto.randomUUID(),
+      profileId: id,
+      maskId,
+      mask_name: mask?.name,
+      status: 'draft',
+      blocks: enrichedBlocks,
+      theatrical_preamble: payload.customPreamble,
+      authentic_disclaimer: payload.customDisclaimer,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
     return reply.status(200).send({
       ok: true,
+      snapshot_id: snapshot.id,
       blocks_updated: enrichedBlocks.length,
       theatrical_metadata_added: enrichedBlocks.length,
       persona: {
         id: maskId,
-        nomen: 'Vir Investigationis',
-        everyday_name: 'Researcher',
+        nomen: mask?.nomen || maskId,
+        everyday_name: mask?.name || maskId,
       },
       sample_block: enrichedBlocks.length > 0 ? enrichedBlocks[0] : null,
     });
   });
+
+  done();
 }
 
 /**
  * Generate theatrical preamble explaining the persona lens
- *
- * Example:
- * "The following narrative is presented through the lens of Researcher—emphasizing
- * original thought, empirical rigor, and knowledge advancement. During the Expansion
- * and Mastery life-stages, this persona comes fully into focus."
  */
 function generateTheatricalPreamble(
   persona: TabulaPersonarumEntry,
@@ -391,15 +419,8 @@ function generateTheatricalPreamble(
 
 /**
  * Generate authentic disclaimer about what's emphasized vs de-emphasized
- *
- * Example:
- * "This framing emphasizes technical depth and empirical rigor; de-emphasizes teaching,
- * mentoring, and administrative work that occurred in parallel."
  */
-function generateAuthenticDisclaimer(
-  persona: TabulaPersonarumEntry,
-  _filter: z.infer<typeof NarrativeFilterSchema>,
-): string {
+function generateAuthenticDisclaimer(persona: TabulaPersonarumEntry): string {
   const toneNote = `This narrative adopts ${persona.tone_register.toLowerCase()} tone. `;
   const emphasisNote = `It emphasizes: ${persona.role_vector.toLowerCase()}. `;
   const scopeNote =
@@ -410,9 +431,6 @@ function generateAuthenticDisclaimer(
   return toneNote + emphasisNote + scopeNote;
 }
 
-/**
- * Simple UUID validation helper
- */
 function isValidUUID(str: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(str);
