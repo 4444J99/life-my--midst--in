@@ -3,14 +3,15 @@
  * Implements query and mutation resolvers for unified data access.
  */
 
-import type { Mask, Profile, Epoch, Stage } from "@in-midst-my-life/schema";
+import type { Mask, Profile, Epoch, Stage } from '@in-midst-my-life/schema';
+import type { ProfileRepo } from '../repositories/profiles';
+import type { MaskRepo, EpochRepo, StageRepo } from '../repositories/masks';
 
 export interface GraphQLContext {
-  profileRepo?: any;
-  maskRepo?: any;
-  narrativeService?: any;
-  epochRepo?: any;
-  stageRepo?: any;
+  profileRepo?: ProfileRepo;
+  maskRepo?: MaskRepo;
+  epochRepo?: EpochRepo;
+  stageRepo?: StageRepo;
 }
 
 export interface TimelineEntry {
@@ -25,25 +26,35 @@ export interface TimelineEntry {
   settingId?: string;
 }
 
+interface NarrativeSnapshot {
+  id: string;
+  profileId: string;
+  maskId?: string;
+  status: 'draft' | 'approved' | 'rejected';
+  blocks: { title: string; body: string; tags: string[] }[];
+  meta?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  revisionNote?: string;
+}
+
 /**
  * Root Query resolvers
+ *
+ * Note: graphql's `buildSchema` + root resolvers pattern passes (args, context)
+ * as the first two parameters — there is no separate `parent` argument.
  */
 export const queryResolvers = {
-  /**
-   * Retrieve a profile by ID
-   */
-  profile: async (_: any, args: { id: string }, context: GraphQLContext): Promise<Profile | null> => {
+  profile: async (args: { id: string }, context: GraphQLContext): Promise<Profile | null> => {
     if (!context.profileRepo) return null;
-    return context.profileRepo.get(args.id);
+    return (await context.profileRepo.find(args.id)) ?? null;
   },
 
-  /**
-   * List profiles with pagination
-   */
   profiles: async (
-    _: any,
     args: { offset?: number; limit?: number },
-    context: GraphQLContext
+    context: GraphQLContext,
   ): Promise<Profile[]> => {
     if (!context.profileRepo) return [];
     const offset = args.offset || 0;
@@ -52,268 +63,185 @@ export const queryResolvers = {
     return result.data;
   },
 
-  /**
-   * Retrieve a mask by ID
-   */
-  mask: async (_: any, args: { id: string }, context: GraphQLContext): Promise<Mask | null> => {
+  mask: async (args: { id: string }, context: GraphQLContext): Promise<Mask | null> => {
     if (!context.maskRepo) return null;
-    return context.maskRepo.get(args.id);
+    return (await context.maskRepo.get(args.id)) ?? null;
   },
 
-  /**
-   * List all masks with optional filtering
-   */
   masks: async (
-    _: any,
     args: { ontology?: string; offset?: number; limit?: number },
-    context: GraphQLContext
+    context: GraphQLContext,
   ): Promise<Mask[]> => {
     if (!context.maskRepo) return [];
     const offset = args.offset || 0;
     const limit = Math.min(args.limit || 100, 100);
     const result = await context.maskRepo.list(offset, limit, {
-      ontology: args.ontology
+      ontology: args.ontology,
     });
     return result.data;
   },
 
-  /**
-   * Select masks based on context and tags
-   */
   selectMasks: async (
-    _: any,
     args: { contexts: string[]; tags: string[] },
-    context: GraphQLContext
+    context: GraphQLContext,
   ): Promise<Mask[]> => {
     if (!context.maskRepo) return [];
-    // Simplified: return masks whose activation contexts match
     const allMasks = await context.maskRepo.list(0, 100);
     const contextSet = new Set(args.contexts.map((c) => c.toLowerCase()));
 
     return allMasks.data
       .filter((mask: Mask) =>
-        mask.activation_rules.contexts.some((ctx) =>
-          contextSet.has(ctx.toLowerCase())
-        )
+        mask.activation_rules.contexts.some((ctx) => contextSet.has(ctx.toLowerCase())),
       )
       .slice(0, 10);
   },
 
-  /**
-   * Get timeline for a profile
-   */
   timeline: async (
-    _: any,
     args: { profileId: string; limit?: number },
-    context: GraphQLContext
+    context: GraphQLContext,
   ): Promise<TimelineEntry[]> => {
     if (!context.profileRepo) return [];
-    const profile = await context.profileRepo.get(args.profileId);
+    const profile = await context.profileRepo.find(args.profileId);
     if (!profile) return [];
-    // In a real implementation, fetch timeline from database
     return [];
   },
 
-  /**
-   * Get timeline filtered by mask
-   */
   timelineForMask: async (
-    _: any,
     args: { profileId: string; maskId: string; limit?: number },
-    context: GraphQLContext
+    context: GraphQLContext,
   ): Promise<TimelineEntry[]> => {
     if (!context.profileRepo || !context.maskRepo) return [];
     const [profile, mask] = await Promise.all([
-      context.profileRepo.get(args.profileId),
-      context.maskRepo.get(args.maskId)
+      context.profileRepo.find(args.profileId),
+      context.maskRepo.get(args.maskId),
     ]);
     if (!profile || !mask) return [];
-    // Filter timeline based on mask include/exclude tags
     return [];
   },
 
-  /**
-   * Generate narrative blocks for a profile
-   */
   generateNarrative: async (
-    _: any,
     args: {
       profileId: string;
       maskId?: string;
       contexts?: string[];
       tags?: string[];
     },
-    context: GraphQLContext
-  ): Promise<any> => {
-    if (!context.profileRepo || !context.narrativeService) {
+    context: GraphQLContext,
+  ): Promise<NarrativeSnapshot> => {
+    if (!context.profileRepo) {
       return {
-        id: "snapshot-error",
+        id: 'snapshot-error',
         profileId: args.profileId,
-        status: "draft",
+        status: 'draft',
         blocks: [],
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
     }
 
-    const profile = await context.profileRepo.get(args.profileId);
+    const profile = await context.profileRepo.find(args.profileId);
     if (!profile) {
       return {
-        id: "snapshot-notfound",
+        id: 'snapshot-notfound',
         profileId: args.profileId,
-        status: "draft",
+        status: 'draft',
         blocks: [],
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
     }
 
-    // Generate narrative snapshot
-    const snapshot = {
+    return {
       id: `snapshot-${Date.now()}`,
       profileId: args.profileId,
       maskId: args.maskId,
-      status: "draft" as const,
+      status: 'draft',
       blocks: [
         {
-          title: "Generated Narrative",
+          title: 'Generated Narrative',
           body: `Narrative for ${profile.displayName}`,
-          tags: args.tags || []
-        }
+          tags: args.tags || [],
+        },
       ],
       meta: {
         contexts: args.contexts,
-        tags: args.tags
+        tags: args.tags,
       },
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-
-    return snapshot;
   },
 
-  /**
-   * Retrieve narrative snapshot by ID
-   */
-  narrativeSnapshot: async (
-    _: any,
-    _args: { id: string },
-    _context: GraphQLContext
-  ): Promise<any | null> => {
-    // In a real implementation, fetch from database
-    return null;
+  narrativeSnapshot: (): Promise<NarrativeSnapshot | null> => {
+    return Promise.resolve(null);
   },
 
-  /**
-   * List narrative snapshots for a profile
-   */
-  narrativeSnapshots: async (
-    _: any,
-    _args: { profileId: string; limit?: number },
-    _context: GraphQLContext
-  ): Promise<any[]> => {
-    // In a real implementation, fetch from database
-    return [];
+  narrativeSnapshots: (): Promise<NarrativeSnapshot[]> => {
+    return Promise.resolve([]);
   },
 
-  /**
-   * Retrieve an epoch by ID
-   */
-  epoch: async (
-    _: any,
-    args: { id: string },
-    context: GraphQLContext
-  ): Promise<Epoch | null> => {
+  epoch: async (args: { id: string }, context: GraphQLContext): Promise<Epoch | null> => {
     if (!context.epochRepo) return null;
-    return context.epochRepo.get(args.id);
+    return (await context.epochRepo.get(args.id)) ?? null;
   },
 
-  /**
-   * List all epochs
-   */
-  epochs: async (
-    _: any,
-    args: { sortBy?: string },
-    context: GraphQLContext
-  ): Promise<Epoch[]> => {
+  epochs: async (args: { sortBy?: string }, context: GraphQLContext): Promise<Epoch[]> => {
     if (!context.epochRepo) return [];
     const epochs = await context.epochRepo.list();
-    const sortField = args.sortBy || "order";
-    return epochs.sort((a: any, b: any) => {
-      const aVal = a[sortField];
-      const bVal = b[sortField];
-      if (typeof aVal === "string") {
+    const sortField = args.sortBy || 'order';
+    return [...epochs].sort((a, b) => {
+      const aVal = (a as Record<string, unknown>)[sortField];
+      const bVal = (b as Record<string, unknown>)[sortField];
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
         return aVal.localeCompare(bVal);
       }
-      return (aVal || 0) - (bVal || 0);
+      return (Number(aVal) || 0) - (Number(bVal) || 0);
     });
   },
 
-  /**
-   * Retrieve a stage by ID
-   */
-  stage: async (
-    _: any,
-    args: { id: string },
-    context: GraphQLContext
-  ): Promise<Stage | null> => {
+  stage: async (args: { id: string }, context: GraphQLContext): Promise<Stage | null> => {
     if (!context.stageRepo) return null;
-    return context.stageRepo.get(args.id);
+    return (await context.stageRepo.get(args.id)) ?? null;
   },
 
-  /**
-   * List stages in an epoch
-   */
-  stagesInEpoch: async (
-    _: any,
-    args: { epochId: string },
-    context: GraphQLContext
-  ): Promise<Stage[]> => {
+  stagesInEpoch: async (args: { epochId: string }, context: GraphQLContext): Promise<Stage[]> => {
     if (!context.stageRepo) return [];
     const result = await context.stageRepo.list(args.epochId);
     return result.data;
-  }
+  },
 };
 
 /**
  * Root Mutation resolvers
  */
 export const mutationResolvers = {
-  /**
-   * Create a new profile
-   */
   createProfile: async (
-    _: any,
     args: { displayName: string; title?: string; summaryMarkdown?: string },
-    context: GraphQLContext
+    context: GraphQLContext,
   ): Promise<Profile> => {
     if (!context.profileRepo) {
-      throw new Error("Profile repository not available");
+      throw new Error('Profile repository not available');
     }
 
-    const profile: any = {
+    const profile = {
       id: `profile-${Date.now()}`,
       displayName: args.displayName,
       title: args.title,
       summaryMarkdown: args.summaryMarkdown,
-      visibility: { default: "everyone" },
-      sectionOrder: [],
-      agentSettings: { enabled: false }
+      visibility: { default: 'everyone' as const },
+      sectionOrder: [] as string[],
+      agentSettings: { enabled: false },
     };
 
-    return context.profileRepo.create(profile);
+    return context.profileRepo.add(profile as unknown as Profile);
   },
 
-  /**
-   * Update an existing profile
-   */
   updateProfile: async (
-    _: any,
     args: { id: string; displayName?: string; title?: string; summaryMarkdown?: string },
-    context: GraphQLContext
+    context: GraphQLContext,
   ): Promise<Profile | null> => {
     if (!context.profileRepo) {
-      throw new Error("Profile repository not available");
+      throw new Error('Profile repository not available');
     }
 
     const updates: Partial<Profile> = {};
@@ -321,153 +249,91 @@ export const mutationResolvers = {
     if (args.title) updates.title = args.title;
     if (args.summaryMarkdown) updates.summaryMarkdown = args.summaryMarkdown;
 
-    return context.profileRepo.update(args.id, updates);
+    return (await context.profileRepo.update(args.id, updates)) ?? null;
   },
 
-  /**
-   * Create a new mask
-   */
   createMask: async (
-    _: any,
     args: { name: string; ontology: string; functionalScope: string },
-    context: GraphQLContext
+    context: GraphQLContext,
   ): Promise<Mask> => {
     if (!context.maskRepo) {
-      throw new Error("Mask repository not available");
+      throw new Error('Mask repository not available');
     }
 
     const mask: Mask = {
       id: `mask-${Date.now()}`,
       name: args.name,
-      ontology: args.ontology as "cognitive" | "expressive" | "operational",
+      ontology: args.ontology as 'cognitive' | 'expressive' | 'operational',
       functional_scope: args.functionalScope,
       stylistic_parameters: {
-        tone: "neutral",
-        rhetorical_mode: "deductive",
-        compression_ratio: 0.6
+        tone: 'neutral',
+        rhetorical_mode: 'deductive',
+        compression_ratio: 0.6,
       },
       activation_rules: { contexts: [], triggers: [] },
       filters: {
         include_tags: [],
         exclude_tags: [],
-        priority_weights: {}
-      }
+        priority_weights: {},
+      },
     };
 
     return context.maskRepo.create(mask);
   },
 
-  /**
-   * Update an existing mask
-   */
   updateMask: async (
-    _: any,
     args: { id: string; name?: string; functionalScope?: string },
-    context: GraphQLContext
+    context: GraphQLContext,
   ): Promise<Mask | null> => {
     if (!context.maskRepo) {
-      throw new Error("Mask repository not available");
+      throw new Error('Mask repository not available');
     }
 
     const updates: Partial<Mask> = {};
     if (args.name) updates.name = args.name;
     if (args.functionalScope) updates.functional_scope = args.functionalScope;
 
-    return context.maskRepo.update(args.id, updates);
+    return (await context.maskRepo.update(args.id, updates)) ?? null;
   },
 
-  /**
-   * Add a timeline entry
-   */
-  addTimelineEntry: async (
-    _: any,
-    args: {
-      profileId: string;
-      title: string;
-      start: string;
-      summary?: string;
-      tags?: string[];
-    },
-    _context: GraphQLContext
-  ): Promise<TimelineEntry> => {
-    return {
+  addTimelineEntry: (args: {
+    profileId: string;
+    title: string;
+    start: string;
+    summary?: string;
+    tags?: string[];
+  }): Promise<TimelineEntry> => {
+    return Promise.resolve({
       id: `entry-${Date.now()}`,
       title: args.title,
       summary: args.summary,
       start: args.start,
-      tags: args.tags || []
-    };
+      tags: args.tags || [],
+    });
   },
 
-  /**
-   * Approve a narrative snapshot
-   */
-  approveNarrative: async (
-    _: any,
-    args: { id: string; approvedBy: string },
-    _context: GraphQLContext
-  ): Promise<any> => {
-    return {
+  approveNarrative: (args: { id: string; approvedBy: string }): Promise<NarrativeSnapshot> => {
+    return Promise.resolve({
       id: args.id,
-      status: "approved",
+      profileId: '',
+      status: 'approved' as const,
+      blocks: [],
       approvedAt: new Date().toISOString(),
       approvedBy: args.approvedBy,
-      updatedAt: new Date().toISOString()
-    };
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   },
 
-  /**
-   * Reject a narrative snapshot
-   */
-  rejectNarrative: async (
-    _: any,
-    args: { id: string; revisionNote?: string },
-    _context: GraphQLContext
-  ): Promise<any> => {
-    return {
+  rejectNarrative: (args: { id: string; revisionNote?: string }): Promise<NarrativeSnapshot> => {
+    return Promise.resolve({
       id: args.id,
-      status: "rejected",
+      profileId: '',
+      status: 'rejected' as const,
+      blocks: [],
       revisionNote: args.revisionNote,
-      updatedAt: new Date().toISOString()
-    };
-  }
-};
-
-/**
- * Type resolvers for custom scalar and object types
- */
-export const typeResolvers = {
-  DateTime: {
-    serialize: (value: Date | string) => {
-      if (value instanceof Date) {
-        return value.toISOString();
-      }
-      return value;
-    },
-    parseValue: (value: string) => {
-      return new Date(value);
-    },
-    parseLiteral: (ast: any) => {
-      if (ast.kind === "StringValue") {
-        return new Date(ast.value);
-      }
-      return null;
-    }
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   },
-
-  JSON: {
-    serialize: (value: any) => value,
-    parseValue: (value: any) => value,
-    parseLiteral: (ast: any) => {
-      if (ast.kind === "ObjectValue") {
-        return Object.fromEntries(
-          ast.fields.map((field: any) => [
-            field.name.value,
-            field.value.value
-          ])
-        );
-      }
-      return null;
-    }
-  }
 };

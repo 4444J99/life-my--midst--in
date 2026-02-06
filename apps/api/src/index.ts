@@ -28,6 +28,8 @@ import { registerHunterProtocolRoutes } from './routes/hunter-protocol';
 import { registerArtifactRoutes } from './routes/artifacts';
 import { registerIntegrationRoutes } from './routes/integrations';
 import { registerSearchRoutes } from './routes/search';
+import { registerDidRoutes } from './routes/did';
+import { registerGraphQLRoute } from './routes/graphql';
 import type { ProfileRepo } from './repositories/profiles';
 import type { MaskRepo, EpochRepo, StageRepo } from './repositories/masks';
 import { createMaskRepo } from './repositories/masks';
@@ -273,7 +275,7 @@ export function buildServer(options: ApiServerOptions = {}) {
     return reply.status(status).send({
       ok: false,
       error: fastifyError.code ?? 'internal_error',
-      message: error.message,
+      message: fastifyError.message,
     });
   });
 
@@ -432,6 +434,13 @@ export function buildServer(options: ApiServerOptions = {}) {
       embeddingsConfig: {
         apiKey: process.env['OPENAI_API_KEY'] || 'sk-test-mock',
       },
+    });
+    scope.register(registerDidRoutes, { prefix: '/did' });
+    scope.register(registerGraphQLRoute, {
+      profileRepo: options.profileRepo ?? profileRepo,
+      maskRepo,
+      epochRepo,
+      stageRepo,
     });
   };
 
