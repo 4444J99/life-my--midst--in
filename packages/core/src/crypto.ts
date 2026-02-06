@@ -1,5 +1,4 @@
 import * as jose from 'jose';
-import { sha256 } from 'multiformats/hashes/sha2';
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import type { IntegrityProof } from '@in-midst-my-life/schema';
 
@@ -110,13 +109,8 @@ const canonicalize = (value: unknown): unknown => {
 export const hashPayload = async (payload: Record<string, unknown>): Promise<string> => {
   const normalized = canonicalize(payload);
   const bytes = Buffer.from(JSON.stringify(normalized), 'utf-8');
-  const digest = await sha256.digest(bytes);
-  // digest.bytes includes multicodec prefix (1220 for SHA-256), skip it
-  // SHA-256 produces 32 bytes (64 hex chars), multicodec adds 2 bytes prefix
-  const hashBytes = digest.bytes.slice(2);
-  return Array.from(hashBytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  // Use Node's built-in crypto for SHA-256 hashing
+  return createHash('sha256').update(bytes).digest('hex');
 };
 
 export const signIntegrity = async (

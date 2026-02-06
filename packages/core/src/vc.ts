@@ -1,5 +1,3 @@
-import { CID } from 'multiformats/cid';
-import { sha256 } from 'multiformats/hashes/sha2';
 import { type KeyPair } from './crypto';
 import * as jose from 'jose';
 import { getRegistry, DIDDocumentBuilder } from './did/registry';
@@ -43,8 +41,14 @@ export class VC {
   /**
    * Calculates the IPFS Content Identifier (CID) for a JSON object.
    * Uses JSON codec and SHA-256 hash.
+   * Dynamic imports used for ESM-only multiformats compatibility.
    */
   static async calculateCID(data: unknown): Promise<string> {
+    // Dynamic imports for ESM-only modules (tsx compatibility)
+    const [{ CID }, { sha256 }] = await Promise.all([
+      import('multiformats/cid'),
+      import('multiformats/hashes/sha2')
+    ]);
     const bytes = Buffer.from(JSON.stringify(data), 'utf-8');
     const hash = await sha256.digest(bytes);
     const cid = CID.create(1, 0x71, hash); // 0x71 is the JSON codec code
