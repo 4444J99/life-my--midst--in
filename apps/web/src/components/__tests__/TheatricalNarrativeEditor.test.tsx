@@ -4,11 +4,11 @@ import userEvent from '@testing-library/user-event';
 import TheatricalNarrativeEditor from '../TheatricalNarrativeEditor';
 import type { TabulaPersonarumEntry } from '@in-midst-my-life/schema';
 
-// Test mock interface - allows id and extended properties for narrative blocks
+// Test mock interface - matches PersistedNarrativeBlock (id and content required)
 interface TestNarrativeBlock {
-  id?: string;
+  id: string;
   title: string;
-  content?: string;
+  content: string;
   body: string;
   weight?: number;
   type?: string;

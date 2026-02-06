@@ -2,12 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useNarratives } from '../useNarratives';
 
-// Test mock interface - allows id and extended properties for test data
-// Note: title and body are required by the hook but optional here for flexible test setup
+// Test mock interface - matches PersistedNarrativeBlock (id and content required)
 interface TestNarrativeBlock {
-  id?: string;
+  id: string;
   title: string;
-  content?: string;
+  content: string;
   body: string;
   weight?: number;
   priority?: number;
