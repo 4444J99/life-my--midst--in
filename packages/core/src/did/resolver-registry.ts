@@ -9,6 +9,7 @@ import type { DIDResolutionResult, IDIDRegistry } from './registry';
 import { getRegistry } from './registry';
 import { DidWebResolver, type DidWebResolverOptions } from './resolvers/web';
 import { DidKeyResolver } from './resolvers/key';
+import { DidJwkResolver } from './resolvers/jwk';
 
 export interface DIDResolver {
   resolve(did: string): Promise<DIDResolutionResult>;
@@ -43,6 +44,7 @@ export class DIDResolverRegistry implements DIDResolver {
 
     // Register built-in resolvers
     this.resolvers.set('key', new DidKeyResolver());
+    this.resolvers.set('jwk', new DidJwkResolver());
     this.resolvers.set('web', new DidWebResolver(options.webResolverOptions));
   }
 
