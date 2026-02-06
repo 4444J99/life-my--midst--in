@@ -2,40 +2,6 @@
 
 import type { ChangeEvent } from 'react';
 
-type ErrorResponse = { message?: string; error?: string };
-type BundleSummary = {
-  profile: number;
-  experiences: number;
-  educations: number;
-  projects: number;
-  skills: number;
-  publications: number;
-  awards: number;
-  certifications: number;
-  customSections: number;
-  socialLinks: number;
-  timelineEvents: number;
-  verificationLogs: number;
-  credentials: number;
-  attestations: number;
-  edges: number;
-  revisions: number;
-  masks: number;
-  epochs: number;
-  stages: number;
-};
-
-type ImportResponse = {
-  ok: boolean;
-  data?: {
-    profileId: string;
-    mode: string;
-    dryRun: boolean;
-    summary: BundleSummary;
-    snapshotId?: string;
-  };
-};
-
 type BackupPanelProps = {
   profileId: string;
   importBundleText: string;

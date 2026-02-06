@@ -1,7 +1,7 @@
 'use client';
 
 import type { Artifact } from '@in-midst-my-life/schema';
-import { FileText, Image as ImageIcon, Download } from 'lucide-react';
+import { FileText, Download } from 'lucide-react';
 
 interface ArtifactPreviewProps {
   artifact: Artifact;
@@ -120,11 +120,11 @@ export function ArtifactPreview({
           </div>
           <div>
             <span className="label">Created</span>
-            <p>{new Date(artifact.createdDate).toLocaleDateString()}</p>
+            <p>{artifact.createdDate ? new Date(artifact.createdDate).toLocaleDateString() : 'N/A'}</p>
           </div>
           <div>
             <span className="label">Modified</span>
-            <p>{new Date(artifact.modifiedDate).toLocaleDateString()}</p>
+            <p>{artifact.modifiedDate ? new Date(artifact.modifiedDate).toLocaleDateString() : 'N/A'}</p>
           </div>
         </div>
       </div>

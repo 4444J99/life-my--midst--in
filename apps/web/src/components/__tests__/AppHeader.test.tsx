@@ -42,7 +42,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -56,7 +56,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -72,7 +72,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -89,7 +89,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -110,7 +110,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -132,7 +132,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -143,7 +143,7 @@ describe('AppHeader', () => {
 
     // Click on second persona - find any element with Artifex text and click it
     const artifexElements = screen.getAllByText('Artifex');
-    await user.click(artifexElements[artifexElements.length - 1]);
+    await user.click(artifexElements[artifexElements.length - 1]!);
 
     expect(mockOnSelectPersona).toHaveBeenCalledWith('persona-2');
   });
@@ -156,7 +156,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -176,7 +176,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName=""
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -191,7 +191,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -205,7 +205,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[1]}
+        currentPersona={mockPersonas[1] ?? null}
         onSelectPersona={mockOnSelectPersona}
       />,
     );
@@ -235,7 +235,7 @@ describe('AppHeader', () => {
         profileId="profile-1"
         profileName="John Doe"
         allPersonas={mockPersonas}
-        currentPersona={mockPersonas[0]}
+        currentPersona={mockPersonas[0] ?? null}
         onSelectPersona={mockOnSelectPersona}
         loading={true}
       />,

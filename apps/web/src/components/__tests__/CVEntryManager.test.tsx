@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CVEntryManager from '../CVEntryManager';
 import type { CVEntry } from '@in-midst-my-life/schema';
@@ -313,7 +313,7 @@ describe('CVEntryManager', () => {
   });
 
   it('supports filtering by persona chips', async () => {
-    const user = userEvent.setup();
+    userEvent.setup();
     render(
       <CVEntryManager
         entries={mockEntries}

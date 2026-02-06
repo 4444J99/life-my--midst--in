@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Users, Send, Copy, Eye, EyeOff, Clock } from 'lucide-react';
+import { Users, Send, Copy, Clock } from 'lucide-react';
 
 interface PersonaCollaborationCardProps {
   profileId: string;
@@ -20,7 +20,7 @@ export default function PersonaCollaborationCard({
   const [advisorEmail, setAdvisorEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [_shareToken, setShareToken] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [showLink, setShowLink] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');

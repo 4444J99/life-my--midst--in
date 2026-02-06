@@ -1,11 +1,3 @@
-import type {
-  Experience,
-  Education,
-  Project,
-  Publication,
-  Award,
-  Certification,
-} from '@in-midst-my-life/schema';
 import type { CvData } from './graph-utils';
 
 export type TimelineEntry = {

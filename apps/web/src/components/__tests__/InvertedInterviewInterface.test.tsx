@@ -85,7 +85,7 @@ describe('InvertedInterviewInterface', () => {
     expect(stars.length).toBeGreaterThanOrEqual(5);
 
     // Click a star to change rating
-    await user.click(stars[3]);
+    await user.click(stars[3]!);
   });
 
   it('allows navigation to next question after answering', async () => {

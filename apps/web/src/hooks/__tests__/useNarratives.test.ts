@@ -177,7 +177,7 @@ describe('useNarratives', () => {
 
     const generated = await result.current.generateNarratives();
     expect(generated).toBeDefined();
-    expect(generated?.blocks.length).toBeGreaterThan(0);
+    expect(generated?.blocks?.length).toBeGreaterThan(0);
   });
 
   it('provides function to update narrative block', async () => {

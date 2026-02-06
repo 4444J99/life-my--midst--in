@@ -63,7 +63,7 @@ const CATEGORY_ICONS = {
 export default function FeedbackPage({ params }: { params: { profileId: string } }) {
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [_showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   useEffect(() => {

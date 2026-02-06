@@ -26,9 +26,9 @@ interface ResumeData {
  */
 export default function ResumesPage() {
   const params = useParams();
-  const profileId = params.profileId as string | null;
+  const profileId = params['profileId'] as string | null;
 
-  const { profile, loading: profileLoading } = useProfileData(profileId);
+  const { profile, loading: _profileLoading } = useProfileData(profileId);
   const {
     personas,
     selectedPersonaId,

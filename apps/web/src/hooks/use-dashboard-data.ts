@@ -97,6 +97,7 @@ export function useDashboardData() {
       console.error(err);
       setError((err as Error).message ?? 'Failed to load data');
       setStatus('error');
+      return undefined;
     }
   }, [getJson, loadMetrics]);
 

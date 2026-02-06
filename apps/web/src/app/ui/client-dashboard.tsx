@@ -16,7 +16,6 @@ import type {
   Mask,
   Stage,
   Epoch,
-  IntegrityProof,
 } from '@in-midst-my-life/schema';
 import {
   buildForcePositionMap,
@@ -217,7 +216,7 @@ export default function ClientDashboard() {
     identity,
     generateIdentity,
     exportIdentityEncrypted,
-    loading: identityLoading,
+    loading: _identityLoading,
   } = useIdentity();
   const [showKeyExport, setShowKeyExport] = useState(false);
   const [exportedKey, setExportedKey] = useState('');

@@ -1,5 +1,4 @@
 import HunterDashboard from '@/components/HunterDashboard';
-import { headers } from 'next/headers';
 
 async function getProfile() {
   const apiUrl = process.env['API_URL'] || 'http://localhost:3001';

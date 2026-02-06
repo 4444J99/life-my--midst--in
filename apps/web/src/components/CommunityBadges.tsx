@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trophy, Star, Users, MessageSquare, Code, Award, Target, Zap } from 'lucide-react';
+import { Trophy, Star, Users, MessageSquare, Code, Award, Zap } from 'lucide-react';
 
 interface Badge {
   id: string;
@@ -117,9 +117,9 @@ const rarityColors = {
 };
 
 export default function CommunityBadges({
-  userId,
+  userId: _userId,
   userBadges = [],
-  onBadgeEarned,
+  onBadgeEarned: _onBadgeEarned,
 }: CommunityBadgesProps) {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [showAll, setShowAll] = useState(false);

@@ -195,7 +195,7 @@ describe('useAetas', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    const added = await result.current.addAetas('aetas-3' as any);
+    const added = await result.current.addAetas!('aetas-3' as any);
     expect(added).toBeDefined();
   });
 
@@ -234,7 +234,7 @@ describe('useAetas', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    const updated = await result.current.updateAetas('aetas-1', {
+    const updated = await result.current.updateAetas!('aetas-1', {
       endDate: new Date('2024-06-01').toISOString(),
     } as any);
     expect(updated).toBeDefined();
@@ -267,7 +267,7 @@ describe('useAetas', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    const deleted = await result.current.deleteAetas('aetas-1');
+    const deleted = await result.current.deleteAetas!('aetas-1');
     expect(deleted).toBe(true);
   });
 
@@ -322,7 +322,7 @@ describe('useAetas', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    const duration = result.current.getAetasDuration('aetas-1');
+    const duration = result.current.getAetasDuration!('aetas-1');
     expect(duration).toBeDefined();
     expect(duration).toBeGreaterThan(0);
   });
@@ -363,7 +363,7 @@ describe('useAetas', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    const current = result.current.getCurrentAetas();
+    const current = result.current.getCurrentAetas!();
     expect(current).toBeDefined();
     expect((current as any)?.label).toBe('Emergence');
   });

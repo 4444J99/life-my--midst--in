@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessageCircle, Send, Search, Archive, MoreVertical, Plus, Check } from 'lucide-react';
+import { MessageCircle, Send, Search, Archive, Plus, Check } from 'lucide-react';
 import Link from 'next/link';
 
 interface Thread {
@@ -32,7 +32,7 @@ export default function MessageInbox({ userId }: { userId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [selectedThreadId, _setSelectedThreadId] = useState<string | null>(null);
 
   useEffect(() => {
     loadThreads();

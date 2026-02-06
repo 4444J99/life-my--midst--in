@@ -80,8 +80,11 @@ export default function InterviewPage() {
   const handleSubmitAnswer = async () => {
     if (!currentAnswer.trim() || !sessionId) return;
 
+    const currentQ = questions[currentQuestionIndex];
+    if (!currentQ) return;
+
     const answer: Answer = {
-      questionId: questions[currentQuestionIndex].id,
+      questionId: currentQ.id,
       answer: currentAnswer,
       duration: 60, // Would track actual duration
     };
@@ -260,9 +263,9 @@ export default function InterviewPage() {
                 onClick={() => {
                   if (currentQuestionIndex > 0) {
                     setCurrentQuestionIndex(currentQuestionIndex - 1);
+                    const prevQ = questions[currentQuestionIndex - 1];
                     setCurrentAnswer(
-                      answers.find((a) => a.questionId === questions[currentQuestionIndex - 1].id)
-                        ?.answer || '',
+                      answers.find((a) => a.questionId === prevQ?.id)?.answer || '',
                     );
                   }
                 }}

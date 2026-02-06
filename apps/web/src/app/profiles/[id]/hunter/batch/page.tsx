@@ -26,8 +26,11 @@ export default function BatchApplicationsPage({ params }: PageProps) {
     if (selectedPersonaId && !personaId) {
       setPersonaId(selectedPersonaId);
     } else if (personas.length > 0 && !personaId && !selectedPersonaId) {
-      setPersonaId(personas[0].id);
-      selectPersona(personas[0].id);
+      const firstPersona = personas[0];
+      if (firstPersona) {
+        setPersonaId(firstPersona.id);
+        selectPersona(firstPersona.id);
+      }
     }
   }, [personas, selectedPersonaId, personaId, selectPersona]);
 
@@ -201,7 +204,7 @@ export default function BatchApplicationsPage({ params }: PageProps) {
       <div className="max-w-7xl mx-auto px-6 py-8">
         <BatchApplications
           profileId={profileId}
-          personaId={personaId}
+          personaId={personaId ?? ''}
           minCompatibilityScore={minScore}
         />
 

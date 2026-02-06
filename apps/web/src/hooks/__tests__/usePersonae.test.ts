@@ -379,7 +379,7 @@ describe('usePersonae', () => {
 
     const resonances = result.current.getPersonaResonances('persona-1');
     expect(resonances).toHaveLength(1);
-    expect(resonances[0].context).toBe('Technical');
+    expect(resonances[0]!.context).toBe('Technical');
   });
 
   it('handles fetch errors gracefully', async () => {

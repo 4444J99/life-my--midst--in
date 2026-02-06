@@ -36,7 +36,7 @@ interface BatchApplicationsProps {
 
 export default function BatchApplications({
   profileId,
-  personaId,
+  personaId: _personaId,
   minCompatibilityScore = 70,
 }: BatchApplicationsProps) {
   const [jobs, setJobs] = useState<ApplicationJob[]>([]);

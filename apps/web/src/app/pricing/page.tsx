@@ -1,14 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { PricingCard } from '@/components/marketing/PricingCard';
 import { createCheckoutSession } from '@/lib/api-client';
 
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null); // Track which tier is loading
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   // Get profileId (from auth context or session)
   // For now, hardcode for testing

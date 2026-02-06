@@ -85,7 +85,7 @@ export function ScaenaeFilter({
   allStages = DEFAULT_STAGES,
   visibilityMatrix,
 }: ScaenaeFilterProps) {
-  const [expandedStage, setExpandedStage] = useState<string | null>(null);
+  const [_expandedStage, _setExpandedStage] = useState<string | null>(null);
 
   const toggleStage = (stageId: string) => {
     if (selectedStages.includes(stageId)) {

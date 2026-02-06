@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AppHeader } from '@/components/AppHeader';
 import { PersonaeSelector } from '@/components/PersonaeSelector';
 import { InvertedInterviewInterface } from '@/components/InvertedInterviewInterface';
@@ -27,9 +27,9 @@ interface InterviewResponse {
  */
 export default function InterviewPage() {
   const params = useParams();
-  const profileId = params.profileId as string | null;
+  const profileId = params['profileId'] as string | null;
 
-  const { profile, loading: profileLoading } = useProfileData(profileId);
+  const { profile, loading: _profileLoading } = useProfileData(profileId);
   const {
     personas,
     selectedPersonaId,

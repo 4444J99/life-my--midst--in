@@ -20,9 +20,9 @@ import { useNarratives } from '@/hooks/useNarratives';
  */
 export default function NarrativePage() {
   const params = useParams();
-  const profileId = params.profileId as string | null;
+  const profileId = params['profileId'] as string | null;
 
-  const { profile, loading: profileLoading } = useProfileData(profileId);
+  const { profile, loading: _profileLoading } = useProfileData(profileId);
   const {
     personas,
     selectedPersonaId,
@@ -31,15 +31,15 @@ export default function NarrativePage() {
   } = usePersonae(profileId);
   const {
     blocks,
-    mask,
+    mask: _mask,
     theatricalPreamble,
     authenticDisclaimer,
     loading: narrativeLoading,
     generateForMask,
-    updateBlock,
+    updateBlock: _updateBlock,
     saveNarratives,
     clear,
-  } = useNarratives(profileId);
+  } = useNarratives(profileId ?? '');
 
   const [showSelector, setShowSelector] = useState(!selectedPersonaId);
   const selectedPersona = personas.find((p) => p.id === selectedPersonaId) || null;

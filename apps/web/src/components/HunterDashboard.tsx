@@ -60,15 +60,14 @@ export default function HunterDashboard({ profileId, onApplyJob }: HunterDashboa
   // Filter State
   const [keywords, setKeywords] = useState<string>('');
   const [locations, setLocations] = useState<string>('');
-  const [minSalary, setMinSalary] = useState<number | undefined>();
-  const [maxSalary, setMaxSalary] = useState<number | undefined>();
+  const [minSalary, _setMinSalary] = useState<number | undefined>();
+  const [maxSalary, _setMaxSalary] = useState<number | undefined>();
   const [remoteType, setRemoteType] = useState<string>('any');
-  const [technologies, setTechnologies] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'score' | 'recency' | 'salary'>('score');
+  const [technologies, _setTechnologies] = useState<string>('');
 
   // Scheduler State
   const [scheduledHunts, setScheduledHunts] = useState<JobHuntConfig[]>([]);
-  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [_scheduleLoading, setScheduleLoading] = useState(false);
 
   // Subscription & Quota State
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -246,20 +245,10 @@ export default function HunterDashboard({ profileId, onApplyJob }: HunterDashboa
     }
   };
 
-  // Sort logic
-  const sortedJobs = [...jobs].sort((a, b) => {
-    if (sortBy === 'recency')
-      return new Date(b.posted_date).getTime() - new Date(a.posted_date).getTime();
-    if (sortBy === 'salary' && a.salary_max && b.salary_max) return b.salary_max - a.salary_max;
-    const scoreA = compatibilities[a.id]?.overall_score || 0;
-    const scoreB = compatibilities[b.id]?.overall_score || 0;
-    return scoreB - scoreA;
-  });
-
   const selectedCompat = selectedJob ? compatibilities[selectedJob.id] : null;
 
   // Usage info from subscription
-  const searchUsage = subscription?.plan?.features?.hunter_job_searches || { used: 0, value: 5 };
+  const searchUsage = subscription?.plan?.features?.['hunter_job_searches'] || { used: 0, value: 5 };
 
   return (
     <div className="max-w-7xl mx-auto p-6 text-white min-h-screen relative">

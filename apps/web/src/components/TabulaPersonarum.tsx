@@ -15,7 +15,7 @@
  * - Preview mask-specific narrative
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { Mask } from '@in-midst-my-life/schema';
 
 // API error class

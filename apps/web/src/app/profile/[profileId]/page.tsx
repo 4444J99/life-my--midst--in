@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/AppHeader';
 import { PersonaeSelector } from '@/components/PersonaeSelector';
@@ -10,7 +9,6 @@ import { useProfileData } from '@/hooks/useProfileData';
 import { usePersonae } from '@/hooks/usePersonae';
 import { useAetas } from '@/hooks/useAetas';
 import { useScaenae } from '@/hooks/useScaenae';
-import type { Profile } from '@in-midst-my-life/schema';
 import { Calendar } from 'lucide-react';
 
 /**
@@ -24,7 +22,7 @@ import { Calendar } from 'lucide-react';
  */
 export default function ProfilePage() {
   const params = useParams();
-  const profileId = params.profileId as string | null;
+  const profileId = params['profileId'] as string | null;
 
   const { profile, cv, loading: profileLoading, error: profileError } = useProfileData(profileId);
   const {
@@ -32,13 +30,13 @@ export default function ProfilePage() {
     selectedPersonaId,
     loading: personaeLoading,
     selectPersona,
-    addPersona,
-    updatePersona,
-    deletePersona,
+    addPersona: _addPersona,
+    updatePersona: _updatePersona,
+    deletePersona: _deletePersona,
   } = usePersonae(profileId);
-  const { canonicalAetas, profileAetas, currentAetasId, addProfileAetas, setCurrentAetas } =
+  const { canonicalAetas, profileAetas, currentAetasId, addProfileAetas: _addProfileAetas, setCurrentAetas } =
     useAetas(profileId);
-  const { scaenae, canonicalScaenae } = useScaenae();
+  const { scaenae: _scaenae, canonicalScaenae } = useScaenae();
 
   const selectedPersona = personas.find((p) => p.id === selectedPersonaId) || null;
 

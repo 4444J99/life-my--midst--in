@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { Epoch, Stage, NarrativeBlock } from '@in-midst-my-life/schema';
+import type { Epoch, Stage } from '@in-midst-my-life/schema';
 
 /**
  * Enhanced timeline entry with narrative weighting support.

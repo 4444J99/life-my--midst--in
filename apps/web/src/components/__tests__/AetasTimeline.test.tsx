@@ -106,7 +106,7 @@ describe('AetasTimeline', () => {
     } else {
       // Fallback: click on SVG rect element
       const rects = container.querySelectorAll('svg rect');
-      await user.click(rects[1]); // First rect is grid, second is first epoch
+      await user.click(rects[1]!); // First rect is grid, second is first epoch
       expect(mockOnEpochSelected).toHaveBeenCalled();
     }
   });

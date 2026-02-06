@@ -329,7 +329,7 @@ export default function OnboardingWizard({ profileId, onComplete }: OnboardingWi
 
   const handleNext = useCallback(async () => {
     if (currentStep < steps.length - 1) {
-      setCompletedSteps((prev) => new Set([...prev, steps[currentStep].id]));
+      setCompletedSteps((prev) => new Set([...prev, steps[currentStep]!.id]));
       setCurrentStep(currentStep + 1);
     } else {
       onComplete();
@@ -347,7 +347,7 @@ export default function OnboardingWizard({ profileId, onComplete }: OnboardingWi
   }, [onComplete]);
 
   const handleAction = useCallback(async () => {
-    const action = steps[currentStep].action;
+    const action = steps[currentStep]?.action;
     if (action?.onClick) {
       setIsLoading(true);
       try {
@@ -360,7 +360,7 @@ export default function OnboardingWizard({ profileId, onComplete }: OnboardingWi
     }
   }, [currentStep, steps]);
 
-  const step = steps[currentStep];
+  const step = steps[currentStep]!;
   const progress = ((currentStep + 1) / steps.length) * 100;
 
   return (

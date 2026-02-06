@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import type { Mask, MaskType } from '@in-midst-my-life/schema';
-import { MASK_TAXONOMY } from '@in-midst-my-life/content-model';
+import { useState, useCallback } from 'react';
+import type { Mask } from '@in-midst-my-life/schema';
 
 interface MaskEditorProps {
   /** API base URL for mask operations */
@@ -92,7 +91,8 @@ export function MaskEditor({
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1;
-      setState(history[newIndex]);
+      const prev = history[newIndex];
+      if (prev) setState(prev);
       setHistoryIndex(newIndex);
     }
   }, [history, historyIndex]);
@@ -100,7 +100,8 @@ export function MaskEditor({
   const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1;
-      setState(history[newIndex]);
+      const next = history[newIndex];
+      if (next) setState(next);
       setHistoryIndex(newIndex);
     }
   }, [history, historyIndex]);

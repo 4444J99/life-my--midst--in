@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, MoreVertical, Pin, Archive, Trash2, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { Send, MoreVertical, ArrowLeft } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -160,11 +159,13 @@ export default function MessageThread({ threadId, participantName, onBack }: Mes
           </div>
         ) : (
           messages.map((message, index) => {
+            const prevMessage = messages[index - 1];
             const showTimestamp =
               index === 0 ||
-              new Date(messages[index - 1].createdAt).getTime() -
-                new Date(message.createdAt).getTime() >
-                300000; // 5 minutes
+              (prevMessage &&
+                new Date(prevMessage.createdAt).getTime() -
+                  new Date(message.createdAt).getTime() >
+                  300000); // 5 minutes
 
             return (
               <div key={message.id}>

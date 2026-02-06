@@ -104,8 +104,8 @@ describe('BatchApplications', () => {
 
     const checkboxes = screen.getAllByRole('checkbox');
     if (checkboxes.length > 0) {
-      await user.click(checkboxes[0]);
-      expect(checkboxes[0]).toBeChecked();
+      await user.click(checkboxes[0]!);
+      expect(checkboxes[0]!).toBeChecked();
     }
   });
 
@@ -174,7 +174,7 @@ describe('BatchApplications', () => {
     // Find and click view button
     const viewButtons = screen.getAllByText(/View/i);
     if (viewButtons.length > 0) {
-      await user.click(viewButtons[0]);
+      await user.click(viewButtons[0]!);
     }
   });
 

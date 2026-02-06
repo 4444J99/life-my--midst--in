@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Star, Briefcase, TrendingUp, MessageSquare, Send, Filter, Heart } from 'lucide-react';
+import { Star, Briefcase, MessageSquare, Send, Filter, Heart } from 'lucide-react';
 
 interface MentorProfile {
   id: string;
@@ -23,7 +23,7 @@ interface MentorProfilesProps {
   onRequestMentorship?: (mentorId: string) => void;
 }
 
-export default function MentorProfiles({ userId, onRequestMentorship }: MentorProfilesProps) {
+export default function MentorProfiles({ userId: _userId, onRequestMentorship }: MentorProfilesProps) {
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [filteredMentors, setFilteredMentors] = useState<MentorProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);

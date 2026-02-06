@@ -8,7 +8,7 @@ interface LLMSuggestionsProps {
   onAcceptSuggestion?: (field: string, value: any) => void;
 }
 
-export function LLMSuggestions({ artifact, onAcceptSuggestion }: LLMSuggestionsProps) {
+export function LLMSuggestions({ artifact, onAcceptSuggestion: _onAcceptSuggestion }: LLMSuggestionsProps) {
   const hasSuggestions = artifact.confidence && artifact.confidence < 0.9;
 
   if (!hasSuggestions) {
