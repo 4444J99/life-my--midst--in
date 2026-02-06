@@ -83,6 +83,8 @@ export interface ApiServerOptions {
   billingService?: BillingService;
   licensingService?: LicensingService;
   embeddingsRepo?: EmbeddingsRepo;
+  /** When true, skip JWT auth hooks (tests provide their own mock auth) */
+  disableAuth?: boolean;
 }
 
 export function buildServer(options: ApiServerOptions = {}) {
@@ -341,11 +343,14 @@ export function buildServer(options: ApiServerOptions = {}) {
       '/taxonomy/stages',
     ]);
 
-    if (jwtAuth) {
+    if (jwtAuth && !options.disableAuth) {
       const authMiddleware = createAuthMiddleware(jwtAuth);
       const optionalAuth = createOptionalAuthMiddleware(jwtAuth);
 
       scope.addHook('onRequest', async (request, reply) => {
+        // Skip if user is already authenticated (e.g. by test mock hook)
+        if (request.user) return;
+
         const url = request.url.split('?')[0] ?? '';
 
         // Skip auth for exact public route matches

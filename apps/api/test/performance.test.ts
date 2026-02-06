@@ -1,19 +1,19 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { performance } from 'node:perf_hooks';
-import { buildServer } from '../src/index';
-import { createProfileRepo, type ProfileRepo } from '../src/repositories/profiles';
-import { createCvRepos, type CvRepos } from '../src/repositories/cv';
+import type { FastifyInstance } from 'fastify';
+import { buildTestApp } from './app-builder';
+import { createProfileRepo } from '../src/repositories/profiles';
+import { createCvRepos } from '../src/repositories/cv';
 
-let server: ReturnType<typeof buildServer>;
-let profileRepo: ProfileRepo;
-let cvRepos: CvRepos;
+let server: FastifyInstance;
 
 const profileId = '88888888-8888-8888-8888-888888888888';
 const now = new Date().toISOString();
 
 beforeAll(async () => {
-  profileRepo = createProfileRepo({ kind: 'memory' });
-  cvRepos = createCvRepos({ kind: 'memory' });
+  const profileRepo = createProfileRepo({ kind: 'memory' });
+  const cvRepos = createCvRepos({ kind: 'memory' });
   await profileRepo.reset();
   await cvRepos.experiences.reset();
 
@@ -42,7 +42,7 @@ beforeAll(async () => {
     });
   }
 
-  server = buildServer({ profileRepo, cvRepos });
+  server = await buildTestApp({ profileRepo });
 });
 
 const timeRequest = async (options: Parameters<typeof server.inject>[0]) => {

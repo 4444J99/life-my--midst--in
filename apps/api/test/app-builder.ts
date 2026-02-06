@@ -28,13 +28,10 @@ export async function buildTestApp(deps: TestAppOptions = {}) {
   const subscriptionRepo = deps.subscriptionRepo ?? new InMemorySubscriptionRepo();
   const rateLimitStore = deps.rateLimitStore ?? new InMemoryRateLimitStore();
 
-  const licensingService = new LicensingService(
-    async (profileId) => {
-      const sub = await subscriptionRepo.getByProfileId(profileId);
-      return sub?.tier ?? 'FREE';
-    },
-    rateLimitStore
-  );
+  const licensingService = new LicensingService(async (profileId) => {
+    const sub = await subscriptionRepo.getByProfileId(profileId);
+    return sub?.tier ?? 'FREE';
+  }, rateLimitStore);
 
   const billingService = new BillingService({
     stripeSecretKey: 'sk_test_mock',
@@ -58,17 +55,19 @@ export async function buildTestApp(deps: TestAppOptions = {}) {
     rateLimitStore,
     licensingService,
     billingService,
+    disableAuth: true,
   });
 
-  // Mock authentication for testing
-  app.addHook('onRequest', async (request) => {
-    // If we have a special header, use it to mock the user
-    const mockUserId = request.headers['x-mock-user-id'] as string;
+  // Mock authentication for testing — sync form (no async work needed)
+  app.addHook('onRequest', (request, _reply, done) => {
+    const mockUserId = request.headers['x-mock-user-id'] as string | undefined;
     if (mockUserId) {
-      const roles = (request.headers['x-mock-roles'] as string || 'user').split(',') as UserRole[];
-      const permissions = roles.flatMap(role => getPermissionsForRole(role));
-      
-      (request as any).user = {
+      const roles = ((request.headers['x-mock-roles'] as string | undefined) || 'user').split(
+        ',',
+      ) as UserRole[];
+      const permissions = roles.flatMap((role) => getPermissionsForRole(role));
+
+      request.user = {
         sub: mockUserId,
         profileId: mockUserId,
         email: 'test@example.com',
@@ -76,11 +75,10 @@ export async function buildTestApp(deps: TestAppOptions = {}) {
         permissions,
       };
     } else {
-      // Default mock user for tests that don't care about specific IDs
       const roles = ['user', 'admin'] as UserRole[];
-      const permissions = roles.flatMap(role => getPermissionsForRole(role));
-      
-      (request as any).user = {
+      const permissions = roles.flatMap((role) => getPermissionsForRole(role));
+
+      request.user = {
         sub: '00000000-0000-0000-0000-000000000001',
         profileId: '00000000-0000-0000-0000-000000000001',
         email: 'test@example.com',
@@ -88,6 +86,7 @@ export async function buildTestApp(deps: TestAppOptions = {}) {
         permissions,
       };
     }
+    done();
   });
 
   return app;

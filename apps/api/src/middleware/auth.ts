@@ -3,32 +3,29 @@
  * Handles JWT token verification and authorization checks
  */
 
-import type { FastifyRequest, FastifyReply } from "fastify";
-import { JWTAuth, type UserClaims, Permission, hasPermission } from "../services/auth";
+import type { FastifyRequest, FastifyReply } from 'fastify';
+import { JWTAuth, Permission, hasPermission } from '../services/auth';
 
 /**
  * Extend FastifyRequest to include authenticated user claims
+ * (declared in types.d.ts via module augmentation)
  */
-declare global {
-  namespace FastifyInstance {
-    interface FastifyRequest {
-      user?: UserClaims;
-    }
-  }
-}
 
 /**
  * Factory function to create JWT authentication middleware
  */
 export function createAuthMiddleware(jwtAuth: JWTAuth) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
+    // Skip JWT verification if user is already set (e.g. by test mock hook)
+    if (request.user) return;
+
     const authHeader = request.headers.authorization;
 
     if (!authHeader) {
       return reply.code(401).send({
         ok: false,
-        error: "unauthorized",
-        message: "Authorization header required"
+        error: 'unauthorized',
+        message: 'Authorization header required',
       });
     }
 
@@ -36,8 +33,8 @@ export function createAuthMiddleware(jwtAuth: JWTAuth) {
     if (!token) {
       return reply.code(401).send({
         ok: false,
-        error: "invalid_token",
-        message: "Invalid authorization header format"
+        error: 'invalid_token',
+        message: 'Invalid authorization header format',
       });
     }
 
@@ -45,8 +42,8 @@ export function createAuthMiddleware(jwtAuth: JWTAuth) {
     if (!claims) {
       return reply.code(401).send({
         ok: false,
-        error: "token_verification_failed",
-        message: "Token verification failed"
+        error: 'token_verification_failed',
+        message: 'Token verification failed',
       });
     }
 
@@ -60,6 +57,10 @@ export function createAuthMiddleware(jwtAuth: JWTAuth) {
  */
 export function createOptionalAuthMiddleware(jwtAuth: JWTAuth) {
   return async (request: FastifyRequest, _reply: FastifyReply) => {
+    // Skip if user is already set (e.g. by test mock hook)
+    if (request.user) return;
+    void _reply;
+
     const authHeader = request.headers.authorization;
 
     if (!authHeader) {
@@ -86,8 +87,8 @@ export function createPermissionMiddleware(requiredPermissions: Permission | Per
     if (!request.user) {
       return reply.code(401).send({
         ok: false,
-        error: "unauthorized",
-        message: "Authentication required"
+        error: 'unauthorized',
+        message: 'Authentication required',
       });
     }
 
@@ -96,14 +97,14 @@ export function createPermissionMiddleware(requiredPermissions: Permission | Per
       : [requiredPermissions];
 
     const hasAllPermissions = permissions.every((permission) =>
-      hasPermission(request.user!, permission)
+      hasPermission(request.user!, permission),
     );
 
     if (!hasAllPermissions) {
       return reply.code(403).send({
         ok: false,
-        error: "forbidden",
-        message: "Insufficient permissions"
+        error: 'forbidden',
+        message: 'Insufficient permissions',
       });
     }
   };
@@ -117,15 +118,20 @@ export function createOwnershipMiddleware() {
     if (!request.user) {
       return reply.code(401).send({
         ok: false,
-        error: "unauthorized",
-        message: "Authentication required"
+        error: 'unauthorized',
+        message: 'Authentication required',
       });
     }
 
-    const resourceOwnerId = (request.params as any).profileId || (request.params as any).id || (request.body as any).profileId;
+    const params = request.params as Record<string, string | undefined>;
+    const body = request.body as Record<string, unknown> | undefined;
+    const resourceOwnerId =
+      params['profileId'] ??
+      params['id'] ??
+      (typeof body?.['profileId'] === 'string' ? body['profileId'] : undefined);
 
     // Admin can access any resource
-    if (request.user.roles?.includes("admin")) {
+    if (request.user.roles?.includes('admin')) {
       return;
     }
 
@@ -133,8 +139,8 @@ export function createOwnershipMiddleware() {
     if (request.user.sub !== resourceOwnerId && request.user.profileId !== resourceOwnerId) {
       return reply.code(403).send({
         ok: false,
-        error: "forbidden",
-        message: "Cannot access other user's profile"
+        error: 'forbidden',
+        message: "Cannot access other user's profile",
       });
     }
   };
@@ -190,7 +196,7 @@ export class RateLimiter {
  */
 export function createRateLimitMiddleware(
   limiter: RateLimiter,
-  keyExtractor: (request: FastifyRequest) => string
+  keyExtractor: (request: FastifyRequest) => string,
 ) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     const key = keyExtractor(request);
@@ -198,8 +204,8 @@ export function createRateLimitMiddleware(
     if (limiter.isLimited(key)) {
       return reply.code(429).send({
         ok: false,
-        error: "too_many_requests",
-        message: "Too many requests, please try again later"
+        error: 'too_many_requests',
+        message: 'Too many requests, please try again later',
       });
     }
   };
