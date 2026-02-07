@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
@@ -37,7 +38,7 @@ const buildProfile = (slug: string, displayName: string, skills: string[]): Prof
     isActive: true,
     summaryMarkdown: `${displayName} loves building resilient systems`,
     locationText: 'Remote',
-    skills: skills.map(label => createSkill(id, label)),
+    skills: skills.map((label) => createSkill(id, label)),
   };
 };
 
@@ -103,26 +104,33 @@ describe('Hunter Protocol Integration Tests', () => {
     subscriptionRepo = new InMemorySubscriptionRepo();
     rateLimitStore = new InMemoryRateLimitStore();
 
-    await Promise.all(Object.values(testProfiles).map(profile => profileRepo.add(profile)));
-    await Promise.all(Object.values(testJobs).map(job => jobRepo.addPosting(job)));
+    await Promise.all(Object.values(testProfiles).map((profile) => profileRepo.add(profile)));
+    await Promise.all(Object.values(testJobs).map((job) => jobRepo.addPosting(job)));
 
-    await subscriptionRepo.create(testProfiles.free.id, `cust_free_${testProfiles.free.id.slice(0, 4)}`);
-    await subscriptionRepo.create(testProfiles.pro.id, `cust_pro_${testProfiles.pro.id.slice(0, 4)}`);
+    await subscriptionRepo.create(
+      testProfiles.free.id,
+      `cust_free_${testProfiles.free.id.slice(0, 4)}`,
+    );
+    await subscriptionRepo.create(
+      testProfiles.pro.id,
+      `cust_pro_${testProfiles.pro.id.slice(0, 4)}`,
+    );
     await subscriptionRepo.update(testProfiles.pro.id, { tier: 'PRO', status: 'active' });
-    await subscriptionRepo.create(testProfiles.enterprise.id, `cust_ent_${testProfiles.enterprise.id.slice(0, 4)}`);
-    await subscriptionRepo.update(testProfiles.enterprise.id, { tier: 'ENTERPRISE', status: 'active' });
+    await subscriptionRepo.create(
+      testProfiles.enterprise.id,
+      `cust_ent_${testProfiles.enterprise.id.slice(0, 4)}`,
+    );
+    await subscriptionRepo.update(testProfiles.enterprise.id, {
+      tier: 'ENTERPRISE',
+      status: 'active',
+    });
 
-    licensingService = new LicensingService(async profileId => {
+    licensingService = new LicensingService(async (profileId) => {
       const subscription = await subscriptionRepo.getByProfileId(profileId);
       return subscription?.tier ?? 'FREE';
     }, rateLimitStore);
 
-    hunterService = createHunterService(
-      profileRepo,
-      licensingService,
-      jobRepo,
-      jobRepo
-    );
+    hunterService = createHunterService(profileRepo, licensingService, jobRepo, jobRepo);
 
     app = await buildTestApp({ profileRepo, jobRepo, subscriptionRepo, rateLimitStore });
     await app.ready();
@@ -163,22 +171,28 @@ describe('Hunter Protocol Integration Tests', () => {
     });
 
     it('throws when profile is missing', async () => {
-      await expect(hunterService.analyzeGap('missing-profile', testJobs.junior.title)).rejects.toBeInstanceOf(NotFoundError);
+      await expect(
+        hunterService.analyzeGap('missing-profile', testJobs.junior.title),
+      ).rejects.toBeInstanceOf(NotFoundError);
     });
   });
 
   describe('Job search (findJobs)', () => {
-    const criteria: JobSearchCriteria = { keywords: ['TypeScript'], maxResults: 2, location: 'Remote' };
+    const criteria: JobSearchCriteria = {
+      keywords: ['TypeScript'],
+      maxResults: 2,
+      location: 'Remote',
+    };
 
     it('returns ranked jobs with compatibilityScore metadata', async () => {
       const results = await hunterService.findJobs(testProfiles.pro.id, criteria);
       expect(Array.isArray(results)).toBe(true);
       expect(results.length).toBeGreaterThan(0);
-      const scores = results.map(job => job.score ?? job.compatibilityScore ?? 0);
+      const scores = results.map((job) => job.score ?? job.compatibilityScore ?? 0);
       for (let i = 0; i < scores.length - 1; i++) {
         expect(scores[i]).toBeGreaterThanOrEqual(scores[i + 1]);
       }
-      results.forEach(job => {
+      results.forEach((job) => {
         expect(job.compatibilityScore).toBeDefined();
         expect(job.compatibilityScore).toBeGreaterThanOrEqual(0);
         expect(job.compatibilityScore).toBeLessThanOrEqual(100);
@@ -190,7 +204,9 @@ describe('Hunter Protocol Integration Tests', () => {
       for (let i = 0; i < 5; i++) {
         await hunterService.findJobs(testProfiles.free.id, { keywords: ['React'] });
       }
-      await expect(hunterService.findJobs(testProfiles.free.id, criteria)).rejects.toBeInstanceOf(QuotaExceededError);
+      await expect(hunterService.findJobs(testProfiles.free.id, criteria)).rejects.toBeInstanceOf(
+        QuotaExceededError,
+      );
     });
 
     it('allows unlimited PRO searches', async () => {
@@ -200,18 +216,25 @@ describe('Hunter Protocol Integration Tests', () => {
     });
 
     it('returns empty array when no keywords match', async () => {
-      const results = await hunterService.findJobs(testProfiles.pro.id, { keywords: ['nonexistent-keyword'] });
+      const results = await hunterService.findJobs(testProfiles.pro.id, {
+        keywords: ['nonexistent-keyword'],
+      });
       expect(Array.isArray(results)).toBe(true);
       expect(results.length).toBe(0);
     });
 
     it('throws when profile does not exist', async () => {
-      await expect(hunterService.findJobs('nope-id', criteria)).rejects.toBeInstanceOf(NotFoundError);
+      await expect(hunterService.findJobs('nope-id', criteria)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
     });
 
     it('honors location filters', async () => {
-      const remoteResults = await hunterService.findJobs(testProfiles.pro.id, { keywords: ['Engineer'], location: 'Remote' });
-      remoteResults.forEach(job => {
+      const remoteResults = await hunterService.findJobs(testProfiles.pro.id, {
+        keywords: ['Engineer'],
+        location: 'Remote',
+      });
+      remoteResults.forEach((job) => {
         expect(job.location?.toLowerCase()).toContain('remote');
       });
     });
@@ -219,12 +242,12 @@ describe('Hunter Protocol Integration Tests', () => {
     it('returns stable ordering even with identical scores', async () => {
       const first = await hunterService.findJobs(testProfiles.pro.id, criteria);
       const second = await hunterService.findJobs(testProfiles.pro.id, criteria);
-      expect(first.map(job => job.id)).toEqual(second.map(job => job.id));
+      expect(first.map((job) => job.id)).toEqual(second.map((job) => job.id));
     });
 
     it('creates score metadata within expected range', async () => {
       const results = await hunterService.findJobs(testProfiles.pro.id, criteria);
-      results.forEach(job => {
+      results.forEach((job) => {
         const score = job.compatibilityScore;
         expect(score).toBeGreaterThanOrEqual(0);
         expect(score).toBeLessThanOrEqual(100);
@@ -234,7 +257,11 @@ describe('Hunter Protocol Integration Tests', () => {
 
   describe('Resume tailoring (tailorResume)', () => {
     it('returns persona-aware resume details', async () => {
-      const result = await hunterService.tailorResume(testProfiles.pro.id, testJobs.senior.id, 'architect-mask');
+      const result = await hunterService.tailorResume(
+        testProfiles.pro.id,
+        testJobs.senior.id,
+        'architect-mask',
+      );
       expect(result.resumeMarkdown).toContain('tailored-resume');
       expect(Array.isArray(result.selectedExperiences)).toBe(true);
       expect(result.personaRecommendation).toBe('architect-mask');
@@ -245,53 +272,84 @@ describe('Hunter Protocol Integration Tests', () => {
       await hunterService.tailorResume(testProfiles.free.id, testJobs.junior.id, `mask-0`);
 
       // Second request should exceed quota
-      await expect(hunterService.tailorResume(testProfiles.free.id, testJobs.junior.id, 'mask-overflow')).rejects.toBeInstanceOf(QuotaExceededError);
+      await expect(
+        hunterService.tailorResume(testProfiles.free.id, testJobs.junior.id, 'mask-overflow'),
+      ).rejects.toBeInstanceOf(QuotaExceededError);
     });
 
     it('allows ENTERPRISE tier to tailor without limits', async () => {
       for (let i = 0; i < 20; i++) {
-        await expect(hunterService.tailorResume(testProfiles.enterprise.id, testJobs.senior.id, `mask-${i}`)).resolves.toBeDefined();
+        await expect(
+          hunterService.tailorResume(testProfiles.enterprise.id, testJobs.senior.id, `mask-${i}`),
+        ).resolves.toBeDefined();
       }
     });
 
     it('propagates persona choice to result', async () => {
       const personaId = 'persona-lead';
-      const result = await hunterService.tailorResume(testProfiles.pro.id, testJobs.senior.id, personaId);
+      const result = await hunterService.tailorResume(
+        testProfiles.pro.id,
+        testJobs.senior.id,
+        personaId,
+      );
       expect(result.personaRecommendation).toBe(personaId);
     });
 
     it('throws when profile missing', async () => {
-      await expect(hunterService.tailorResume('missing-profile', testJobs.junior.id, 'mask')).rejects.toThrow();
+      await expect(
+        hunterService.tailorResume('missing-profile', testJobs.junior.id, 'mask'),
+      ).rejects.toThrow();
     });
   });
 
   describe('Cover letter generation (writeCoverLetter)', () => {
     it('returns cover letter payload with tone and personalization', async () => {
-      const payload = await hunterService.writeCoverLetter(testProfiles.pro.id, testJobs.senior.id, 'persona');
+      const payload = await hunterService.writeCoverLetter(
+        testProfiles.pro.id,
+        testJobs.senior.id,
+        'persona',
+      );
       expect(payload.coverLetterMarkdown).toContain('Dear Hiring Team');
       expect(payload.personalizationNotes).toContain('Company');
       expect(payload.toneUsed).toBe('formal');
     });
 
     it('handles multiple persona inputs', async () => {
-      const first = await hunterService.writeCoverLetter(testProfiles.pro.id, testJobs.junior.id, 'persona-a');
-      const second = await hunterService.writeCoverLetter(testProfiles.pro.id, testJobs.cto.id, 'persona-b');
+      const first = await hunterService.writeCoverLetter(
+        testProfiles.pro.id,
+        testJobs.junior.id,
+        'persona-a',
+      );
+      const second = await hunterService.writeCoverLetter(
+        testProfiles.pro.id,
+        testJobs.cto.id,
+        'persona-b',
+      );
       expect(first.coverLetterMarkdown).not.toBe(second.coverLetterMarkdown);
     });
   });
 
   describe('Submit application pipeline (completeApplicationPipeline)', () => {
     it('currently throws not implemented error', async () => {
-      await expect(hunterService.completeApplicationPipeline(testProfiles.pro.id, testJobs.senior.id, 'mask')).rejects.toThrow('not fully implemented');
+      await expect(
+        hunterService.completeApplicationPipeline(testProfiles.pro.id, testJobs.senior.id, 'mask'),
+      ).rejects.toThrow('not yet implemented');
     });
   });
 
   describe('Multi-step workflow', () => {
     it('chains analyze → find → tailor → letter', async () => {
       const analysis = await hunterService.analyzeGap(testProfiles.pro.id, testJobs.senior.title);
-      const jobs = await hunterService.findJobs(testProfiles.pro.id, { keywords: ['Engineer'], location: 'Remote' });
+      const jobs = await hunterService.findJobs(testProfiles.pro.id, {
+        keywords: ['Engineer'],
+        location: 'Remote',
+      });
       const resume = await hunterService.tailorResume(testProfiles.pro.id, jobs[0].id, 'persona');
-      const letter = await hunterService.writeCoverLetter(testProfiles.pro.id, jobs[0].id, 'persona');
+      const letter = await hunterService.writeCoverLetter(
+        testProfiles.pro.id,
+        jobs[0].id,
+        'persona',
+      );
 
       expect(analysis.compatibility).toBeGreaterThanOrEqual(0);
       expect(jobs.length).toBeGreaterThan(0);
@@ -374,7 +432,7 @@ describe('Hunter Protocol Integration Tests', () => {
           searchFilter: { keywords: ['typescript'] },
           personaId: 'auto',
           autoApplyThreshold: 75,
-          maxApplications: 5
+          maxApplications: 5,
         },
       });
 
@@ -391,19 +449,31 @@ describe('Hunter Protocol Integration Tests', () => {
 
   describe('Error handling & edge cases', () => {
     it('findJobs rejects for invalid profile', async () => {
-      await expect(hunterService.findJobs('bad-id', { keywords: ['TypeScript'] })).rejects.toBeInstanceOf(NotFoundError);
+      await expect(
+        hunterService.findJobs('bad-id', { keywords: ['TypeScript'] }),
+      ).rejects.toBeInstanceOf(NotFoundError);
     });
 
     it('writeCoverLetter still returns tone even if persona repeats', async () => {
-      const first = await hunterService.writeCoverLetter(testProfiles.pro.id, testJobs.junior.id, 'style-a');
-      const second = await hunterService.writeCoverLetter(testProfiles.pro.id, testJobs.junior.id, 'style-a');
+      const first = await hunterService.writeCoverLetter(
+        testProfiles.pro.id,
+        testJobs.junior.id,
+        'style-a',
+      );
+      const second = await hunterService.writeCoverLetter(
+        testProfiles.pro.id,
+        testJobs.junior.id,
+        'style-a',
+      );
       expect(first.coverLetterMarkdown).toBe(second.coverLetterMarkdown);
     });
 
     it('tailorResume reports quota when rate limit store is exhausted for FREE tier', async () => {
       // FREE tier has 1 tailoring per month, exhaust it then expect error
       await hunterService.tailorResume(testProfiles.free.id, testJobs.junior.id, 'persona1');
-      await expect(hunterService.tailorResume(testProfiles.free.id, testJobs.senior.id, 'persona2')).rejects.toBeInstanceOf(QuotaExceededError);
+      await expect(
+        hunterService.tailorResume(testProfiles.free.id, testJobs.senior.id, 'persona2'),
+      ).rejects.toBeInstanceOf(QuotaExceededError);
     });
   });
 });
