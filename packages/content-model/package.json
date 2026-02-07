@@ -19,6 +19,6 @@
     "@types/minimatch": "6.0.0",
     "@types/node": "^20",
     "typescript": "^5.3.3",
-    "vitest": "^3.0.9"
+    "vitest": "^4.0.18"
   }
 }
