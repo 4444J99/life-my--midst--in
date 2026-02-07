@@ -128,6 +128,47 @@ jobs:
             apps/*/build
           retention-days: 5
 
+  lighthouse:
+    name: Lighthouse CI
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        run: pnpm --filter @in-midst-my-life/web build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+
+      - name: Run Lighthouse CI
+        run: npx @lhci/cli autorun
+        working-directory: apps/web
+        env:
+          LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
+
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: apps/web/.lighthouseci/
+          retention-days: 5
+
   e2e:
     name: E2E Tests
     needs: build
