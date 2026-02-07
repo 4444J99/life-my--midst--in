@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getAnalyticsService } from '@in-midst-my-life/core';
@@ -44,6 +45,7 @@ const feedbackStorage = new Map<string, FeedbackRecord>();
  * GET /feedback - List feedback (admin only)
  */
 export async function feedbackRoutes(fastify: FastifyInstance) {
+  fastify.log.warn('Feedback routes use in-memory storage — data will not persist across restarts');
   // Submit feedback
   fastify.post<{ Body: CreateFeedbackRequest }>(
     '/feedback',
@@ -152,7 +154,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
           });
         }
       }
-    }
+    },
   );
 
   // Get feedback by ID
@@ -184,8 +186,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
               updatedAt: { type: 'string', format: 'date-time' },
             },
           },
-          404: {
-          },
+          404: {},
         },
       },
     },
@@ -203,7 +204,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
         ...feedback,
         email: null, // Don't expose email to non-owners
       });
-    }
+    },
   );
 
   // List feedback (admin only - would require auth in production)
@@ -234,7 +235,12 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { category, status, limit = 50, offset = 0 } = request.query as {
+      const {
+        category,
+        status,
+        limit = 50,
+        offset = 0,
+      } = request.query as {
         category?: string;
         status?: string;
         limit?: number;
@@ -266,7 +272,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
         limit,
         offset,
       });
-    }
+    },
   );
 
   // Update feedback status (admin only)
@@ -311,6 +317,6 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
         ...feedback,
         email: null,
       });
-    }
+    },
   );
 }

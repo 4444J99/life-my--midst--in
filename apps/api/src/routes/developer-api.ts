@@ -39,6 +39,9 @@ const authorizationCodes = new Map<string, { userId: string; clientId: string; e
 const accessTokens = new Map<string, { userId: string; clientId: string; permissions: string[] }>();
 
 export function developerApiRoutes(fastify: FastifyInstance, _opts: unknown, done: () => void) {
+  fastify.log.warn(
+    'Developer API routes use in-memory storage — data will not persist across restarts',
+  );
   /**
    * Create OAuth Application
    * POST /developers/apps

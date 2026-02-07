@@ -46,6 +46,9 @@ export function publicProfilesRoutes(
   _opts: Record<string, unknown>,
   done: () => void,
 ) {
+  fastify.log.warn(
+    'Public profiles routes use in-memory storage — data will not persist across restarts',
+  );
   /**
    * Get all public profiles (discovery feed)
    * GET /public-profiles

@@ -49,6 +49,9 @@ export function messagingRoutes(
   _opts: Record<string, unknown>,
   done: () => void,
 ) {
+  fastify.log.warn(
+    'Messaging routes use in-memory storage — data will not persist across restarts',
+  );
   /**
    * Send a message
    * POST /messages

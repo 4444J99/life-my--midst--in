@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/require-await, @typescript-eslint/no-unused-vars */
 import {
   DefaultCompatibilityAnalyzer as CompatibilityAnalyzer,
   DocumentGenerator,
@@ -5,23 +6,19 @@ import {
   NotFoundError,
   QuotaExceededError,
   ValidationError,
-  type LicensingService
-} from "@in-midst-my-life/core";
-import type {
-  JobListing,
-  JobPosting,
-  Profile,
-} from "@in-midst-my-life/schema";
-import { JobSearchProvider, type JobSearchCriteria } from "./job-search-provider";
-import { randomUUID } from "node:crypto";
-import type { JobRepo } from "../repositories/jobs";
-import type { ProfileRepo } from "../repositories/profiles";
+  type LicensingService,
+} from '@in-midst-my-life/core';
+import type { JobListing, JobPosting, Profile } from '@in-midst-my-life/schema';
+import { JobSearchProvider, type JobSearchCriteria } from './job-search-provider';
+import { randomUUID } from 'node:crypto';
+import type { JobRepo } from '../repositories/jobs';
+import type { ProfileRepo } from '../repositories/profiles';
 import type {
   ApplicationSubmission,
   ApplicationSubmissionResult,
   GeneratedCoverLetter,
   TailoredResume,
-} from "../types/hunter-protocol";
+} from '../types/hunter-protocol';
 
 export interface CompatibilityReport {
   profileId: string;
@@ -41,37 +38,33 @@ type JobSearchResult = JobListing & {
 };
 
 export interface HunterService {
-  findJobs(
-    profileId: string,
-    criteria: JobSearchCriteria
-  ): Promise<JobSearchResult[]>;
+  findJobs(profileId: string, criteria: JobSearchCriteria): Promise<JobSearchResult[]>;
 
-  analyzeGap(
-    profileId: string,
-    targetRole: string
-  ): Promise<CompatibilityReport>;
+  analyzeGap(profileId: string, targetRole: string): Promise<CompatibilityReport>;
 
   tailorResume(
     profileId: string,
     jobId: string,
-    maskIdOrOptions?: string | {
-      format?: "pdf" | "docx" | "markdown";
-      highlightGaps?: boolean;
-      includeMetadata?: boolean;
-      personaId?: string;
-    }
+    maskIdOrOptions?:
+      | string
+      | {
+          format?: 'pdf' | 'docx' | 'markdown';
+          highlightGaps?: boolean;
+          includeMetadata?: boolean;
+          personaId?: string;
+        },
   ): Promise<TailoredResume>;
 
   generateCoverLetter(
     profileId: string,
     jobId: string,
     options?: {
-      template?: "professional" | "creative" | "direct" | "academic";
-      tone?: "formal" | "conversational" | "enthusiastic";
+      template?: 'professional' | 'creative' | 'direct' | 'academic';
+      tone?: 'formal' | 'conversational' | 'enthusiastic';
       includeSalutation?: boolean;
       includeSignature?: boolean;
       personaId?: string;
-    }
+    },
   ): Promise<GeneratedCoverLetter>;
 
   submitApplication(
@@ -81,32 +74,28 @@ export interface HunterService {
       autoSubmit?: boolean;
       customResume?: string;
       customCoverLetter?: string;
-      submissionType?: "manual" | "auto";
-    }
+      submissionType?: 'manual' | 'auto';
+    },
   ): Promise<ApplicationSubmissionResult>;
 
   writeCoverLetter(
     profileId: string,
     jobId: string,
-    personaId: string
+    personaId: string,
   ): Promise<{
     coverLetterMarkdown: string;
     personalizationNotes: string;
-    toneUsed: "formal" | "conversational" | "enthusiastic";
+    toneUsed: 'formal' | 'conversational' | 'enthusiastic';
   }>;
 
-  completeApplicationPipeline(
-    profileId: string,
-    jobId: string,
-    personaId: string
-  ): Promise<any>;
+  completeApplicationPipeline(profileId: string, jobId: string, personaId: string): Promise<any>;
 
   batchApply(
     profileId: string,
     searchFilter: JobSearchCriteria,
     personaId: string,
     autoApplyThreshold: number,
-    maxApplications?: number
+    maxApplications?: number,
   ): Promise<{
     applications: ApplicationSubmissionResult[];
     skipped: number;
@@ -125,19 +114,16 @@ export class DefaultHunterService implements HunterService {
     private profileRepo: ProfileRepo,
     private licensingService?: LicensingService,
     private jobPostingRepo?: JobRepo,
-    private jobApplicationRepo?: JobRepo
+    private jobApplicationRepo?: JobRepo,
   ) {
     this.jobSearchProvider = new JobSearchProvider();
     this.documentGenerator = new DocumentGenerator();
   }
 
-  async analyzeGap(
-    profileId: string,
-    targetRole: string
-  ): Promise<CompatibilityReport> {
+  async analyzeGap(profileId: string, targetRole: string): Promise<CompatibilityReport> {
     // 1. Validate inputs
-    if (!profileId) throw new ValidationError("profileId required");
-    if (!targetRole) throw new ValidationError("targetRole required");
+    if (!profileId) throw new ValidationError('profileId required');
+    if (!targetRole) throw new ValidationError('targetRole required');
 
     // 2. Fetch profile data
     const profile = await this.profileRepo.find(profileId);
@@ -147,19 +133,24 @@ export class DefaultHunterService implements HunterService {
 
     // 3. Call existing compatibility analyzer from core
     const analyzer = new CompatibilityAnalyzer();
-    
+
     // Create a realistic mock job description and technologies based on role type
     let description = `Role for ${targetRole}`;
     let requirements = targetRole;
     let technologies: string[] = [];
 
-    if (targetRole.toLowerCase().includes('cto') || targetRole.toLowerCase().includes('chief technology')) {
-      description = 'Looking for a CTO to lead architecture, strategy, and team leadership. Experience with distributed systems, infrastructure, and team management required.';
+    if (
+      targetRole.toLowerCase().includes('cto') ||
+      targetRole.toLowerCase().includes('chief technology')
+    ) {
+      description =
+        'Looking for a CTO to lead architecture, strategy, and team leadership. Experience with distributed systems, infrastructure, and team management required.';
       requirements = 'Architecture, strategy, team leadership, infrastructure';
       // Use generic terms not expected in junior profiles
       technologies = ['Kubernetes', 'Go', 'Rust', 'Infrastructure', 'Leadership'];
     } else if (targetRole.toLowerCase().includes('senior')) {
-      description = 'Senior role requiring advanced technical expertise, mentorship, and architectural decisions.';
+      description =
+        'Senior role requiring advanced technical expertise, mentorship, and architectural decisions.';
       requirements = 'Senior technical expertise, mentorship, architectural decisions';
       // Use generic terms likely to be somewhat relevant
       technologies = ['Systems', 'Architecture', 'Leadership', 'Mentorship'];
@@ -171,23 +162,23 @@ export class DefaultHunterService implements HunterService {
     const mockJob: JobListing = {
       id: randomUUID(),
       title: targetRole,
-      company: "Hypothetical Company",
-      location: "Remote",
-      remote: "fully",
+      company: 'Hypothetical Company',
+      location: 'Remote',
+      remote: 'fully',
       description,
       requirements,
       technologies,
-      job_url: "http://placeholder",
+      job_url: 'http://placeholder',
       posted_date: new Date(),
-      source: "other"
+      source: 'other',
     };
 
     const analysis = await analyzer.analyze({
       job_id: mockJob.id,
       profile_id: profileId,
-      persona_id: "default",
+      persona_id: 'default',
       job: mockJob,
-      profile
+      profile,
     });
 
     // 4. Return structured gap analysis
@@ -198,14 +189,11 @@ export class DefaultHunterService implements HunterService {
       gaps: analysis.skill_gaps,
       suggestions: analysis.strengths,
       concerns: analysis.concerns,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
-  async findJobs(
-    profileId: string,
-    criteria: JobSearchCriteria
-  ): Promise<JobSearchResult[]> {
+  async findJobs(profileId: string, criteria: JobSearchCriteria): Promise<JobSearchResult[]> {
     // 1. Verify profile exists
     const profile = await this.profileRepo.find(profileId);
     if (!profile) {
@@ -214,19 +202,17 @@ export class DefaultHunterService implements HunterService {
 
     // 2. Enforce feature gate
     if (this.licensingService) {
-        const [allowed, remaining] = await this.licensingService
-        .checkAndConsume(profileId, 'hunter_job_searches');
+      const [allowed, remaining] = await this.licensingService.checkAndConsume(
+        profileId,
+        'hunter_job_searches',
+      );
 
-        if (!allowed) {
-            await this.licensingService.getEntitlements(profileId);
-            const limit = 100;
-            const used = limit - remaining;
-            throw new QuotaExceededError(
-                'hunter_job_searches',
-                limit,
-                used
-            );
-        }
+      if (!allowed) {
+        await this.licensingService.getEntitlements(profileId);
+        const limit = 100;
+        const used = limit - remaining;
+        throw new QuotaExceededError('hunter_job_searches', limit, used);
+      }
     }
 
     // 3. Call job search provider
@@ -234,7 +220,7 @@ export class DefaultHunterService implements HunterService {
       keywords: criteria.keywords,
       location: criteria.location,
       seniority: criteria.seniority,
-      maxResults: Math.min(criteria.maxResults || 10, 50)
+      maxResults: Math.min(criteria.maxResults || 10, 50),
     });
 
     if (!jobs || jobs.length === 0) {
@@ -244,53 +230,53 @@ export class DefaultHunterService implements HunterService {
     // 4. Rank results by compatibility with profile
 
     // Convert JobPosting to JobListing for ranking
-    const jobListings = jobs.map(job => this.mapJobPostingToListing(job));
+    const jobListings = jobs.map((job) => this.mapJobPostingToListing(job));
     const rankedJobs = await this.rankJobs(profile, jobListings);
 
     // Save discovered jobs to repository
     if (this.jobPostingRepo) {
-        for (const job of rankedJobs) {
-            await this.jobPostingRepo.addPosting({
-                ...job,
-                profileId: profileId,
-                descriptionMarkdown: job.description,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                status: "active"
-            });
-        }
+      for (const job of rankedJobs) {
+        await this.jobPostingRepo.addPosting({
+          ...job,
+          profileId: profileId,
+          descriptionMarkdown: job.description,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          status: 'active',
+        });
+      }
     }
 
     // 4. Return ranked results with metadata
-    return rankedJobs.map(job => ({
+    return rankedJobs.map((job) => ({
       ...job,
       score: job.score,
       compatibilityScore: job.score,
       appliedAt: null,
-      savedAt: new Date().toISOString()
+      savedAt: new Date().toISOString(),
     }));
   }
 
   private async rankJobs(
     profile: Profile,
-    jobs: JobListing[]
+    jobs: JobListing[],
   ): Promise<(JobListing & { score: number })[]> {
     const analyzer = new CompatibilityAnalyzer();
 
     const ranked = await Promise.all(
       jobs.map(async (job) => {
         const report = await analyzer.analyze({
-            job_id: job.id,
-            profile_id: profile.id,
-            persona_id: "default",
-            job,
-            profile
+          job_id: job.id,
+          profile_id: profile.id,
+          persona_id: 'default',
+          job,
+          profile,
         });
         return {
           ...job,
-          score: report.overall_score
+          score: report.overall_score,
         };
-      })
+      }),
     );
 
     return ranked.sort((a, b) => b.score - a.score);
@@ -299,20 +285,22 @@ export class DefaultHunterService implements HunterService {
   async tailorResume(
     profileId: string,
     jobId: string,
-    maskIdOrOptions?: string | {
-      format?: "pdf" | "docx" | "markdown";
-      highlightGaps?: boolean;
-      includeMetadata?: boolean;
-      personaId?: string;
-    }
+    maskIdOrOptions?:
+      | string
+      | {
+          format?: 'pdf' | 'docx' | 'markdown';
+          highlightGaps?: boolean;
+          includeMetadata?: boolean;
+          personaId?: string;
+        },
   ): Promise<TailoredResume> {
     const licensing = this.getLicensingServiceOrThrow();
-    const [allowed, remaining] = await licensing.checkAndConsume(profileId, "resume_tailoring");
+    const [allowed, remaining] = await licensing.checkAndConsume(profileId, 'resume_tailoring');
 
     if (!allowed) {
-      const limit = await licensing.getLimitForFeature(profileId, "resume_tailoring");
-      const used = await licensing.getUsageForFeature(profileId, "resume_tailoring");
-      throw new QuotaExceededError("resume_tailoring", limit, used);
+      const limit = await licensing.getLimitForFeature(profileId, 'resume_tailoring');
+      const used = await licensing.getUsageForFeature(profileId, 'resume_tailoring');
+      throw new QuotaExceededError('resume_tailoring', limit, used);
     }
 
     const profile = await this.profileRepo.find(profileId);
@@ -323,8 +311,9 @@ export class DefaultHunterService implements HunterService {
     const posting = await this.fetchJobPosting(jobId);
     const job = this.mapJobPostingToListing(posting);
 
-    const options = typeof maskIdOrOptions === "string" ? {} : maskIdOrOptions ?? {};
-    const personaId = typeof maskIdOrOptions === "string" ? maskIdOrOptions : maskIdOrOptions?.personaId;
+    const options = typeof maskIdOrOptions === 'string' ? {} : (maskIdOrOptions ?? {});
+    const personaId =
+      typeof maskIdOrOptions === 'string' ? maskIdOrOptions : maskIdOrOptions?.personaId;
 
     const tailored = await this.documentGenerator.generateResume(profile, job, {
       highlightGaps: options.highlightGaps ?? true,
@@ -332,18 +321,18 @@ export class DefaultHunterService implements HunterService {
       personaId,
     });
 
-    const personalizationNotes = tailored.suggestedImprovements.join(", ");
-    const tailoringRationale = tailored.suggestedImprovements.join("; ");
+    const personalizationNotes = tailored.suggestedImprovements.join(', ');
+    const tailoringRationale = tailored.suggestedImprovements.join('; ');
 
     return {
       profileId,
       jobId: job.id,
       jobTitle: job.title,
       jobCompany: job.company,
-      personaRecommendation: personaId ?? "Generalist",
+      personaRecommendation: personaId ?? 'Generalist',
       resume: {
         content: tailored.content,
-        format: options.format ?? "markdown",
+        format: options.format ?? 'markdown',
         confidence: tailored.confidence,
         keywordMatches: tailored.keywordMatches,
         suggestedImprovements: tailored.suggestedImprovements,
@@ -364,27 +353,30 @@ export class DefaultHunterService implements HunterService {
     profileId: string,
     jobId: string,
     options?: {
-      template?: "professional" | "creative" | "direct" | "academic";
-      tone?: "formal" | "conversational" | "enthusiastic";
+      template?: 'professional' | 'creative' | 'direct' | 'academic';
+      tone?: 'formal' | 'conversational' | 'enthusiastic';
       includeSalutation?: boolean;
       includeSignature?: boolean;
       personaId?: string;
-    }
+    },
   ): Promise<GeneratedCoverLetter> {
     const licensing = this.getLicensingServiceOrThrow();
     const tier = await licensing.getTierForProfile(profileId);
-    const limit = await licensing.getLimitForFeature(profileId, "cover_letter_generation");
+    const limit = await licensing.getLimitForFeature(profileId, 'cover_letter_generation');
 
-    if (limit === 0 && tier !== "ENTERPRISE") {
-      throw new FeatureNotAvailableError("cover_letter_generation", tier);
+    if (limit === 0 && tier !== 'ENTERPRISE') {
+      throw new FeatureNotAvailableError('cover_letter_generation', tier);
     }
 
-    const [allowed, remaining] = await licensing.checkAndConsume(profileId, "cover_letter_generation");
+    const [allowed, remaining] = await licensing.checkAndConsume(
+      profileId,
+      'cover_letter_generation',
+    );
 
     if (!allowed) {
-      const used = await licensing.getUsageForFeature(profileId, "cover_letter_generation");
+      const used = await licensing.getUsageForFeature(profileId, 'cover_letter_generation');
       const normalizedLimit = limit === -1 ? Number.MAX_SAFE_INTEGER : limit;
-      throw new QuotaExceededError("cover_letter_generation", normalizedLimit, used);
+      throw new QuotaExceededError('cover_letter_generation', normalizedLimit, used);
     }
 
     const profile = await this.profileRepo.find(profileId);
@@ -394,8 +386,8 @@ export class DefaultHunterService implements HunterService {
 
     const posting = await this.fetchJobPosting(jobId);
     const job = this.mapJobPostingToListing(posting);
-    const template = options?.template ?? "professional";
-    const tone = options?.tone ?? "formal";
+    const template = options?.template ?? 'professional';
+    const tone = options?.tone ?? 'formal';
     const includeSalutation = options?.includeSalutation ?? true;
     const includeSignature = options?.includeSignature ?? true;
 
@@ -407,7 +399,7 @@ export class DefaultHunterService implements HunterService {
       personaId: options?.personaId,
     });
 
-    const personalizationNotes = letterResult.suggestedImprovements.join(", ");
+    const personalizationNotes = letterResult.suggestedImprovements.join(', ');
     const wordCount = letterResult.content.trim().split(/\s+/).filter(Boolean).length;
     const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
@@ -416,7 +408,7 @@ export class DefaultHunterService implements HunterService {
       jobId: job.id,
       jobTitle: job.title,
       jobCompany: job.company,
-      hiringManager: posting.company || "Hiring Manager",
+      hiringManager: posting.company || 'Hiring Manager',
       coverLetterMarkdown: letterResult.content,
       personalizationNotes,
       toneUsed: letterResult.tone,
@@ -436,30 +428,22 @@ export class DefaultHunterService implements HunterService {
     };
   }
 
-  async writeCoverLetter(
-    profileId: string,
-    jobId: string,
-    personaId: string
-  ) {
+  async writeCoverLetter(profileId: string, jobId: string, personaId: string) {
     const letter = await this.generateCoverLetter(profileId, jobId, {
-      template: "professional",
-      tone: "formal",
+      template: 'professional',
+      tone: 'formal',
       personaId,
     });
 
     return {
       coverLetterMarkdown: letter.coverLetter.content,
-      personalizationNotes: letter.personalizationNotes ?? "",
+      personalizationNotes: letter.personalizationNotes ?? '',
       toneUsed: letter.coverLetter.tone,
     };
   }
 
-  async completeApplicationPipeline(
-    _profileId: string,
-    _jobId: string,
-    _personaId: string
-  ) {
-    throw new Error("completeApplicationPipeline not fully implemented in service");
+  async completeApplicationPipeline(_profileId: string, _jobId: string, _personaId: string) {
+    throw new Error('Application pipeline completion is not yet implemented — see Phase 6 roadmap');
   }
 
   async submitApplication(
@@ -469,8 +453,8 @@ export class DefaultHunterService implements HunterService {
       autoSubmit?: boolean;
       customResume?: string;
       customCoverLetter?: string;
-      submissionType?: "manual" | "auto";
-    }
+      submissionType?: 'manual' | 'auto';
+    },
   ): Promise<ApplicationSubmissionResult> {
     const profile = await this.profileRepo.find(profileId);
     if (!profile) {
@@ -481,19 +465,22 @@ export class DefaultHunterService implements HunterService {
     const job = this.mapJobPostingToListing(jobPosting);
 
     if (options?.autoSubmit) {
-      const licensing = this.getLicensingServiceOrThrow("auto_apply");
+      const licensing = this.getLicensingServiceOrThrow('auto_apply');
       const tier = await licensing.getTierForProfile(profileId);
-      const limit = await licensing.getLimitForFeature(profileId, "auto_apply");
+      const limit = await licensing.getLimitForFeature(profileId, 'auto_apply');
 
-      if (limit === 0 && tier !== "ENTERPRISE") {
-        throw new FeatureNotAvailableError("auto_apply", tier);
+      if (limit === 0 && tier !== 'ENTERPRISE') {
+        throw new FeatureNotAvailableError('auto_apply', tier);
       }
 
-      const [autoAllowed, _autoRemaining] = await licensing.checkAndConsume(profileId, "auto_apply");
+      const [autoAllowed, _autoRemaining] = await licensing.checkAndConsume(
+        profileId,
+        'auto_apply',
+      );
       if (!autoAllowed) {
-        const used = await licensing.getUsageForFeature(profileId, "auto_apply");
+        const used = await licensing.getUsageForFeature(profileId, 'auto_apply');
         const normalizedLimit = limit === -1 ? Number.MAX_SAFE_INTEGER : limit;
-        throw new QuotaExceededError("auto_apply", normalizedLimit, used);
+        throw new QuotaExceededError('auto_apply', normalizedLimit, used);
       }
     }
 
@@ -516,11 +503,11 @@ export class DefaultHunterService implements HunterService {
       jobId,
       jobTitle: job.title,
       jobCompany: job.company,
-      resume: resumeContent ?? "",
-      coverLetter: coverLetterContent ?? "",
+      resume: resumeContent ?? '',
+      coverLetter: coverLetterContent ?? '',
       submittedAt: new Date().toISOString(),
-      status: "applied",
-      submissionType: options?.submissionType ?? "manual",
+      status: 'applied',
+      submissionType: options?.submissionType ?? 'manual',
       confirmationCode: this.generateConfirmationCode(),
     };
 
@@ -545,12 +532,12 @@ export class DefaultHunterService implements HunterService {
         autoSubmitted: options?.autoSubmit ?? false,
       },
       nextSteps: [
-        "Your application has been recorded",
-        "You will receive updates as hiring progresses",
-        "View all applications in your dashboard",
+        'Your application has been recorded',
+        'You will receive updates as hiring progresses',
+        'View all applications in your dashboard',
         options?.autoSubmit
-          ? "This application was auto-submitted to the job board"
-          : "This application was recorded locally (manual submission to job board recommended)",
+          ? 'This application was auto-submitted to the job board'
+          : 'This application was recorded locally (manual submission to job board recommended)',
       ],
       metadata: {
         submittedAt: new Date().toISOString(),
@@ -591,14 +578,14 @@ export class DefaultHunterService implements HunterService {
       id: posting.id,
       title: posting.title,
       company: posting.company,
-      location: posting.location ?? "Remote",
+      location: posting.location ?? 'Remote',
       remote: this.mapRemoteValue(posting.remote),
-      description: posting.descriptionMarkdown ?? "",
-      requirements: posting.descriptionMarkdown ?? "",
-      job_url: posting.url ?? "https://example.com",
+      description: posting.descriptionMarkdown ?? '',
+      requirements: posting.descriptionMarkdown ?? '',
+      job_url: posting.url ?? 'https://example.com',
       posted_date: new Date(posting.createdAt),
-      source: "other",
-      company_size: "mid-market",
+      source: 'other',
+      company_size: 'mid-market',
       company_industry: undefined,
       application_deadline: undefined,
       technologies: [],
@@ -608,19 +595,19 @@ export class DefaultHunterService implements HunterService {
     };
   }
 
-  private mapRemoteValue(value?: JobPosting["remote"]): JobListing["remote"] {
-    if (value === "onsite") return "onsite";
-    if (value === "hybrid" || !value) return "hybrid";
-    return "fully";
+  private mapRemoteValue(value?: JobPosting['remote']): JobListing['remote'] {
+    if (value === 'onsite') return 'onsite';
+    if (value === 'hybrid' || !value) return 'hybrid';
+    return 'fully';
   }
 
   private normalizeRemainingCount(value: number): number {
     return value === -1 ? Number.POSITIVE_INFINITY : value;
   }
 
-  private getLicensingServiceOrThrow(feature: string = "feature"): LicensingService {
+  private getLicensingServiceOrThrow(feature: string = 'feature'): LicensingService {
     if (!this.licensingService) {
-      throw new FeatureNotAvailableError(feature, "UNKNOWN");
+      throw new FeatureNotAvailableError(feature, 'UNKNOWN');
     }
     return this.licensingService;
   }
@@ -662,7 +649,7 @@ export class DefaultHunterService implements HunterService {
     searchFilter: JobSearchCriteria,
     _personaId: string,
     autoApplyThreshold: number,
-    maxApplications: number = 10
+    maxApplications: number = 10,
   ): Promise<{
     applications: ApplicationSubmissionResult[];
     skipped: number;
@@ -682,7 +669,7 @@ export class DefaultHunterService implements HunterService {
 
       // 2. Filter jobs above threshold and limit to maxApplications
       const eligibleJobs = jobs
-        .filter(job => job.compatibilityScore >= autoApplyThreshold)
+        .filter((job) => job.compatibilityScore >= autoApplyThreshold)
         .slice(0, maxApplications);
 
       skipped = jobs.length - eligibleJobs.length;
@@ -692,13 +679,13 @@ export class DefaultHunterService implements HunterService {
         try {
           const result = await this.submitApplication(profileId, job.id, {
             autoSubmit: true,
-            submissionType: "auto",
+            submissionType: 'auto',
           });
           applications.push(result);
         } catch (error) {
           errors.push({
             jobId: job.id,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       }
@@ -706,7 +693,7 @@ export class DefaultHunterService implements HunterService {
       return { applications, skipped, errors };
     } catch (error) {
       throw new Error(
-        `Batch application failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Batch application failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -716,12 +703,12 @@ export function createHunterService(
   profileRepo: ProfileRepo,
   licensingService?: LicensingService,
   jobPostingRepo?: JobRepo,
-  jobApplicationRepo?: JobRepo
+  jobApplicationRepo?: JobRepo,
 ): HunterService {
   return new DefaultHunterService(
     profileRepo,
     licensingService,
     jobPostingRepo,
-    jobApplicationRepo
+    jobApplicationRepo,
   );
 }
