@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 export interface DropdownItem {
   id: string;
@@ -45,7 +45,7 @@ const itemBase: React.CSSProperties = {
   transition: 'background 0.1s ease',
 };
 
-const itemHover: React.CSSProperties = {
+const itemHighlight: React.CSSProperties = {
   background: 'var(--ds-bg-subtle, rgba(29, 26, 22, 0.04))',
 };
 
@@ -56,8 +56,12 @@ const itemDisabled: React.CSSProperties = {
 
 export const Dropdown: React.FC<DropdownProps> = ({ trigger, items, onSelect, style }) => {
   const [open, setOpen] = useState(false);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const enabledItems = items.filter((i) => !i.disabled);
 
   useEffect(() => {
     if (!open) return;
@@ -70,36 +74,106 @@ export const Dropdown: React.FC<DropdownProps> = ({ trigger, items, onSelect, st
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
+  // Focus first item when opened
+  useEffect(() => {
+    if (open && menuRef.current) {
+      setFocusedIndex(0);
+      const buttons = menuRef.current.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]:not([disabled])',
+      );
+      buttons[0]?.focus();
+    }
+  }, [open]);
+
+  const handleTriggerKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setOpen(true);
+    }
+  }, []);
+
+  const handleMenuKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedIndex((prev) => {
+          const next = (prev + 1) % enabledItems.length;
+          const buttons = menuRef.current?.querySelectorAll<HTMLElement>(
+            '[role="menuitem"]:not([disabled])',
+          );
+          buttons?.[next]?.focus();
+          return next;
+        });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedIndex((prev) => {
+          const next = (prev - 1 + enabledItems.length) % enabledItems.length;
+          const buttons = menuRef.current?.querySelectorAll<HTMLElement>(
+            '[role="menuitem"]:not([disabled])',
+          );
+          buttons?.[next]?.focus();
+          return next;
+        });
+      }
+    },
+    [enabledItems.length],
+  );
+
   return (
     <div ref={containerRef} style={{ position: 'relative', display: 'inline-block', ...style }}>
-      <div onClick={() => setOpen((prev) => !prev)} style={{ cursor: 'pointer' }}>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        onKeyDown={handleTriggerKeyDown}
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 0,
+          font: 'inherit',
+        }}
+      >
         {trigger}
-      </div>
+      </button>
       {open && (
-        <div style={menuStyle} role="menu">
-          {items.map((item) => (
-            <button
-              key={item.id}
-              role="menuitem"
-              disabled={item.disabled}
-              onMouseEnter={() => setHovered(item.id)}
-              onMouseLeave={() => setHovered(null)}
-              onClick={() => {
-                if (!item.disabled) {
-                  onSelect(item.id);
-                  setOpen(false);
-                }
-              }}
-              style={{
-                ...itemBase,
-                ...(hovered === item.id && !item.disabled ? itemHover : {}),
-                ...(item.disabled ? itemDisabled : {}),
-              }}
-            >
-              {item.icon && <span>{item.icon}</span>}
-              {item.label}
-            </button>
-          ))}
+        <div ref={menuRef} style={menuStyle} role="menu" onKeyDown={handleMenuKeyDown}>
+          {items.map((item, index) => {
+            const enabledIndex = enabledItems.indexOf(item);
+            return (
+              <button
+                key={item.id}
+                role="menuitem"
+                disabled={item.disabled}
+                tabIndex={-1}
+                onMouseEnter={() => setFocusedIndex(enabledIndex >= 0 ? enabledIndex : index)}
+                onClick={() => {
+                  if (!item.disabled) {
+                    onSelect(item.id);
+                    setOpen(false);
+                    triggerRef.current?.focus();
+                  }
+                }}
+                style={{
+                  ...itemBase,
+                  ...(enabledIndex === focusedIndex && !item.disabled ? itemHighlight : {}),
+                  ...(item.disabled ? itemDisabled : {}),
+                }}
+              >
+                {item.icon && <span aria-hidden="true">{item.icon}</span>}
+                {item.label}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

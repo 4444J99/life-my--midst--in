@@ -45,8 +45,30 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="app-body">
+        <a
+          href="#main-content"
+          className="skip-to-main"
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            top: 'auto',
+            width: '1px',
+            height: '1px',
+            overflow: 'hidden',
+            zIndex: 100,
+            padding: '0.75rem 1.5rem',
+            background: 'var(--ds-ink, #1d1a16)',
+            color: '#fff',
+            fontSize: '0.9rem',
+            fontWeight: 600,
+            textDecoration: 'none',
+            borderRadius: '0 0 8px 0',
+          }}
+        >
+          Skip to main content
+        </a>
         <WebVitals />
-        {children}
+        <main id="main-content">{children}</main>
       </body>
     </html>
   );

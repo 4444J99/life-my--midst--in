@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 
 export interface Tab {
   id: string;
@@ -38,8 +38,42 @@ const tabActiveStyle: React.CSSProperties = {
 };
 
 export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onTabChange, style }) => {
+  const tablistRef = useRef<HTMLDivElement>(null);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+      let nextIndex = -1;
+
+      if (e.key === 'ArrowRight') {
+        nextIndex = (currentIndex + 1) % tabs.length;
+      } else if (e.key === 'ArrowLeft') {
+        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      } else if (e.key === 'Home') {
+        nextIndex = 0;
+      } else if (e.key === 'End') {
+        nextIndex = tabs.length - 1;
+      }
+
+      if (nextIndex >= 0) {
+        e.preventDefault();
+        const nextTab = tabs[nextIndex]!;
+        onTabChange(nextTab.id);
+        // Move focus to the newly active tab
+        const buttons = tablistRef.current?.querySelectorAll<HTMLElement>('[role="tab"]');
+        buttons?.[nextIndex]?.focus();
+      }
+    },
+    [tabs, activeTab, onTabChange],
+  );
+
   return (
-    <div role="tablist" style={{ ...barStyle, ...style }}>
+    <div
+      ref={tablistRef}
+      role="tablist"
+      style={{ ...barStyle, ...style }}
+      onKeyDown={handleKeyDown}
+    >
       {tabs.map((tab) => {
         const isActive = tab.id === activeTab;
         return (
@@ -47,6 +81,7 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onTabChange, style 
             key={tab.id}
             role="tab"
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             onClick={() => onTabChange(tab.id)}
             style={{
               ...tabBaseStyle,

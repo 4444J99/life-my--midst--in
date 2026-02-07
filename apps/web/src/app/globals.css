@@ -467,6 +467,22 @@ textarea {
   margin: 2rem 0;
 }
 
+/* Skip-to-main link: visible only on focus */
+.skip-to-main:focus {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Global focus-visible outline for interactive elements */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-focus-ring, 0 0 0 2px #fff, 0 0 0 4px #2f5e64);
+}
+
 @media (max-width: 720px) {
   .hero {
     padding: 1.6rem;

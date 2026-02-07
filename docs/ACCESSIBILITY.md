@@ -1,6 +1,6 @@
 # Accessibility (A11y) Guidelines
 
-> **Aspirational Document** — This document describes the *target state* for accessibility in the in–midst–my–life system, not the current implementation. The guidelines below represent our design goals and the standards we are working toward. Current implementation includes basic semantic HTML and ARIA attributes; full WCAG 2.1 AA compliance (skip navigation, focus management, contrast validation, keyboard trap prevention) is planned but not yet validated. See `docs/SEED-ALIGNMENT-AUDIT.md` gap G18 for current status.
+> **Implementation Status** — Critical-path WCAG 2.1 AA features are now implemented: skip-to-main navigation, focus-visible outlines, Modal focus trap with aria-labelledby, Tabs arrow-key navigation with roving tabindex, Dropdown keyboard support (Arrow/Escape), `prefers-reduced-motion` media query, contrast-safe `--ds-text-secondary` token, and `role="progressbar"` attributes. Full AA validation is ongoing; see `docs/SEED-ALIGNMENT-AUDIT.md` for remaining gaps.
 
 This document outlines accessibility standards, testing procedures, and best practices for the in–midst–my–life system.
 

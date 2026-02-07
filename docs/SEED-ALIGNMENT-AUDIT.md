@@ -849,12 +849,11 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 - **Source**: `docs/phases/PHASE-7-SUMMARY.md` claims "8-stage pipeline"
 - **Resolution**: `ci-cd.yml` actually has 8 stages (quality, test, security, build, deploy-staging, smoke-tests, deploy-production, notify). The claim is accurate.
 
-### G18-C: WCAG 2.1 AA Commitment Unvalidated
+### ~~G18-C: WCAG 2.1 AA Commitment Unvalidated~~ — RESOLVED
 
-- **Severity**: Medium
+- **Severity**: ~~Medium~~ **None**
 - **Source**: `docs/ACCESSIBILITY.md` claims WCAG 2.1 AA compliance
-- **Current State**: Minimal accessibility implementation — no skip links, no focus management, basic ARIA only
-- **Recommendation**: Either implement WCAG 2.1 AA features or downgrade document to "aspirational"
+- **Resolution**: Critical-path WCAG 2.1 AA implemented: skip-to-main link, `:focus-visible` outlines, Modal focus trap + `aria-labelledby`, Tabs arrow-key navigation with roving tabindex, Dropdown keyboard support (Arrow/Escape/focus management), `prefers-reduced-motion` media query, `--ds-focus-ring` / `--ds-text-secondary` tokens, ACCESSIBILITY.md updated from "aspirational" to implementation status.
 
 ### G19-C: Security Headers Middleware Missing
 
@@ -954,7 +953,7 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 |-----|--------|--------|------|
 | **G16-D** | Implement community marketplace or downgrade Phase 9 claims | 40+ hours | Drift |
 | **G17-D** | Update PHASE-7-SUMMARY CI/CD pipeline description | 30 min | Drift |
-| **G18-C** | Implement WCAG 2.1 AA or relabel ACCESSIBILITY.md as aspirational | 20-40 hours | Commitment |
+| ~~**G18-C**~~ | ~~WCAG 2.1 AA critical-path~~ | ~~RESOLVED~~ | Commitment |
 | **G19-C** | Add `@fastify/helmet`; document WebSocket auth gap | 2-3 hours | Commitment |
 | **G20-S** | ~~Delete `ARCHITECTURE-DIAGRAMS.md`~~ **DONE** | — | Staleness |
 | **G21-S** | Add staleness banners to 16 archived files | 1-2 hours | Staleness |
