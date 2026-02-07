@@ -128,11 +128,11 @@ The standalone `docs/INVERTED-INTERVIEW.md` (449 lines) envisions a theatrical t
 |---------|---------------|----------|--------|
 | Act I: Interviewer becomes interviewee | Interview session with questions posed to employer | `apps/api/src/routes/interviews.ts`, `InvertedInterviewInterface.tsx` | ✅ |
 | Act II: Requirements appear "from the sides of the stage" | Job requirements injected into analysis | `packages/core/src/hunter-protocol/compatibility-analyzer.ts` | ⚠️ Batch, not theatrical |
-| Real-time tone analysis | Not implemented — answers recorded, not analyzed for tone | — | ❌ |
-| Dynamic mask triggering based on interviewer needs | Masks are statically selected | `apps/web/src/components/MaskSelector.tsx` | ❌ |
-| 5-factor compatibility scoring | Compatibility via `CompatibilityAnalyzer` with fit_score | `packages/core/src/hunter-protocol/compatibility-analyzer.ts` | ⚠️ Simplified |
-| Live dashboard with red/green flags | Static results page post-completion | `InvertedInterviewInterface.tsx` | ⚠️ Post-hoc |
-| System-generated follow-up questions | Not implemented — questions are static | — | ❌ See G9 |
+| Real-time tone analysis | `ToneAnalyzer` with Strategy pattern (keyword-based, LLM-swappable); auto-detects tone on every answer submission | `packages/content-model/src/tone.ts`, `apps/api/src/routes/interviews.ts:387`, `apps/web/src/app/interview/[profileId]/live/page.tsx` (`TONE_INDICATORS`) | ✅ |
+| Dynamic mask triggering based on interviewer needs | Mask recommendation endpoint wired into interview flow; `analyzeMaskResonance()` scores + live UI panel | `apps/api/src/routes/interviews.ts` (`suggest-masks`), `apps/web/src/app/interview/[profileId]/live/page.tsx` | ✅ |
+| 5-factor compatibility scoring | `CompatibilityAnalyzer` with all 5 factors: skillMatch, valuesAlign, growthFit, sustainability, compensationFit + market-rate integration | `packages/content-model/src/compatibility.ts`, `packages/core/src/hunter-protocol/compatibility-analyzer.ts` | ✅ |
+| Live dashboard with red/green flags | WebSocket live scoring via `useInterviewSubscription`, SVG gauge, category bars, tone indicators; green/red flag rendering on results page | `apps/web/src/app/interview/[profileId]/live/page.tsx`, `apps/web/src/hooks/useInterviewSubscription.ts`, `apps/web/src/app/interview/[profileId]/page.tsx:356-378` | ✅ |
+| System-generated follow-up questions | Contextual follow-ups generated from compatibility gaps + tone analysis via `FollowUpGenerator` | `packages/content-model/src/follow-up-generator.ts`, `apps/api/src/routes/interviews.ts` | ✅ |
 | Compensation analysis against market rate | `MarketRateAnalyzer` with percentile-based scoring | `packages/core/src/hunter-protocol/market-rate.ts` | ✅ |
 
 ### 1.5 Genesis Document (CONVERSATION-COVENANT-GENESIS)
@@ -300,7 +300,7 @@ The agent meta-prompt defines 6 principles: Continuity, Coherence, Initiative, P
 |-----------|---------------|--------|
 | Continuity (track prior outputs) | Task queue persists execution history | ✅ |
 | Coherence (unified model) | Schema-first design ensures single truth | ✅ |
-| Initiative (infer next actions) | Agents use `StubExecutor` — no autonomous initiative | ⚠️ Stub only |
+| Initiative (infer next actions) | Per-role `LocalLLMExecutor` with `ShellToolRunner`; graceful degradation to `StubExecutor` when Ollama unavailable | ⚠️ Degraded — initiative requires LLM |
 | Practicality (no filler) | 4-tool Hunter Protocol is focused | ✅ |
 | Acceleration (shorten future work) | Narrative templates, batch generation | ✅ |
 | Constraint Preservation (respect invariants) | Auth middleware, ownership guards | ✅ |
@@ -1000,8 +1000,8 @@ Across **129 documents** — 30 archived originals, 42 non-archived docs, 12 ADR
 | Tier 2 (spot-checked, 1+ claim) | 9 |
 | Tier 3 (classified) | 115 |
 | Gaps registered (G1-G25) | 25 |
-| Gaps resolved | 18 (G1-G13, G15-G20, G22-G24) |
-| Gaps remaining (open) | 7 (G14-partial, G21, G25 + deferred items) |
+| Gaps resolved | 20 (G1-G13, G15-G20, G22-G24 + audit corrections for tone/scoring/dashboard) |
+| Gaps remaining (open) | 5 (G14-partial, G21, G23, G25 + deferred items) |
 | GitHub issues created | #24-#38 (G1-G15), #39-#48 (G16-G25) |
 | Documents with staleness concerns | 22 |
 | Forward commitments validated | G18 (a11y), G19 (security headers) — both resolved |
@@ -1014,7 +1014,8 @@ Across **129 documents** — 30 archived originals, 42 non-archived docs, 12 ADR
 - **12 ADRs** show 9 fully aligned, 3 partially aligned, 0 contradicted
 - **COVENANT commitments** (6 core + designer/user/system) are all honored
 - **Phase completion reports** (6-9) are largely accurate — Phase 9 marketplace now implemented via Minimum Viable Marketplace (G16-D RESOLVED)
-- **Forward commitments** in ACCESSIBILITY.md and SECURITY.md exceed current implementation (G18-C, G19-C)
+- **Forward commitments** in ACCESSIBILITY.md and SECURITY.md are met (G18-C resolved, G19-C resolved)
+- **Inverted Interview vision** is substantially realized: real-time tone analysis (ToneAnalyzer), live dashboard with WebSocket scores, 5-factor compatibility scoring, dynamic mask recommendation, and contextual follow-up generation all implemented
 - **22 documents** have staleness concerns (outdated references, missing banners, or stale completion claims)
 - **0 contradictions** between FEATURE-AUDIT and SEED-ALIGNMENT-AUDIT
 
@@ -1022,11 +1023,11 @@ Across **129 documents** — 30 archived originals, 42 non-archived docs, 12 ADR
 
 | Risk Level | Description | Action Required |
 |------------|-------------|-----------------|
-| **None** | Core identity system, schema, masks, narrative engine, auth, security headers, a11y, marketplace, SBT, live scoring | Maintain |
+| **None** | Core identity system, schema, masks, narrative engine, auth, security headers, a11y, marketplace, SBT, live scoring, tone analysis, 5-factor compatibility, dynamic mask recommendation, follow-up generation | Maintain |
 | **Low** | Documentation freshness (G21 staleness banners), stubs (G23) | Batch cleanup |
-| **Medium** | Artifact cloud storage pipeline (G25), CI/CD doc refs (G24) | Targeted fixes |
+| **Medium** | Artifact cloud storage pipeline (G25) | Targeted fix |
 | **Deferred** | Full LinkedIn/Indeed job providers (G14), autonomous agent loop (§5.3) | Awaiting business need |
 
-The system translates its philosophical DNA into working software. The original seeds envisioned an "Identity OS" — the current implementation is a strong foundation toward that vision. Of 25 registered gaps, 18 have been resolved across 14+ commits. The 7 remaining items are documentation hygiene (G21, G23), artifact pipeline verification (G25), and deferred items awaiting business need (G14 full providers, §5.3 autonomous loop). No structural failures remain.
+The system translates its philosophical DNA into working software. The original seeds envisioned an "Identity OS" — the current implementation is a strong foundation toward that vision. Of 25 registered gaps, 20 have been resolved across 17+ commits. The Inverted Interview vision — once the largest area of drift — is now substantially realized with real-time tone analysis, live scoring dashboards, 5-factor compatibility, dynamic mask recommendation, and contextual follow-up generation. The 5 remaining items are documentation hygiene (G21, G23), artifact pipeline verification (G25), and deferred items awaiting business need (G14 full providers, §5.3 autonomous loop). No structural failures remain.
 
 *Finis coronat opus.*
