@@ -502,13 +502,13 @@ These ideas appear in the originals but not in `CONSOLIDATED-SPECIFICATIONS.md`:
 - **Current State**: Only `MockJobSearchProvider` confirmed; Serper/real provider status unclear
 - **Recommendation**: Implement at least one real job board provider (Indeed, LinkedIn, Serper)
 
-### G15: Agent Stub Executors (No Real Autonomy) ([#38](https://github.com/4444J99/life-my--midst--in/issues/38))
+### ~~G15: Agent Stub Executors (No Real Autonomy)~~ ([#38](https://github.com/4444J99/life-my--midst--in/issues/38)) — RESOLVED
 
-- **Severity**: Low (architectural placeholder)
+- **Severity**: ~~Low (architectural placeholder)~~ → Resolved
 - **Seed Source**: ORCH-001 (6 operating principles including Initiative), ORCH-002 (Sense-Plan-Act loop)
-- **Current State**: All 10 agents use `StubExecutor` (20ms delay, always returns "completed")
-- **Impact**: Agent infrastructure is correct but non-functional — no LLM-powered execution
-- **Recommendation**: Connect agents to Ollama executor for real task processing
+- **Resolution**: Per-role `LocalLLMExecutor` instances replace `StubExecutor` when Ollama is available. Each of the 10 roles gets a restricted `ShellToolRunner` with allowlisted commands per `ROLE_TOOL_DEFINITIONS` (e.g., architect: read-only + tsc; implementer: write + lint; narrator: text-only). `createLLMAgents()` provides graceful degradation — falls back to `StubExecutor` when LLM config is disabled or unreachable. The existing `invokeStructured()` ReAct loop (LLM → tool call → result → re-prompt) handles the Sense-Plan-Act cycle. See ADR-013.
+- **Files**: `apps/orchestrator/src/tool-definitions.ts`, `apps/orchestrator/src/react-loop.ts`, `apps/orchestrator/src/agents.ts`
+- **Tests**: 25 new tests in `test/tool-definitions.test.ts` (13) and `test/react-loop.test.ts` (12)
 
 ---
 
@@ -942,7 +942,7 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 | Gap | Action | Effort |
 |-----|--------|--------|
 | **G14** | Real job search provider | 4-6 hours |
-| **G15** | Connect agents to LLM executor | 8-12 hours |
+| ~~**G15**~~ | ~~Connect agents to LLM executor~~ | ~~RESOLVED~~ |
 | ~~**G13**~~ | ~~Custom mask creation~~ | ~~RESOLVED~~ |
 | **G10** | Blockchain/SBT integration | Significant (future) |
 

@@ -8,6 +8,8 @@ import { MaintainerAgent } from './agents/maintainer';
 import { NarratorAgent } from './agents/narrator';
 import { ReviewerAgent } from './agents/reviewer';
 import { TesterAgent } from './agents/tester';
+import { isLocalLLMEnabled } from './llm';
+import { createRoleExecutorMap, type ReActExecutorOptions } from './react-loop';
 
 export type AgentRole =
   | 'architect'
@@ -107,4 +109,24 @@ export function defaultAgents(
     new HunterAgent({ executor: pickExecutor('hunter') }),
     new CatcherAgent(),
   ];
+}
+
+/**
+ * Create agents with role-specific LLM executors (tool-restricted).
+ *
+ * When the local LLM is enabled and reachable, each agent role gets its own
+ * LocalLLMExecutor configured with a ShellToolRunner restricted to that role's
+ * allowed commands. When the LLM is disabled or unreachable, falls back
+ * to StubExecutor for all roles — ensuring the orchestrator always boots.
+ */
+export function createLLMAgents(
+  options?: ReActExecutorOptions,
+  env: NodeJS.ProcessEnv = process.env,
+): Agent[] {
+  if (!isLocalLLMEnabled(env)) {
+    return defaultAgents();
+  }
+
+  const executorMap = createRoleExecutorMap(options);
+  return defaultAgents(executorMap);
 }
