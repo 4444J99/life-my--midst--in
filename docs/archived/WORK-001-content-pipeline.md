@@ -1,8 +1,14 @@
 # Content development workflow
 
-**User:** Anthony Padavano (padavano.anthony@gmail.com)  
-**Created:** 11/27/2025 15:05:21  
-**Updated:** 11/27/2025 15:06:10  
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document was written during early design (Nov 2025). The ingestion
+> and curation pipeline described as "Planned" is now implemented via the
+> orchestrator task queue and webhook integration. See
+> [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for current state.
+
+**User:** Anthony Padavano (padavano.anthony@gmail.com)
+**Created:** 11/27/2025 15:05:21
+**Updated:** 11/27/2025 15:06:10
 **Exported:** 12/26/2025 13:37:44  
 **Link:** [https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928af00-52e0-8332-97f3-a541a0ee2ebc](https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928af00-52e0-8332-97f3-a541a0ee2ebc)  
 

@@ -1,6 +1,11 @@
 # Action Items Backlog (from AUDIT-001)
 
-Updated: 2025-12-29  
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This backlog was created during the Phase 0 audit (Dec 2025). All
+> action items through Phase 7 have been completed. See
+> [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for current state.
+
+Updated: 2025-12-29
 Source: `AUDIT-001-spec-coverage.md`
 
 ## P0 - Data model and API parity

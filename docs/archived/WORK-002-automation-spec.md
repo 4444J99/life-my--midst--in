@@ -1,8 +1,14 @@
 # Automatable workflow version
 
-**User:** Anthony Padavano (padavano.anthony@gmail.com)  
-**Created:** 11/27/2025 15:07:33  
-**Updated:** 11/27/2025 15:08:32  
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document was written during early design (Nov 2025). CI/CD and
+> GitHub integration described as "Planned" are now fully implemented
+> (6 workflows, webhooks, release-please). See
+> [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for current state.
+
+**User:** Anthony Padavano (padavano.anthony@gmail.com)
+**Created:** 11/27/2025 15:07:33
+**Updated:** 11/27/2025 15:08:32
 **Exported:** 12/26/2025 13:37:55  
 **Link:** [https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928af83-e0c4-8332-87ec-f561079553d9](https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928af83-e0c4-8332-87ec-f561079553d9)  
 

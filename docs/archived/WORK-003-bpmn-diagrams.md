@@ -1,8 +1,14 @@
 # BPMN workflow diagram
 
-**User:** Anthony Padavano (padavano.anthony@gmail.com)  
-**Created:** 11/27/2025 15:20:09  
-**Updated:** 11/27/2025 15:20:45  
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document was written during early design (Nov 2025). BPMN diagram
+> export remains an optional/conditional feature and was not prioritized
+> for implementation. See
+> [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for current state.
+
+**User:** Anthony Padavano (padavano.anthony@gmail.com)
+**Created:** 11/27/2025 15:20:09
+**Updated:** 11/27/2025 15:20:45
 **Exported:** 12/26/2025 13:38:18  
 **Link:** [https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928b270-d0dc-8330-b795-f3bc6c683b96](https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928b270-d0dc-8330-b795-f3bc6c683b96)  
 

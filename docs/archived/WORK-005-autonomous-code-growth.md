@@ -1,8 +1,14 @@
 # Automating Code Growth
 
-**User:** Anthony Padavano (padavano.anthony@gmail.com)  
-**Created:** 11/27/2025 15:43:14  
-**Updated:** 11/27/2025 15:50:17  
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document was written during early design (Nov 2025). CI workflows,
+> automation, and code-growth pipelines described as "Planned" are now
+> implemented. See
+> [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for current state.
+
+**User:** Anthony Padavano (padavano.anthony@gmail.com)
+**Created:** 11/27/2025 15:43:14
+**Updated:** 11/27/2025 15:50:17
 **Exported:** 12/26/2025 13:39:13  
 **Link:** [https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928b7e0-a6a0-832e-b666-3ca8909dd832](https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928b7e0-a6a0-832e-b666-3ca8909dd832)  
 

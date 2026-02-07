@@ -1,5 +1,11 @@
 # Phase 0 Integration Test Report
 
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This is a mid-Phase-0 snapshot showing partial test results. Phase 0
+> completed successfully — see `TEST-REPORT-PHASE-0-FINAL.md` for final
+> results and [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for
+> current state.
+
 **Date**: 2026-01-13
 **Executor**: AI (Gemini)
 **Scope**: Hunter Protocol, Curriculum Vitae, Aetas, Narratives

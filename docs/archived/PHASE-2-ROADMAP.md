@@ -1,5 +1,11 @@
 # Phase 2 Roadmap (90 Days)
 
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This roadmap was written after Phase 1 completion. All Phase 2 epics
+> (Stripe billing, job search integration, document generation) are now
+> complete. See
+> [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for current state.
+
 ## Overview
 
 Phase 1 established the core Hunter Protocol with mock Stripe integration.

@@ -1,8 +1,14 @@
 # Orchestration graph generation
 
-**User:** Anthony Padavano (padavano.anthony@gmail.com)  
-**Created:** 11/27/2025 15:12:38  
-**Updated:** 12/26/2025 13:38:08  
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document was written during early design (Nov 2025). Graph runtime
+> generation remains an optional/conditional feature and was not
+> prioritized for implementation. See
+> [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for current state.
+
+**User:** Anthony Padavano (padavano.anthony@gmail.com)
+**Created:** 11/27/2025 15:12:38
+**Updated:** 12/26/2025 13:38:08
 **Exported:** 12/26/2025 13:38:11  
 **Link:** [https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928b0b4-c880-8327-856a-6852aac614d3](https://chatgpt.com/g/g-p-692604860ac48191a223bf20aeb4ce69-in-midst-my-life/c/6928b0b4-c880-8327-856a-6852aac614d3)  
 

@@ -1,5 +1,10 @@
 # Exhaustive Implementation Plan
 
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This TODO list was written pre-Phase 0. Many items (~50%) have since
+> been implemented across Phases 0–7. See
+> [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for current state.
+
 This document outlines the remaining phases to transform the prototype into a production-ready "Blockchain CV" system.
 
 ## Phase 6: True Intelligence (Refinement)

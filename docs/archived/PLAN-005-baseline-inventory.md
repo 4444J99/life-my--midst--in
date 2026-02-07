@@ -1,6 +1,12 @@
 # Baseline Inventory (API + Orchestrator)
 
-Updated: 2025-12-28  
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This inventory was captured during Phase 0 (Dec 2025). Items listed as
+> "Missing" (custom sections, timeline events, rich media) have since
+> been implemented. See
+> [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md) for current state.
+
+Updated: 2025-12-28
 Scope: schema, repos, routes, OpenAPI, migrations, seeds, tests.
 
 ## Schema (packages/schema)
