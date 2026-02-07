@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unused-vars, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import type { Profile } from '@in-midst-my-life/schema';
 import {
   CompatibilityAnalyzer,
   ToneAnalyzer,
@@ -10,6 +9,7 @@ import {
   MASK_TAXONOMY,
   type InterviewerProfile,
   type ScoringWeights,
+  type FollowUpOptions,
 } from '@in-midst-my-life/content-model';
 import type {
   InterviewSessionRepo,
@@ -18,6 +18,7 @@ import type {
 import { createInterviewSessionRepo } from '../repositories/interview-sessions';
 import type { PubSubEngine } from '../services/pubsub';
 import type { SettingsRepo } from '../repositories/settings';
+import type { ProfileRepo } from '../repositories/profiles';
 import { interviewScoreUpdatedTopic, interviewCompletedTopic } from '../services/pubsub';
 
 const InterviewAnswerSchema = z.object({
@@ -277,11 +278,12 @@ const compatibilityAnalyzer = new CompatibilityAnalyzer();
 const followUpGenerator = new FollowUpGenerator();
 
 export const interviewRoutes: FastifyPluginAsync = async (server) => {
-  // Resolve dependencies: repo + pubsub + settingsRepo are injected via server.decorate or fallback
+  // Resolve dependencies: repo + pubsub + settingsRepo + profileRepo are injected via server.decorate or fallback
   const repo: InterviewSessionRepo =
     (server as any)['interviewSessionRepo'] ?? createInterviewSessionRepo();
   const pubsub: PubSubEngine | undefined = (server as any)['pubsub'];
   const settingsRepo: SettingsRepo | undefined = (server as any)['settingsRepo'];
+  const profileRepo: ProfileRepo | undefined = (server as any)['profileRepo'];
 
   /** Read scoring weights from system settings (best-effort, falls back to default 1.0 each) */
   async function loadScoringWeights(): Promise<ScoringWeights | undefined> {
@@ -293,6 +295,23 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
       // Settings read failure is non-fatal — use default weights
     }
     return undefined;
+  }
+
+  /** Read follow-up config from admin settings (best-effort, falls back to defaults) */
+  async function loadInterviewConfig(): Promise<FollowUpOptions> {
+    if (!settingsRepo) return {};
+    try {
+      const [rawThreshold, rawMax] = await Promise.all([
+        settingsRepo.getSystem('interview.gapThreshold'),
+        settingsRepo.getSystem('interview.maxFollowUps'),
+      ]);
+      return {
+        gapThreshold: typeof rawThreshold === 'number' ? rawThreshold : undefined,
+        maxFollowUps: typeof rawMax === 'number' ? rawMax : undefined,
+      };
+    } catch {
+      return {};
+    }
   }
 
   /**
@@ -418,10 +437,9 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
       try {
         // Build a partial interviewer profile from answers so far
         const partial = buildInterviewerProfile(session);
-        // Fetch candidate profile for scoring
-        const profileResponse = await fetch(`http://localhost:3001/profiles/${session.profileId}`);
-        if (profileResponse.ok) {
-          const profile = (await profileResponse.json()) as Profile;
+        // Load candidate profile for scoring
+        const profile = profileRepo ? await profileRepo.find(session.profileId) : undefined;
+        if (profile) {
           const weights = await loadScoringWeights();
           const analysis = compatibilityAnalyzer.analyzeCompatibility(profile, partial, weights);
 
@@ -458,10 +476,12 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
         category,
         score: score,
       }));
+      const followUpConfig = await loadInterviewConfig();
       suggestedFollowUps = followUpGenerator.generate(
         gaps,
         tone,
         session.answers.map((a) => a.questionId),
+        followUpConfig,
       );
     }
 
@@ -487,12 +507,11 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
       return reply.status(404).send({ error: 'Interview session not found' });
     }
 
-    // Fetch candidate profile
-    const profileResponse = await fetch(`http://localhost:3001/profiles/${session.profileId}`);
-    if (!profileResponse.ok) {
+    // Load candidate profile
+    const profile = profileRepo ? await profileRepo.find(session.profileId) : undefined;
+    if (!profile) {
       return reply.status(404).send({ error: 'Candidate profile not found' });
     }
-    const profile = (await profileResponse.json()) as Profile;
 
     // Build interviewer profile from session data
     const interviewerProfile = buildInterviewerProfile(session);

@@ -10,6 +10,13 @@
 
 import type { InterviewTone } from './tone';
 
+export interface FollowUpOptions {
+  /** Score threshold below which a category is considered a "gap" (default: 65) */
+  gapThreshold?: number;
+  /** Maximum number of follow-up questions to generate (default: 3) */
+  maxFollowUps?: number;
+}
+
 export interface FollowUpContext {
   /** Compatibility gap categories with scores (0-100) */
   gaps: Array<{ category: string; score: number }>;
@@ -121,20 +128,25 @@ const GAP_QUESTIONS: Record<string, Record<InterviewTone, string[]>> = {
   },
 };
 
-/** Score threshold below which a category is considered a "gap" */
-const GAP_THRESHOLD = 65;
+/** Default score threshold below which a category is considered a "gap" */
+const DEFAULT_GAP_THRESHOLD = 65;
+
+/** Default maximum number of follow-up questions */
+const DEFAULT_MAX_FOLLOW_UPS = 3;
 
 /**
  * Generate contextual follow-up questions based on compatibility gaps and tone.
  *
- * Returns 1-3 questions that probe the weakest areas of the interview,
- * tailored to the interviewer's detected communication style.
+ * Returns up to `maxFollowUps` questions that probe the weakest areas of the
+ * interview, tailored to the interviewer's detected communication style.
  */
-export function generateFollowUps(context: FollowUpContext): string[] {
+export function generateFollowUps(context: FollowUpContext, options?: FollowUpOptions): string[] {
   const { gaps, tone, answeredQuestionIds } = context;
+  const gapThreshold = options?.gapThreshold ?? DEFAULT_GAP_THRESHOLD;
+  const maxFollowUps = options?.maxFollowUps ?? DEFAULT_MAX_FOLLOW_UPS;
 
   // Identify categories with scores below the gap threshold, sorted worst-first
-  const activeGaps = gaps.filter((g) => g.score < GAP_THRESHOLD).sort((a, b) => a.score - b.score);
+  const activeGaps = gaps.filter((g) => g.score < gapThreshold).sort((a, b) => a.score - b.score);
 
   if (activeGaps.length === 0) return [];
 
@@ -142,7 +154,7 @@ export function generateFollowUps(context: FollowUpContext): string[] {
   const used = new Set(answeredQuestionIds);
 
   for (const gap of activeGaps) {
-    if (result.length >= 3) break;
+    if (result.length >= maxFollowUps) break;
 
     const categoryQuestions = GAP_QUESTIONS[gap.category];
     if (!categoryQuestions) continue;
@@ -172,7 +184,8 @@ export class FollowUpGenerator {
     gaps: Array<{ category: string; score: number }>,
     tone: InterviewTone,
     answeredQuestionIds: string[],
+    options?: FollowUpOptions,
   ): string[] {
-    return generateFollowUps({ gaps, tone, answeredQuestionIds });
+    return generateFollowUps({ gaps, tone, answeredQuestionIds }, options);
   }
 }

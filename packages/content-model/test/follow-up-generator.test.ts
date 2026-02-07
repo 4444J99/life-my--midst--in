@@ -100,6 +100,45 @@ describe('generateFollowUps', () => {
 
     expect(result).toEqual([]);
   });
+
+  it('respects custom gapThreshold option', () => {
+    // With default threshold (65), score 60 is a gap
+    const withDefault = generateFollowUps({
+      gaps: [{ category: 'sustainability', score: 60 }],
+      tone: 'neutral',
+      answeredQuestionIds: [],
+    });
+    expect(withDefault.length).toBeGreaterThan(0);
+
+    // With threshold lowered to 50, score 60 is NOT a gap
+    const withLower = generateFollowUps(
+      {
+        gaps: [{ category: 'sustainability', score: 60 }],
+        tone: 'neutral',
+        answeredQuestionIds: [],
+      },
+      { gapThreshold: 50 },
+    );
+    expect(withLower).toEqual([]);
+  });
+
+  it('respects custom maxFollowUps option', () => {
+    const result = generateFollowUps(
+      {
+        gaps: [
+          { category: 'sustainability', score: 20 },
+          { category: 'valuesAlign', score: 25 },
+          { category: 'growthFit', score: 30 },
+          { category: 'skillMatch', score: 35 },
+        ],
+        tone: 'neutral',
+        answeredQuestionIds: [],
+      },
+      { maxFollowUps: 1 },
+    );
+
+    expect(result.length).toBe(1);
+  });
 });
 
 describe('FollowUpGenerator class', () => {
@@ -116,6 +155,21 @@ describe('FollowUpGenerator class', () => {
     );
 
     expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('passes options through to generateFollowUps', () => {
+    const result = generator.generate(
+      [
+        { category: 'sustainability', score: 20 },
+        { category: 'valuesAlign', score: 25 },
+        { category: 'growthFit', score: 30 },
+      ],
+      'neutral',
+      [],
+      { maxFollowUps: 2 },
+    );
+
+    expect(result.length).toBeLessThanOrEqual(2);
   });
 
   it('deduplicates against answered question IDs', () => {

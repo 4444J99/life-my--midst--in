@@ -529,6 +529,7 @@ export function buildServer(options: ApiServerOptions = {}) {
     scope.decorate('interviewSessionRepo', interviewSessionRepo);
     scope.decorate('pubsub', pubsub);
     scope.decorate('settingsRepo', settingsRepo);
+    scope.decorate('profileRepo', options.profileRepo ?? profileRepo);
     scope.register(interviewRoutes);
     scope.register(registerHunterProtocolRoutes, {
       prefix: '/profiles',
