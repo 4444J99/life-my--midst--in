@@ -106,7 +106,7 @@ services:
       - postgres
 
   api:
-    image: node:22-alpine
+    image: node:25-alpine
     container_name: inmidst-api
     working_dir: /app
     command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @in-midst-my-life/api dev"
@@ -129,7 +129,7 @@ services:
       - ./:/app
 
   orchestrator:
-    image: node:22-alpine
+    image: node:25-alpine
     container_name: inmidst-orchestrator
     working_dir: /app
     command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @in-midst-my-life/orchestrator dev"
@@ -167,7 +167,7 @@ services:
       - ./:/app
 
   web:
-    image: node:22-alpine
+    image: node:25-alpine
     container_name: inmidst-web
     working_dir: /app
     command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @in-midst-my-life/web exec next dev --hostname 0.0.0.0 --port 3000"
@@ -184,7 +184,7 @@ services:
       - ./:/app
 
   migrations:
-    image: node:22-alpine
+    image: node:25-alpine
     container_name: inmidst-migrations
     working_dir: /app
     command: >
