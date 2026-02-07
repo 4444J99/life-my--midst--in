@@ -20,3 +20,14 @@ storybook-static/
 .pnpm-store/
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+*.pem
+*.key
+
+# OS
+Thumbs.db

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
 echo "Starting Postgres and Redis via docker-compose..."
-docker-compose up -d
+docker-compose -f "$REPO_ROOT/infra/docker-compose.yml" up -d
 
 db_host="${POSTGRES_HOST:-localhost}"
 db_port="${POSTGRES_PORT:-5432}"

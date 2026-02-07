@@ -28,17 +28,17 @@ git clone https://github.com/4444J99/life-my--midst--in.git
 cd life-my--midst--in
 
 # 2. Copy environment template
-cp .env.example .env
+cp infra/.env.example .env
 
 # 3. Edit environment variables
 nano .env
 # Set: DATABASE_URL, REDIS_URL, JWT_SECRET, etc.
 
 # 4. Start all services
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose -f infra/docker-compose.prod.yml up -d
 
 # 5. Run migrations
-docker-compose exec api pnpm migrate
+docker-compose -f infra/docker-compose.prod.yml exec api pnpm migrate
 
 # 6. Verify deployment
 curl http://localhost:3001/health

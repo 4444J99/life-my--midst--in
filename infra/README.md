@@ -6,11 +6,15 @@ Infrastructure-as-code and deployment configuration:
 - `k6/`        – Load testing scenarios (see [k6/README.md](k6/README.md))
 - `grafana/`   – Dashboards and provisioning configuration
 - `prometheus/` – Prometheus scrape configuration
-- `docker-compose.yml` – Local stack for Postgres, Redis, API, Orchestrator, Web
+- `docker-compose.yml` – Local dev stack (Postgres, Redis, API, Orchestrator, Web)
+- `docker-compose.prod.yml` – Production Compose configuration
+- `Dockerfile` – Root web application image (multi-stage Node 22 Alpine)
+- `railway.json` / `render.yaml` / `vercel.json` – PaaS deployment configs
+- `.env.example` / `.env.integration.example` / `.env.production.example` – Environment templates
 
 ## Migrations & Seeds
-- Local: `docker-compose run --rm migrations` (profile `init`) runs API + Orchestrator migrations/seeds against compose Postgres.
-- CI: `.github/workflows/ci.yml` runs migrations before tests; integration jobs bring their own Postgres/Redis.
+- Local: `docker-compose -f infra/docker-compose.yml run --rm migrations` (profile `init`) runs API + Orchestrator migrations/seeds against compose Postgres.
+- CI: `.github/workflows/test.yml` runs migrations before tests; integration jobs bring their own Postgres/Redis.
 - Helm: `values.yaml` includes `migrations.env`; `templates/migrations-job.yaml` installs as a `pre-install,pre-upgrade` hook and runs `pnpm --filter @in-midst-my-life/api migrate && pnpm --filter @in-midst-my-life/orchestrator migrate`.
 
 ## Environments

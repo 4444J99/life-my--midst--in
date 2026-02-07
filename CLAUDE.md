@@ -17,7 +17,7 @@ The project has progressed from design documents to a working monorepo implement
 ```
 life-my--midst--in/
 ├── apps/
-│   ├── web/              Next.js 15 UI dashboard (3000)
+│   ├── web/              Next.js 16 UI dashboard (3000)
 │   ├── api/              Fastify REST API (3001) - Profile CRUD, narrative endpoints, taxonomy
 │   └── orchestrator/      Node.js worker service (3002) - Task queue, GitHub webhooks, agent execution
 ├── packages/
@@ -25,7 +25,7 @@ life-my--midst--in/
 │   ├── core/             Business logic (mask matching, crypto, job handling, VCs)
 │   ├── content-model/    Narrative generation & JSON-LD transforms
 │   └── design-system/    Shared UI primitives
-├── infra/                Docker Compose setup, Helm charts
+├── infra/                Docker Compose, Helm charts, Dockerfiles, PaaS configs
 ├── scripts/              Dev utilities (dev-up.sh, dev-shell.sh, migrations)
 └── docs/                 Architecture docs and security guidelines
 ```
@@ -183,7 +183,7 @@ Migrations are idempotent and safe to re-run across environments.
 **Linting**: ESLint + Prettier (monorepo root config)
 - `@typescript-eslint` rules including strict async/await enforcement
 - Prettier for formatting consistency
-- Config: `.eslintrc.cjs`, `.prettierrc`
+- Config: `eslint.config.mjs` (ESLint 9 flat config), `.prettierrc`
 
 **Testing**: Vitest with coverage thresholds (`vitest.config.ts`)
 - 75% statements, branches, functions, lines (global)
@@ -239,15 +239,15 @@ Worker service at `:3002`:
 
 ## Docker Compose Stack
 
-Full local development with `docker-compose.yml`:
+Full local development with `infra/docker-compose.yml`:
 ```bash
 # Bring up all services (with migrations/seeds)
-docker-compose --profile init up
+docker-compose -f infra/docker-compose.yml --profile init up
 
 # Or step by step
-docker-compose up postgres redis
-docker-compose up api orchestrator
-docker-compose up web
+docker-compose -f infra/docker-compose.yml up postgres redis
+docker-compose -f infra/docker-compose.yml up api orchestrator
+docker-compose -f infra/docker-compose.yml up web
 ```
 
 Services:
@@ -283,22 +283,15 @@ INTEGRATION_REDIS_URL=redis://localhost/1 \
 - **Repository pattern**: Abstract data access behind interfaces
 - **Dependency injection**: Make dependencies explicit
 
-## Growth Objectives (Roadmap)
+## Project Status
 
-From `seed.yaml` prioritized epics:
-1. **schema-v1** - Lock canonical schema (3 EU)
-2. **editor-v1** - Mask/timeline editor UI (5 EU) 
-3. **render-v1** - CV/résumé narrative generator (4 EU)
-4. **verification-v1** - DID/VC integration (6 EU)
-5. **agents-v1** - Autonomous agent orchestration (8 EU)
-
-Current focus: Core schema and API endpoints stabilization.
+The project is **feature-complete** (65+ commits on master, zero open issues/PRs). All roadmap phases (0–7) plus API hardening, polish sprints, and dependency upgrades are done. See `CHANGELOG.md` for full history.
 
 ## Useful References
 
 - **[seed.yaml](seed.yaml)** - Repository "genome" with full constraints/standards
-- **[MANIFEST.md](MANIFEST.md)** - Complete file catalog
-- **[CONSOLIDATED-SPECIFICATIONS.md](CONSOLIDATED-SPECIFICATIONS.md)** - Technical specs
+- **[docs/MANIFEST.md](docs/MANIFEST.md)** - Complete file catalog
+- **[docs/archived/CONSOLIDATED-SPECIFICATIONS.md](docs/archived/CONSOLIDATED-SPECIFICATIONS.md)** - Technical specs
 - **[docs/SECURITY.md](docs/SECURITY.md)** - Security checklist for secrets/env isolation
 - **[README.md](README.md)** - User-facing project overview
 
