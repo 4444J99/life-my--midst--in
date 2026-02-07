@@ -2,8 +2,8 @@
 ## in–midst–my-life: Interactive CV/Résumé System
 
 **Version**: 2.0
-**Last Updated**: 2026-01-18
-**Implementation Status**: 90% Core Complete
+**Last Updated**: 2026-02-06
+**Implementation Status**: Feature Complete
 
 ---
 
@@ -19,29 +19,31 @@ This repository contains the **implemented** interactive CV/résumé system "in�
 
 ## Implementation Status
 
-### What's Built (90%)
+> All originally specified features have been implemented. See `docs/FEATURE-AUDIT.md` for the complete spec→implementation mapping.
+
+### Core Platform
 
 | Component | Status | Details |
 |-----------|--------|---------|
-| **Monorepo Structure** | ✅ Complete | 3 apps, 4 packages, proper workspace config |
-| **Schema Package** | ✅ Complete | 21+ Zod schemas for all entities |
-| **API Service** | ✅ Complete | 50+ endpoints, health/metrics/OpenAPI |
-| **Orchestrator Service** | ✅ Complete | Task queue, webhooks, 9 agent roles |
-| **Web Frontend** | ✅ Complete | 40+ components, dashboard, mask editor prototype |
-| **Database Layer** | ✅ Complete | Postgres + Redis, migrations, seeds |
-| **Test Infrastructure** | ✅ Complete | 69 test files, 75% coverage threshold |
-| **Content Model** | ✅ Complete | Narrative generation, mask taxonomy |
-| **Core Business Logic** | ✅ Complete | Mask matching, verification utilities |
+| **Monorepo Structure** | ✅ Complete | 3 apps, 4 packages, pnpm workspaces + Turborepo |
+| **Schema Package** | ✅ Complete | 24 Zod schemas for all entities |
+| **API Service** | ✅ Complete | 50+ endpoints, GraphQL subscriptions, OpenAPI |
+| **Orchestrator Service** | ✅ Complete | 10 agents, DLQ, scheduler, GitHub webhooks |
+| **Web Frontend** | ✅ Complete | 55+ components, dashboard, admin, blog, pricing |
+| **Database Layer** | ✅ Complete | Postgres + pgvector + Redis, 15+ migrations |
+| **Test Infrastructure** | ✅ Complete | Vitest + Playwright, 75% coverage threshold |
+| **Content Model** | ✅ Complete | Narrative generation, 16 masks, 8 epochs |
+| **Core Business Logic** | ✅ Complete | Mask matching, 4 DID resolvers, VC layer |
 
-### What's Remaining (10%)
+### Extended Features
 
-| Component | Status | Gap |
-|-----------|--------|-----|
-| **Hunter Protocol** | 🟡 60% | Search provider partial, agent tools partial |
-| **Theatrical UI Polish** | 🟡 70% | Components built, animations incomplete |
-| **Monetization** | ❌ 0% | Stripe integration, billing, feature gates |
-| **Production Deployment** | ❌ 0% | Vercel, Neon, Upstash, CI/CD |
-| **Marketing** | ❌ 0% | Landing page, docs site, demo |
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Hunter Protocol** | ✅ Complete | Search/analyze/tailor/apply routes, agent tools |
+| **Theatrical UI Polish** | ✅ Complete | 55+ components, Framer Motion v11 animations |
+| **Monetization** | ✅ Complete | Stripe checkout/webhooks/portal, 3 tiers, feature gates |
+| **Infrastructure** | ✅ Complete | Helm charts, Docker, 6 CI/CD workflows, secrets management |
+| **Marketing** | ✅ Complete | Landing page, about, pricing, 5 blog posts, README |
 
 ---
 
@@ -163,26 +165,23 @@ FOUND-001 (Blockchain analogy)
 
 ---
 
-## Current Phase: Commercialization
+## Current Phase: Maintenance & Iteration
 
-The core implementation is complete. Current focus areas:
+All roadmap phases (0–7) and post-roadmap polish sprints are complete. The project is feature-complete and in maintenance mode.
 
-### Phase 0 (Now): Polish & Complete
-**Streams:**
-- **0A**: Hunter Protocol completion (search, gap analysis, tailoring)
-- **0B**: Theatrical UI polish (animations, mask transitions)
+### Completed Phases
+- **Phase 0**: Critical blockers resolved (6 commits)
+- **Phase 1**: Quality infrastructure (ESLint strict, Husky, coverage)
+- **Phase 2**: Data & functional completeness (schemas, migrations, seeds)
+- **Phase 3**: Testing infrastructure (Playwright, 33 integration tests)
+- **Phase 4**: Documentation & DX (CHANGELOG, CONTRIBUTING, ADRs, Storybook)
+- **Phase 5**: Deployment & operations (Helm, Prometheus, release-please, Dependabot)
+- **Phase 6**: Enhancements & polish (design system, PDF templates, DLQ)
+- **Phase 7**: Backlog (DID resolvers, PubSub, WebSocket subscriptions)
+- **API Hardening**: Auth hooks, ownership/admin middleware, checksums
+- **Polish Sprint**: Bundle analyzer, web vitals, e2e tests, blog, about page
 
-### Phase 1 (Next): Monetization
-- Stripe integration
-- Subscription tiers (Artisan, Dramatist)
-- Feature gates
-
-### Phase 2: Deployment
-- Vercel deployment (web)
-- Database hosting (Neon/Supabase)
-- CI/CD pipelines
-
-See `docs/PHASE-ROADMAP.md` for complete 140 EU roadmap.
+See `docs/PHASE-ROADMAP.md` for the original 140 EU roadmap.
 
 ---
 
@@ -233,14 +232,14 @@ pnpm --filter api seed
 
 | System | Status | Purpose |
 |--------|--------|---------|
-| PostgreSQL | ✅ Implemented | Primary data store |
+| PostgreSQL | ✅ Implemented | Primary data store (+ pgvector for semantic search) |
 | Redis | ✅ Implemented | Cache & task queue |
-| W3C VCs | 🟡 Partial | Credential verification |
-| W3C DIDs | ❌ Planned | Decentralized identity |
-| Serper API | 🟡 Partial | Job search (Hunter Protocol) |
-| Stripe | ❌ Planned | Payments |
-| Vercel | ❌ Planned | Web hosting |
-| GitHub Actions | ❌ Planned | CI/CD |
+| W3C VCs | ✅ Implemented | Credential issuance & verification |
+| W3C DIDs | ✅ Implemented | did:web, did:key, did:jwk, did:pkh resolvers |
+| Serper API | ✅ Implemented | Job search (Hunter Protocol) |
+| Stripe | ✅ Implemented | Checkout, subscriptions, webhooks, customer portal |
+| GitHub Actions | ✅ Implemented | 6 CI/CD workflows (test, security, CodeQL, deploy, size, release) |
+| Helm / K8s | ✅ Implemented | Kubernetes deployment charts with secrets management |
 
 ---
 
@@ -275,4 +274,4 @@ See **[DEFINITIONS.md](DEFINITIONS.md)** for complete glossary.
 
 **Document Authority**: This manifest provides the high-level view of project status and organization. For detailed specifications, consult the referenced documents.
 
-**Last Reconciliation**: This document has been updated to reflect the actual implementation state as of 2026-01-18. Previous version referenced "Phase 0: Foundation (Now)" which is no longer accurate — core implementation is 90% complete.
+**Last Reconciliation**: 2026-02-06. All originally specified features are implemented. See `docs/FEATURE-AUDIT.md` for the comprehensive spec→implementation audit trail.

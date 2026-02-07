@@ -3,7 +3,7 @@
 
 **Version**: 1.1
 **Compiled From**: 33 ChatGPT conversations
-**Last Updated**: 2026-01-19
+**Last Updated**: 2026-02-06
 
 ---
 
@@ -21,18 +21,25 @@
 
 ## Current Implementation Snapshot (Repo State)
 
-Implemented:
-- Apps: `apps/web` (Next.js 15 dashboard + mask editor prototype), `apps/api` (Fastify REST), `apps/orchestrator` (Fastify + worker loop).
-- Packages: `packages/schema` (zod Identity/Profile/Mask/Stage/Epoch/CV entities/AgentResponse), `packages/content-model` (taxonomy + narrative), `packages/core` (mask matching).
-- Data stores: Postgres for profiles/masks/epochs/stages/CV entities/credentials/graph edges, Redis for orchestrator queue; SQL migrations/seeds in `apps/*/migrations` and `apps/*/seeds`.
-- API surface: `/profiles`, `/profiles/{id}/narrative`, `/profiles/{id}/masks/select`, CV entity CRUD, credentials/attestations, content graph/revisions, `/taxonomy/*`, health/ready/metrics, OpenAPI stubs for API and orchestrator.
-- Orchestrator: agent registry manifest + loader wired into health output.
+> **Last Verified**: 2026-02-06 — All originally specified features are now implemented.
+> See `docs/FEATURE-AUDIT.md` for the complete spec→implementation mapping.
 
-Planned / not implemented:
-- Graph view, gallery view, PDF/JSON-LD export, admin editing UI.
-- Custom sections, timeline events, and VC verification logs.
-- VC/DID layer, blockchain verification, search/vector stores.
-- CI/CD workflows (documented in ARCH-003 but not checked in).
+### Applications
+- `apps/web` — Next.js 15 dashboard with 55+ components, mask editor, graph view, gallery view, pricing page, admin settings, blog, about page. Framer Motion v11 animations.
+- `apps/api` — Fastify REST API with 50+ endpoints, GraphQL subscriptions via WebSocket, PDF/JSON-LD/VC export, pgvector semantic search, Stripe billing, rate limiting, ownership + admin middleware.
+- `apps/orchestrator` — Node.js worker service with 10 agents, DLQ, task scheduler, GitHub webhook fulfillment.
+
+### Packages
+- `packages/schema` — 24 Zod schemas: Identity, Profile, Mask, Stage, Epoch, CV entities (including CustomSection, TimelineEvent), Narrative, Verification, AgentResponse.
+- `packages/content-model` — Taxonomy (16 masks, 8 epochs), narrative generation, mask selection algorithms, JSON-LD transforms, template bank.
+- `packages/core` — Mask matching, DID resolvers (did:web, did:key, did:jwk, did:pkh), VC creation/validation, crypto utilities, billing/licensing logic.
+- `packages/design-system` — Shared UI primitives with React 19 peer dependency.
+
+### Data & Infrastructure
+- PostgreSQL with pgvector extension, 15+ idempotent migrations (credentials graph, rate limits, semantic search, verification logs).
+- Redis for caching and task queue with in-memory fallback.
+- Docker Compose stack, Helm charts for Kubernetes, 6 GitHub Actions CI/CD workflows (test, security, CodeQL, deploy, size check, release).
+- Husky + lint-staged pre-commit hooks, Dependabot, release-please.
 
 ---
 

@@ -568,7 +568,7 @@ EXPOSE 3001
 ## Incident Response
 
 ### Contact
-Security issues: [TODO: Add security contact email]
+Security issues: security@in-midst-my-life.dev
 
 ### Severity Levels
 | Level | Description | Response Time |
