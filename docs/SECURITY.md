@@ -92,10 +92,11 @@ For Web3 users:
 
 ### WebSocket Security
 
-GraphQL WebSocket subscriptions (`GET /graphql/ws`) currently operate without connection-level authentication. Planned mitigations:
-- Connection init payload with JWT validation
+GraphQL WebSocket subscriptions (`GET /graphql/ws`) require JWT authentication at connection time:
+- `onConnect` validates JWT from `connectionParams.authorization` header
+- Unauthenticated connections are rejected (returns `false`)
+- Auth is skipped only when `jwtAuth` is not configured (dev mode without JWT secret)
 - Depth limiting (max 10) applies to subscription queries
-- CORS enforcement on WebSocket upgrade requests
 - Introspection disabled in production
 
 ### Implementation Checklist
@@ -103,10 +104,10 @@ GraphQL WebSocket subscriptions (`GET /graphql/ws`) currently operate without co
 - [x] Ownership middleware for resource-level access control
 - [x] Admin middleware for privileged operations
 - [x] Global auth hook with route categorization
+- [x] WebSocket connection-level auth
 - [ ] OAuth2 flow with PKCE
 - [ ] CSRF protection for cookie-based sessions
 - [ ] Account lockout after failed attempts
-- [ ] WebSocket connection-level auth
 
 ---
 

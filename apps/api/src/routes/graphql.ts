@@ -20,6 +20,7 @@ import type { MaskRepo, EpochRepo, StageRepo } from '../repositories/masks';
 import type { CvRepos } from '../repositories/cv';
 import type { NarrativeRepo } from '../repositories/narratives';
 import type { PubSubEngine } from '../services/pubsub';
+import { JWTAuth } from '../services/auth';
 
 /**
  * GraphQL route handler
@@ -35,6 +36,8 @@ interface GraphQLPluginDeps {
   cvRepos?: CvRepos;
   narrativeRepo?: NarrativeRepo;
   pubsub?: PubSubEngine;
+  jwtAuth?: JWTAuth;
+  disableAuth?: boolean;
 }
 
 /** Maximum allowed query depth to prevent abuse */
@@ -106,6 +109,19 @@ export async function registerGraphQLRoute(
   const { makeServer } = require('graphql-ws') as typeof import('graphql-ws');
   const wsServer = makeServer({
     schema,
+    // Require valid JWT on WebSocket connection init
+    onConnect: async (ctx) => {
+      if (!deps.jwtAuth || deps.disableAuth) return true; // Auth not configured or disabled
+      const params = ctx.connectionParams as Record<string, unknown> | undefined;
+      const authHeader =
+        typeof params?.['authorization'] === 'string' ? params['authorization'] : undefined;
+      if (!authHeader) return false;
+      const token = JWTAuth.extractToken(authHeader);
+      if (!token) return false;
+      const claims = await deps.jwtAuth.verifyToken(token);
+      if (!claims) return false;
+      return true;
+    },
     context: () => buildContext(deps),
     onSubscribe: (_ctx, _id, payload) => {
       const document = graphqlParse(payload.query ?? '');

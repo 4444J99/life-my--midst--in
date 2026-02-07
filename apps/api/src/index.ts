@@ -572,6 +572,8 @@ export function buildServer(options: ApiServerOptions = {}) {
       cvRepos,
       narrativeRepo,
       pubsub,
+      jwtAuth,
+      disableAuth: options.disableAuth,
     });
 
     // Token revocation endpoint (ADR-010)

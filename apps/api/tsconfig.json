@@ -7,6 +7,6 @@
     "moduleResolution": "node",
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "../../packages/core/src/integrations/smb2.d.ts"],
   "exclude": ["dist", "node_modules"]
 }

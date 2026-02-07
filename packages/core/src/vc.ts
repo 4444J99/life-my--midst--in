@@ -47,7 +47,7 @@ export class VC {
     // Dynamic imports for ESM-only modules (tsx compatibility)
     const [{ CID }, { sha256 }] = await Promise.all([
       import('multiformats/cid'),
-      import('multiformats/hashes/sha2')
+      import('multiformats/hashes/sha2'),
     ]);
     const bytes = Buffer.from(JSON.stringify(data), 'utf-8');
     const hash = await sha256.digest(bytes);
@@ -61,7 +61,7 @@ export class VC {
   static async ensureIssuerRegistered(keyPair: KeyPair): Promise<void> {
     const registry = getRegistry();
     const resolution = await registry.resolve(keyPair.did);
-    
+
     if (resolution.didResolutionMetadata.error === 'notFound') {
       const didDocument = await DIDDocumentBuilder.fromKeyPair(keyPair);
       await registry.register(keyPair.did, didDocument);
@@ -80,18 +80,20 @@ export class VC {
       expirationDate?: string;
       credentialId?: string;
       additionalContext?: string[];
-    }
+    },
   ): Promise<W3CVerifiableCredential> {
     await this.ensureIssuerRegistered(keyPair);
 
     const issuanceDate = new Date().toISOString();
-    const credentialId = options?.credentialId || `urn:uuid:${await this.calculateCID({ ...subjectData, issuanceDate })}`;
-    
+    const credentialId =
+      options?.credentialId ||
+      `urn:uuid:${await this.calculateCID({ ...subjectData, issuanceDate })}`;
+
     const contextArray = [
       'https://www.w3.org/2018/credentials/v1',
-      ...(options?.additionalContext || [])
+      ...(options?.additionalContext || []),
     ];
-    
+
     const payload: VerifiableCredentialPayload = {
       '@context': contextArray,
       context: contextArray, // Backward compatibility
@@ -99,13 +101,11 @@ export class VC {
       issuer: keyPair.did,
       issuanceDate,
       credentialSubject: subjectData,
-      expirationDate: options?.expirationDate
+      expirationDate: options?.expirationDate,
     };
 
-    // @ts-ignore
     const jws = await new jose.CompactSign(new TextEncoder().encode(JSON.stringify(payload)))
       .setProtectedHeader({ alg: 'EdDSA' })
-      // @ts-ignore
       .sign(keyPair.privateKey);
 
     return {
@@ -116,8 +116,8 @@ export class VC {
         created: issuanceDate,
         verificationMethod: `${keyPair.did}#keys-1`,
         proofPurpose: 'assertionMethod',
-        jws
-      }
+        jws,
+      },
     };
   }
 
@@ -140,7 +140,7 @@ export class VC {
 
       // Find the verification method
       const verificationMethod = resolution.didDocument.verificationMethod?.find(
-        vm => vm.id === credential.proof.verificationMethod
+        (vm) => vm.id === credential.proof.verificationMethod,
       );
 
       if (!verificationMethod || !verificationMethod.publicKeyJwk) {
@@ -149,14 +149,14 @@ export class VC {
       }
 
       // Reconstruct payload (everything except proof and id)
-      const { proof, id, ...payloadFields } = credential;
-      const payload = payloadFields;
-      
+      const { proof, id: _id, ...payload } = credential;
+      void _id; // destructured to exclude from payload
+
       const publicKey = await jose.importJWK(verificationMethod.publicKeyJwk, 'EdDSA');
 
       // Verify the JWS
       const { payload: verified } = await jose.compactVerify(proof.jws, publicKey);
-      const decoded = JSON.parse(new TextDecoder().decode(verified));
+      const decoded: unknown = JSON.parse(new TextDecoder().decode(verified));
 
       // Compare payloads (decoded won't have id field)
       return JSON.stringify(decoded) === JSON.stringify(payload);
@@ -175,13 +175,13 @@ export class VC {
     options?: {
       challenge?: string;
       domain?: string;
-    }
+    },
   ): Promise<VerifiablePresentation> {
     const presentation: VerifiablePresentation = {
       '@context': ['https://www.w3.org/2018/credentials/v1'],
       type: ['VerifiablePresentation'],
       verifiableCredential: credentials,
-      holder: holderKeyPair?.did
+      holder: holderKeyPair?.did,
     };
 
     if (holderKeyPair && options) {
@@ -190,13 +190,11 @@ export class VC {
       const proofPayload = {
         ...presentation,
         challenge: options.challenge,
-        domain: options.domain
+        domain: options.domain,
       };
 
-      // @ts-ignore
       const jws = await new jose.CompactSign(new TextEncoder().encode(JSON.stringify(proofPayload)))
         .setProtectedHeader({ alg: 'EdDSA' })
-        // @ts-ignore
         .sign(holderKeyPair.privateKey);
 
       presentation.proof = {
@@ -204,7 +202,7 @@ export class VC {
         created: new Date().toISOString(),
         verificationMethod: `${holderKeyPair.did}#keys-1`,
         proofPurpose: 'authentication',
-        jws
+        jws,
       };
     }
 
@@ -234,7 +232,7 @@ export class VC {
         }
 
         const verificationMethod = resolution.didDocument.verificationMethod?.find(
-          vm => vm.id === presentation.proof!.verificationMethod
+          (vm) => vm.id === presentation.proof!.verificationMethod,
         );
 
         if (!verificationMethod || !verificationMethod.publicKeyJwk) {
