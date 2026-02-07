@@ -15,40 +15,40 @@ The project's DNA originates from foundational documents compiled across 33 desi
 
 | ID | Title | File | Domain |
 |----|-------|------|--------|
-| FOUND-001 | Blockchain-CV Analogy | `docs/archived/FOUND-001-blockchain-cv-analogy.md` | Core thesis |
-| FOUND-002 | Blockchain CV vs Resume | `docs/archived/FOUND-002-blockchain-cv-vs-resume.md` | Verification |
-| FOUND-003 | Latin Dramaturgy Framework | `docs/archived/FOUND-003-meta-latin-etymology.md` | Theatrical frame |
-| FOUND-004 | Identity Narrative Questions | `docs/archived/FOUND-004-identity-narrative-questions.md` | Identity invariants |
-| FOUND-005 | Prospecting Research Prompts | `docs/archived/FOUND-005-prospecting-research-prompts.md` | Research framework |
-| SPEC-001 | Data Schema Specification | `docs/archived/SPEC-001-data-schema.md` | Data model |
-| SPEC-002 | System Design | `docs/archived/SPEC-002-system-design.md` | Core engine |
-| SPEC-003 | Mask Taxonomy | `docs/archived/SPEC-003-mask-taxonomy.md` | Taxonomy |
-| SPEC-004 | JSON Schemas | `docs/archived/SPEC-004-json-schemas.md` | Schema contracts |
-| ARCH-001 | System Architecture | `docs/archived/ARCH-001-system-architecture.md` | System design |
-| ARCH-002 | Repository Layout | `docs/archived/ARCH-002-repository-layout.md` | Structure |
-| ARCH-003 | CI/CD Pipeline | `docs/archived/ARCH-003-cicd-pipeline.md` | DevOps |
-| ARCH-004 | Monorepo Alternatives | `docs/archived/ARCH-004-monorepo-alternatives.md` | Tech choices |
-| ARCH-005 | Monorepo Generator | `docs/archived/ARCH-005-monorepo-generator.md` | Scaffold |
-| ORCH-001 | Agent Meta-Prompt | `docs/archived/ORCH-001-agent-meta-prompt.md` | Agent protocol |
-| ORCH-002 | Execution Strategy | `docs/archived/ORCH-002-execution-strategy.md` | Orchestration |
-| ORCH-003 | Resource Allocation | `docs/archived/ORCH-003-resource-allocation.md` | Planning |
-| ORCH-004 | Template System | `docs/archived/ORCH-004-template-system.md` | Templates |
-| ORCH-005 | Master Index | `docs/archived/ORCH-005-master-index.md` | Index |
-| META-001 | Project Bible | `docs/archived/META-001-project-bible.md` | Vision |
-| META-002 | Thread Enumeration | `docs/archived/META-002-thread-enumeration.md` | Cataloging |
-| META-003 | Dependency Graph | `docs/archived/META-003-dependency-graph.md` | Dependencies |
-| META-004 | Vision Deck | `docs/archived/META-004-vision-deck.md` | Positioning |
-| PLAN-001 | Product Roadmap | `docs/archived/PLAN-001-product-roadmap.md` | 7-phase roadmap |
-| PLAN-002 | Effort Timeline | `docs/archived/PLAN-002-effort-timeline.md` | EU allocation |
-| PLAN-003 | Action Items | `docs/archived/PLAN-003-action-items.md` | Task breakdown |
-| PLAN-004 | Task Breakdown | `docs/archived/PLAN-004-task-breakdown.md` | Granular tasks |
-| PLAN-005 | Baseline Inventory | `docs/archived/PLAN-005-baseline-inventory.md` | Starting state |
-| PLAN-006 | Data Model | `docs/archived/PLAN-006-data-model.md` | CVM design |
-| WORK-001 | Content Pipeline | `docs/archived/WORK-001-content-pipeline.md` | Content flow |
-| WORK-002 | Automation Spec | `docs/archived/WORK-002-automation-spec.md` | Automation |
-| WORK-003 | BPMN Diagrams | `docs/archived/WORK-003-bpmn-diagrams.md` | Process models |
-| WORK-004 | Orchestration Graphs | `docs/archived/WORK-004-orchestration-graphs.md` | Graph runtime |
-| WORK-005 | Autonomous Code Growth | `docs/archived/WORK-005-autonomous-code-growth.md` | Self-improvement |
+| FOUND-001 | Blockchain-CV Analogy | `docs/archived/foundations/FOUND-001-blockchain-cv-analogy.md` | Core thesis |
+| FOUND-002 | Blockchain CV vs Resume | `docs/archived/foundations/FOUND-002-blockchain-cv-vs-resume.md` | Verification |
+| FOUND-003 | Latin Dramaturgy Framework | `docs/archived/foundations/FOUND-003-meta-latin-etymology.md` | Theatrical frame |
+| FOUND-004 | Identity Narrative Questions | `docs/archived/foundations/FOUND-004-identity-narrative-questions.md` | Identity invariants |
+| FOUND-005 | Prospecting Research Prompts | `docs/archived/foundations/FOUND-005-prospecting-research-prompts.md` | Research framework |
+| SPEC-001 | Data Schema Specification | `docs/archived/specifications/SPEC-001-data-schema.md` | Data model |
+| SPEC-002 | System Design | `docs/archived/specifications/SPEC-002-system-design.md` | Core engine |
+| SPEC-003 | Mask Taxonomy | `docs/archived/specifications/SPEC-003-mask-taxonomy.md` | Taxonomy |
+| SPEC-004 | JSON Schemas | `docs/archived/specifications/SPEC-004-json-schemas.md` | Schema contracts |
+| ARCH-001 | System Architecture | `docs/archived/architecture/ARCH-001-system-architecture.md` | System design |
+| ARCH-002 | Repository Layout | `docs/archived/architecture/ARCH-002-repository-layout.md` | Structure |
+| ARCH-003 | CI/CD Pipeline | `docs/archived/architecture/ARCH-003-cicd-pipeline.md` | DevOps |
+| ARCH-004 | Monorepo Alternatives | `docs/archived/architecture/ARCH-004-monorepo-alternatives.md` | Tech choices |
+| ARCH-005 | Monorepo Generator | `docs/archived/architecture/ARCH-005-monorepo-generator.md` | Scaffold |
+| ORCH-001 | Agent Meta-Prompt | `docs/archived/orchestration/ORCH-001-agent-meta-prompt.md` | Agent protocol |
+| ORCH-002 | Execution Strategy | `docs/archived/orchestration/ORCH-002-execution-strategy.md` | Orchestration |
+| ORCH-003 | Resource Allocation | `docs/archived/orchestration/ORCH-003-resource-allocation.md` | Planning |
+| ORCH-004 | Template System | `docs/archived/orchestration/ORCH-004-template-system.md` | Templates |
+| ORCH-005 | Master Index | `docs/archived/orchestration/ORCH-005-master-index.md` | Index |
+| META-001 | Project Bible | `docs/archived/meta/META-001-project-bible.md` | Vision |
+| META-002 | Thread Enumeration | `docs/archived/meta/META-002-thread-enumeration.md` | Cataloging |
+| META-003 | Dependency Graph | `docs/archived/meta/META-003-dependency-graph.md` | Dependencies |
+| META-004 | Vision Deck | `docs/archived/meta/META-004-vision-deck.md` | Positioning |
+| PLAN-001 | Product Roadmap | `docs/archived/planning/PLAN-001-product-roadmap.md` | 7-phase roadmap |
+| PLAN-002 | Effort Timeline | `docs/archived/planning/PLAN-002-effort-timeline.md` | EU allocation |
+| PLAN-003 | Action Items | `docs/archived/planning/PLAN-003-action-items.md` | Task breakdown |
+| PLAN-004 | Task Breakdown | `docs/archived/planning/PLAN-004-task-breakdown.md` | Granular tasks |
+| PLAN-005 | Baseline Inventory | `docs/archived/planning/PLAN-005-baseline-inventory.md` | Starting state |
+| PLAN-006 | Data Model | `docs/archived/planning/PLAN-006-data-model.md` | CVM design |
+| WORK-001 | Content Pipeline | `docs/archived/workflows/WORK-001-content-pipeline.md` | Content flow |
+| WORK-002 | Automation Spec | `docs/archived/workflows/WORK-002-automation-spec.md` | Automation |
+| WORK-003 | BPMN Diagrams | `docs/archived/workflows/WORK-003-bpmn-diagrams.md` | Process models |
+| WORK-004 | Orchestration Graphs | `docs/archived/workflows/WORK-004-orchestration-graphs.md` | Graph runtime |
+| WORK-005 | Autonomous Code Growth | `docs/archived/workflows/WORK-005-autonomous-code-growth.md` | Self-improvement |
 
 ### Tier 2: Consolidated & Root-Level Documents
 
@@ -61,7 +61,7 @@ The project's DNA originates from foundational documents compiled across 33 desi
 | DEFS | Unified Glossary | `DEFINITIONS.md` | Terminology |
 | DECISIONS | Architecture Decision Log | `DECISION-LOG.md` | ADR index |
 | EVOLUTION | Post-Phase Evolution Plan | `EVOLUTION-PLAN.md` | Future vision |
-| PLAN-007 | Hunter Protocol Design | `docs/PLAN-007-hunter-protocol.md` | Job search |
+| PLAN-007 | Hunter Protocol Design | `docs/phases/PLAN-007-hunter-protocol.md` | Job search |
 | PLAN-008 | Inverted Interview Vision | `docs/INVERTED-INTERVIEW.md` | Interview design |
 
 ### Tier 3: Architecture Decision Records (`docs/adr/`)
@@ -720,40 +720,40 @@ Master table of all 129 documents in the project. Tier column: **S** = Seed (cov
 
 | # | File | Lines | Tier | Staleness | Drift |
 |---|------|-------|------|-----------|-------|
-| 1 | `docs/archived/FOUND-001-blockchain-cv-analogy.md` | — | S | ✅ | ✅ |
-| 2 | `docs/archived/FOUND-002-blockchain-cv-vs-resume.md` | — | S | ✅ | ✅ |
-| 3 | `docs/archived/FOUND-003-meta-latin-etymology.md` | — | S | ✅ | ✅ |
-| 4 | `docs/archived/FOUND-004-identity-narrative-questions.md` | — | S | ✅ | ✅ |
-| 5 | `docs/archived/FOUND-005-prospecting-research-prompts.md` | — | S | ✅ | ✅ |
-| 6 | `docs/archived/SPEC-001-data-schema.md` | — | S | ✅ | ✅ |
-| 7 | `docs/archived/SPEC-002-system-design.md` | — | S | ✅ | ✅ |
-| 8 | `docs/archived/SPEC-003-mask-taxonomy.md` | — | S | ✅ | ✅ |
-| 9 | `docs/archived/SPEC-004-json-schemas.md` | — | S | ✅ | ✅ |
-| 10 | `docs/archived/ARCH-001-system-architecture.md` | — | S | ✅ | ✅ |
-| 11 | `docs/archived/ARCH-002-repository-layout.md` | — | S | ✅ | ✅ |
-| 12 | `docs/archived/ARCH-003-cicd-pipeline.md` | — | S | ✅ | ✅ |
-| 13 | `docs/archived/ARCH-004-monorepo-alternatives.md` | — | S | ✅ | ✅ |
-| 14 | `docs/archived/ARCH-005-monorepo-generator.md` | — | S | ✅ | ✅ |
-| 15 | `docs/archived/ORCH-001-agent-meta-prompt.md` | — | S | ✅ | ✅ |
-| 16 | `docs/archived/ORCH-002-execution-strategy.md` | — | S | ✅ | ✅ |
-| 17 | `docs/archived/ORCH-003-resource-allocation.md` | — | S | ✅ | ✅ |
-| 18 | `docs/archived/ORCH-004-template-system.md` | — | S | ✅ | ✅ |
-| 19 | `docs/archived/ORCH-005-master-index.md` | — | S | ✅ | ✅ |
-| 20 | `docs/archived/META-001-project-bible.md` | — | S | ✅ | ✅ |
-| 21 | `docs/archived/META-002-thread-enumeration.md` | — | S | ✅ | ✅ |
-| 22 | `docs/archived/META-003-dependency-graph.md` | — | S | ✅ | ✅ |
-| 23 | `docs/archived/META-004-vision-deck.md` | — | S | ✅ | ✅ |
-| 24 | `docs/archived/PLAN-001-product-roadmap.md` | — | S | ✅ | ✅ |
-| 25 | `docs/archived/PLAN-002-effort-timeline.md` | — | S | ✅ | ✅ |
-| 26 | `docs/archived/PLAN-003-action-items.md` | — | S | ✅ | ✅ |
-| 27 | `docs/archived/PLAN-004-task-breakdown.md` | — | S | ✅ | ✅ |
-| 28 | `docs/archived/PLAN-005-baseline-inventory.md` | — | S | ✅ | ✅ |
-| 29 | `docs/archived/PLAN-006-data-model.md` | — | S | ✅ | ✅ |
-| 30 | `docs/archived/WORK-001-content-pipeline.md` | — | S | ✅ | ✅ |
-| 31 | `docs/archived/WORK-002-automation-spec.md` | — | S | ✅ | ✅ |
-| 32 | `docs/archived/WORK-003-bpmn-diagrams.md` | — | S | ✅ | ✅ |
-| 33 | `docs/archived/WORK-004-orchestration-graphs.md` | — | S | ✅ | ✅ |
-| 34 | `docs/archived/WORK-005-autonomous-code-growth.md` | — | S | ✅ | ✅ |
+| 1 | `docs/archived/foundations/FOUND-001-blockchain-cv-analogy.md` | — | S | ✅ | ✅ |
+| 2 | `docs/archived/foundations/FOUND-002-blockchain-cv-vs-resume.md` | — | S | ✅ | ✅ |
+| 3 | `docs/archived/foundations/FOUND-003-meta-latin-etymology.md` | — | S | ✅ | ✅ |
+| 4 | `docs/archived/foundations/FOUND-004-identity-narrative-questions.md` | — | S | ✅ | ✅ |
+| 5 | `docs/archived/foundations/FOUND-005-prospecting-research-prompts.md` | — | S | ✅ | ✅ |
+| 6 | `docs/archived/specifications/SPEC-001-data-schema.md` | — | S | ✅ | ✅ |
+| 7 | `docs/archived/specifications/SPEC-002-system-design.md` | — | S | ✅ | ✅ |
+| 8 | `docs/archived/specifications/SPEC-003-mask-taxonomy.md` | — | S | ✅ | ✅ |
+| 9 | `docs/archived/specifications/SPEC-004-json-schemas.md` | — | S | ✅ | ✅ |
+| 10 | `docs/archived/architecture/ARCH-001-system-architecture.md` | — | S | ✅ | ✅ |
+| 11 | `docs/archived/architecture/ARCH-002-repository-layout.md` | — | S | ✅ | ✅ |
+| 12 | `docs/archived/architecture/ARCH-003-cicd-pipeline.md` | — | S | ✅ | ✅ |
+| 13 | `docs/archived/architecture/ARCH-004-monorepo-alternatives.md` | — | S | ✅ | ✅ |
+| 14 | `docs/archived/architecture/ARCH-005-monorepo-generator.md` | — | S | ✅ | ✅ |
+| 15 | `docs/archived/orchestration/ORCH-001-agent-meta-prompt.md` | — | S | ✅ | ✅ |
+| 16 | `docs/archived/orchestration/ORCH-002-execution-strategy.md` | — | S | ✅ | ✅ |
+| 17 | `docs/archived/orchestration/ORCH-003-resource-allocation.md` | — | S | ✅ | ✅ |
+| 18 | `docs/archived/orchestration/ORCH-004-template-system.md` | — | S | ✅ | ✅ |
+| 19 | `docs/archived/orchestration/ORCH-005-master-index.md` | — | S | ✅ | ✅ |
+| 20 | `docs/archived/meta/META-001-project-bible.md` | — | S | ✅ | ✅ |
+| 21 | `docs/archived/meta/META-002-thread-enumeration.md` | — | S | ✅ | ✅ |
+| 22 | `docs/archived/meta/META-003-dependency-graph.md` | — | S | ✅ | ✅ |
+| 23 | `docs/archived/meta/META-004-vision-deck.md` | — | S | ✅ | ✅ |
+| 24 | `docs/archived/planning/PLAN-001-product-roadmap.md` | — | S | ✅ | ✅ |
+| 25 | `docs/archived/planning/PLAN-002-effort-timeline.md` | — | S | ✅ | ✅ |
+| 26 | `docs/archived/planning/PLAN-003-action-items.md` | — | S | ✅ | ✅ |
+| 27 | `docs/archived/planning/PLAN-004-task-breakdown.md` | — | S | ✅ | ✅ |
+| 28 | `docs/archived/planning/PLAN-005-baseline-inventory.md` | — | S | ✅ | ✅ |
+| 29 | `docs/archived/planning/PLAN-006-data-model.md` | — | S | ✅ | ✅ |
+| 30 | `docs/archived/workflows/WORK-001-content-pipeline.md` | — | S | ✅ | ✅ |
+| 31 | `docs/archived/workflows/WORK-002-automation-spec.md` | — | S | ✅ | ✅ |
+| 32 | `docs/archived/workflows/WORK-003-bpmn-diagrams.md` | — | S | ✅ | ✅ |
+| 33 | `docs/archived/workflows/WORK-004-orchestration-graphs.md` | — | S | ✅ | ✅ |
+| 34 | `docs/archived/workflows/WORK-005-autonomous-code-growth.md` | — | S | ✅ | ✅ |
 | 35 | `CONSOLIDATED-SPECIFICATIONS.md` | 787 | S | ✅ | ✅ |
 | 36 | `seed.yaml` | — | S | ✅ | ✅ |
 | 37 | `docs/COVENANT.md` | 772 | S | ✅ | ✅ |
@@ -761,53 +761,52 @@ Master table of all 129 documents in the project. Tier column: **S** = Seed (cov
 | 39 | `DEFINITIONS.md` | — | S | ✅ | ✅ |
 | 40 | `DECISION-LOG.md` | — | S | ✅ | ✅ |
 | 41 | `EVOLUTION-PLAN.md` | — | S | ✅ | ✅ |
-| 42 | `docs/PLAN-007-hunter-protocol.md` | 70 | S | ✅ | ✅ |
+| 42 | `docs/phases/PLAN-007-hunter-protocol.md` | 70 | S | ✅ | ✅ |
 | 43 | `docs/INVERTED-INTERVIEW.md` | 448 | S | ✅ | ⚠️ G9-G12 |
 | 44-55 | `docs/adr/001-012` | — | A | ✅ | ✅ |
-| 56 | `docs/PHASE-9-COMPLETION.md` | 537 | P | ❌ | ✅ Verified |
-| 57 | `docs/PHASE-ROADMAP.md` | 712 | P | ❌ | ✅ Verified |
+| 56 | `docs/phases/PHASE-9-COMPLETION.md` | 537 | P | ❌ | ✅ Verified |
+| 57 | `docs/phases/PHASE-ROADMAP.md` | 712 | P | ❌ | ✅ Verified |
 | 58 | `docs/FEATURE-AUDIT.md` | 259 | P | ❌ | ⚠️ Narrow scope |
-| 59 | `docs/PLAN-PHASE-1-MONETIZATION.md` | 142 | P | ❌ | ✅ Verified |
-| 60 | `docs/PHASE-9-PLAN.md` | 462 | P | ❌ | ⚠️ Marketplace missing |
-| 61 | `docs/PHASE-6-COMPLETION.md` | 755 | P | ❌ | ✅ Verified |
-| 62 | `docs/PHASE-7-SUMMARY.md` | 467 | P | ❌ | ⚠️ CI/CD overstated |
-| 63 | `docs/PHASE-8-SUMMARY.md` | 710 | P | ❌ | ✅ Verified |
-| 64 | `docs/PHASE-7-DEPLOYMENT.md` | 817 | P | ❌ | ✅ Verified |
-| 65 | `docs/PHASE-9-PROGRESS.md` | 584 | P | ❌ | ⚠️ Unverified |
-| 66 | `docs/PHASE-1-SECURITY-AUDIT.md` | 132 | P | ❌ | ✅ Verified |
-| 67 | `docs/PHASE-1-DEPLOYMENT.md` | 102 | P | ❌ | Low |
-| 68 | `docs/PHASE-1-MONITORING.md` | 67 | P | ❌ | Low |
-| 69 | `docs/PHASE-1-EDGE-CASES.md` | 250 | P | ❌ | Low |
-| 70 | `docs/PHASE-1-RUNBOOK.md` | 317 | P | ❌ | Low |
+| 59 | `docs/phases/PLAN-PHASE-1-MONETIZATION.md` | 142 | P | ❌ | ✅ Verified |
+| 60 | `docs/phases/PHASE-9-PLAN.md` | 462 | P | ❌ | ⚠️ Marketplace missing |
+| 61 | `docs/phases/PHASE-6-COMPLETION.md` | 755 | P | ❌ | ✅ Verified |
+| 62 | `docs/phases/PHASE-7-SUMMARY.md` | 467 | P | ❌ | ⚠️ CI/CD overstated |
+| 63 | `docs/phases/PHASE-8-SUMMARY.md` | 710 | P | ❌ | ✅ Verified |
+| 64 | `docs/phases/PHASE-7-DEPLOYMENT.md` | 817 | P | ❌ | ✅ Verified |
+| 65 | `docs/phases/PHASE-9-PROGRESS.md` | 584 | P | ❌ | ⚠️ Unverified |
+| 66 | `docs/phases/PHASE-1-SECURITY-AUDIT.md` | 132 | P | ❌ | ✅ Verified |
+| 67 | `docs/phases/PHASE-1-DEPLOYMENT.md` | 102 | P | ❌ | Low |
+| 68 | `docs/phases/PHASE-1-MONITORING.md` | 67 | P | ❌ | Low |
+| 69 | `docs/phases/PHASE-1-EDGE-CASES.md` | 250 | P | ❌ | Low |
+| 70 | `docs/phases/PHASE-1-RUNBOOK.md` | 317 | P | ❌ | Low |
 | 71 | `docs/ACCESSIBILITY.md` | 450 | F | ❌ | ❌ G18-C |
 | 72 | `docs/SECURITY.md` | 659 | F | ❌ | ⚠️ G19-C |
-| 73 | `docs/OPERATIONS.md` | 763 | O | ❌ | ✅ Verified |
-| 74 | `docs/ARTIFACT_SYSTEM_DEPLOYMENT.md` | 794 | F | ❌ | ⚠️ G25-C |
-| 75 | `docs/ARTIFACT_SYSTEM_API_GUIDE.md` | 768 | F | ❌ | Low |
-| 76 | `docs/ARTIFACT_SYSTEM_USER_GUIDE.md` | 610 | F | ❌ | ⚠️ G25-C |
-| 77 | `docs/ARTIFACT_SYSTEM_OPERATIONS.md` | 805 | O | ❌ | Low |
-| 78 | `docs/IMPLEMENTATION-SUMMARY.md` | 423 | F | ❌ | Low |
+| 73 | `docs/operations/OPERATIONS.md` | 763 | O | ❌ | ✅ Verified |
+| 74 | `docs/features/artifact-system/ARTIFACT_SYSTEM_DEPLOYMENT.md` | 794 | F | ❌ | ⚠️ G25-C |
+| 75 | `docs/features/artifact-system/ARTIFACT_SYSTEM_API_GUIDE.md` | 768 | F | ❌ | Low |
+| 76 | `docs/features/artifact-system/ARTIFACT_SYSTEM_USER_GUIDE.md` | 610 | F | ❌ | ⚠️ G25-C |
+| 77 | `docs/features/artifact-system/ARTIFACT_SYSTEM_OPERATIONS.md` | 805 | O | ❌ | Low |
+| 78 | `docs/phases/IMPLEMENTATION-SUMMARY.md` | 423 | F | ❌ | Low |
 | 79 | `docs/USER-GUIDE.md` | 863 | F | ❌ | Low |
-| 80 | `docs/E1-COMPLETION-SUMMARY.md` | 515 | P | ❌ | Low |
-| 81 | `docs/E2-PERFORMANCE-MONITORING.md` | 367 | O | ❌ | Low |
-| 82 | `docs/HUNTER-PROTOCOL-USER-GUIDE.md` | 361 | F | ❌ | Low |
-| 83 | `docs/HUNTER-PROTOCOL-ARCHITECTURE.md` | 385 | F | ❌ | Low |
-| 84 | `docs/HUNTER-PROTOCOL.md` | 477 | F | ❌ | Low |
-| 85 | `docs/JOB-INTEGRATION-GUIDE.md` | 404 | F | ❌ | Low |
+| 80 | `docs/phases/E1-COMPLETION-SUMMARY.md` | 515 | P | ❌ | Low |
+| 81 | `docs/phases/E2-PERFORMANCE-MONITORING.md` | 367 | O | ❌ | Low |
+| 82 | `docs/features/hunter-protocol/HUNTER-PROTOCOL-USER-GUIDE.md` | 361 | F | ❌ | Low |
+| 83 | `docs/features/hunter-protocol/HUNTER-PROTOCOL-ARCHITECTURE.md` | 385 | F | ❌ | Low |
+| 84 | `docs/features/hunter-protocol/HUNTER-PROTOCOL.md` | 477 | F | ❌ | Low |
+| 85 | `docs/features/hunter-protocol/JOB-INTEGRATION-GUIDE.md` | 404 | F | ❌ | Low |
 | 86 | `docs/API_REFERENCE.md` | 833 | F | ❌ | Low |
 | 87 | `docs/DEVELOPER_GUIDE.md` | 785 | F | ❌ | Low |
 | 88 | `docs/SELF-HOSTING.md` | 345 | O | ❌ | Low |
 | 89 | `docs/ENVIRONMENT-VARS.md` | 331 | O | ❌ | Low |
-| 90 | `docs/DATABASE-ROLLBACK.md` | 83 | O | ❌ | Low |
-| 91 | `docs/TROUBLESHOOTING.md` | 996 | O | ❌ | Low |
+| 90 | `docs/operations/DATABASE-ROLLBACK.md` | 83 | O | ❌ | Low |
+| 91 | `docs/operations/TROUBLESHOOTING.md` | 996 | O | ❌ | Low |
 | 92 | `docs/OPENAPI_SETUP.md` | 489 | F | ❌ | Low |
-| 93 | `docs/ARCHITECTURE-DIAGRAMS.md` | 239 | F | ❌ | ⚠️ G20-S |
-| 94 | `docs/ARCHITECTURE_DIAGRAMS.md` | 625 | F | ❌ | ⚠️ G20-S |
-| 95 | `docs/ON_CALL_RUNBOOK.md` | 324 | O | ❌ | Low |
-| 96 | `docs/PARALLEL-EXECUTION-GUIDE.md` | 600 | F | ❌ | Low |
-| 97 | `docs/OSS-CREDITS-APPLICATIONS.md` | 252 | M | ❌ | None |
+| 93 | `docs/ARCHITECTURE_DIAGRAMS.md` | 625 | F | ❌ | ✅ G20-S resolved |
+| 95 | `docs/operations/ON_CALL_RUNBOOK.md` | 324 | O | ❌ | Low |
+| 96 | `docs/phases/PARALLEL-EXECUTION-GUIDE.md` | 600 | F | ❌ | Low |
+| 97 | `docs/phases/OSS-CREDITS-APPLICATIONS.md` | 252 | M | ❌ | None |
 | 98 | `docs/DEPLOYMENT.md` | 1152 | O | ❌ | Low |
-| 99 | `docs/BACKUP-RESTORE.md` | 98 | O | ❌ | Low |
+| 99 | `docs/operations/BACKUP-RESTORE.md` | 98 | O | ❌ | Low |
 | 100 | `docs/README.md` | 292 | R | ❌ | Low |
 | 101 | `AGENTS.md` | 35 | M | ✅ | ✅ |
 | 102 | `QUICKSTART.md` | 697 | F | ❌ | Low |
@@ -841,14 +840,14 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 ### G16-D: Phase 9 Community Marketplace Not Implemented
 
 - **Severity**: Medium
-- **Source**: `docs/PHASE-9-PLAN.md` (Epic 4: marketplace functionality)
+- **Source**: `docs/phases/PHASE-9-PLAN.md` (Epic 4: marketplace functionality)
 - **Current State**: Zero codebase matches for "marketplace"; community features split across messaging.ts, public-profiles.ts
 - **Recommendation**: Either implement marketplace or update PHASE-9-PLAN to reflect actual scope
 
 ### G17-D: CI/CD Pipeline Overstated in PHASE-7-SUMMARY
 
 - **Severity**: Low
-- **Source**: `docs/PHASE-7-SUMMARY.md` claims "8-stage pipeline"
+- **Source**: `docs/phases/PHASE-7-SUMMARY.md` claims "8-stage pipeline"
 - **Current State**: `ci-cd.yml` has 5 jobs (quality, test, security, build, notify); deploy stages absent
 - **Recommendation**: Update document to reflect actual 5-job pipeline
 
@@ -866,12 +865,11 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 - **Current State**: No helmet or explicit security header middleware in `apps/api/src/index.ts`; WebSocket auth incomplete
 - **Recommendation**: Add `@fastify/helmet` or equivalent; document WebSocket auth gap
 
-### G20-S: Duplicate Architecture Diagrams Documents
+### G20-S: Duplicate Architecture Diagrams Documents -- RESOLVED
 
 - **Severity**: Low
-- **Source**: `docs/ARCHITECTURE-DIAGRAMS.md` (239 lines, hyphenated) and `docs/ARCHITECTURE_DIAGRAMS.md` (625 lines, underscored)
-- **Current State**: Two files with overlapping content; README.md links to underscored version
-- **Recommendation**: Delete the shorter hyphenated version; redirect references
+- **Source**: `docs/ARCHITECTURE-DIAGRAMS.md` (239 lines, hyphenated) was a duplicate of `docs/ARCHITECTURE_DIAGRAMS.md` (625 lines, underscored)
+- **Resolution**: Shorter duplicate deleted during docs reorganization. Only `docs/ARCHITECTURE_DIAGRAMS.md` remains.
 
 ### G21-S: 16 Archived Files Without Staleness Banners
 
@@ -904,7 +902,7 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 ### G25-C: Artifact System Cloud Storage Promises
 
 - **Severity**: Medium
-- **Source**: `docs/ARTIFACT_SYSTEM_USER_GUIDE.md` §"Connecting Cloud Storage" and DEPLOYMENT.md
+- **Source**: `docs/features/artifact-system/ARTIFACT_SYSTEM_USER_GUIDE.md` §"Connecting Cloud Storage" and DEPLOYMENT.md
 - **Current State**: Integration routes exist (`integrations.ts`, `artifacts.ts`) but LLM-based classification pipeline not verified as functional
 - **Recommendation**: Verify CatcherAgent classification works end-to-end or document as partial
 
@@ -960,7 +958,7 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 | **G17-D** | Update PHASE-7-SUMMARY CI/CD pipeline description | 30 min | Drift |
 | **G18-C** | Implement WCAG 2.1 AA or relabel ACCESSIBILITY.md as aspirational | 20-40 hours | Commitment |
 | **G19-C** | Add `@fastify/helmet`; document WebSocket auth gap | 2-3 hours | Commitment |
-| **G20-S** | Delete `ARCHITECTURE-DIAGRAMS.md` (shorter duplicate) | 15 min | Staleness |
+| **G20-S** | ~~Delete `ARCHITECTURE-DIAGRAMS.md`~~ **DONE** | — | Staleness |
 | **G21-S** | Add staleness banners to 16 archived files | 1-2 hours | Staleness |
 | **G22-D** | Add scope-difference note to FEATURE-AUDIT.md | 15 min | Drift |
 | **G23-S** | Expand `packages/core/README.md` with exports & usage | 1 hour | Staleness |

@@ -15,8 +15,8 @@ This audit compared every feature requirement from the following source document
 | `seed.yaml` | Repository "genome" — growth objectives, constraints, epics |
 | `CONSOLIDATED-SPECIFICATIONS.md` | Technical specs compiled from 33 design conversations |
 | `MANIFEST.md` | Project status and organization overview |
-| `docs/PHASE-ROADMAP.md` | 140 EU implementation roadmap |
-| `docs/HUNTER-PROTOCOL.md` | Autonomous job search system specification |
+| `docs/phases/PHASE-ROADMAP.md` | 140 EU implementation roadmap |
+| `docs/features/hunter-protocol/HUNTER-PROTOCOL.md` | Autonomous job search system specification |
 | `docs/SECURITY.md` | Security requirements checklist |
 | `docs/adr/ADR-001` through `ADR-012` | Architecture Decision Records |
 
@@ -112,7 +112,7 @@ These were listed as "Planned / not implemented" in the original snapshot. All a
 
 ---
 
-## 5. Hunter Protocol (docs/HUNTER-PROTOCOL.md)
+## 5. Hunter Protocol (docs/features/hunter-protocol/HUNTER-PROTOCOL.md)
 
 | Feature | Status | Implementation |
 |---------|--------|----------------|

@@ -429,7 +429,7 @@ docker-compose restart api orchestrator
 
 #### Playbook: Stripe Webhooks Failing
 
-See detailed runbook: [docs/PHASE-1-RUNBOOK.md](./PHASE-1-RUNBOOK.md)
+See detailed runbook: [PHASE-1-RUNBOOK.md](../phases/PHASE-1-RUNBOOK.md)
 
 Quick steps:
 ```bash
@@ -753,10 +753,10 @@ echo "=== Deployment complete ==="
 |----------|---------|
 | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Detailed error resolution |
 | [DATABASE-ROLLBACK.md](./DATABASE-ROLLBACK.md) | Migration rollback procedures |
-| [SELF-HOSTING.md](./SELF-HOSTING.md) | Self-hosted deployment guide |
-| [PHASE-1-RUNBOOK.md](./PHASE-1-RUNBOOK.md) | Billing/Stripe operations |
-| [SECURITY.md](./SECURITY.md) | Security guidelines |
-| [ENVIRONMENT-VARS.md](./ENVIRONMENT-VARS.md) | Environment configuration |
+| [SELF-HOSTING.md](../SELF-HOSTING.md) | Self-hosted deployment guide |
+| [PHASE-1-RUNBOOK.md](../phases/PHASE-1-RUNBOOK.md) | Billing/Stripe operations |
+| [SECURITY.md](../SECURITY.md) | Security guidelines |
+| [ENVIRONMENT-VARS.md](../ENVIRONMENT-VARS.md) | Environment configuration |
 
 ---
 

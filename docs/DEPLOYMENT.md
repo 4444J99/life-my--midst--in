@@ -1138,10 +1138,10 @@ SELECT COUNT(*) FROM experiences;
 
 - **Developer Guide**: [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
 - **API Reference**: [API_REFERENCE.md](./API_REFERENCE.md)
-- **Troubleshooting Guide**: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+- **Troubleshooting Guide**: [TROUBLESHOOTING.md](./operations/TROUBLESHOOTING.md)
 - **Security Guide**: [SECURITY.md](./SECURITY.md)
 - **Architecture Documentation**: [ARCH-001-system-architecture.md](../ARCH-001-system-architecture.md)
-- **Hunter Protocol Guide**: [HUNTER-PROTOCOL.md](./HUNTER-PROTOCOL.md)
+- **Hunter Protocol Guide**: [HUNTER-PROTOCOL.md](./features/hunter-protocol/HUNTER-PROTOCOL.md)
 
 ---
 

@@ -156,7 +156,7 @@ FOUND-001 (Blockchain analogy)
 6. **CONSOLIDATED-SPECIFICATIONS.md** - Technical specs
 7. **docs/PHASE-ROADMAP.md** - Complete roadmap
 8. **apps/api/openapi.yaml** - API contract
-9. **docs/HUNTER-PROTOCOL.md** - Job search system
+9. **docs/features/hunter-protocol/HUNTER-PROTOCOL.md** - Job search system
 
 ### Tier 3: Historical Context
 10. **META-001-project-bible.md** - Original design vision

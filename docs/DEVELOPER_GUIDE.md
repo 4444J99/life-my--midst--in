@@ -753,8 +753,8 @@ test(schema): add validation tests
 - **Architecture**: [ARCH-001-system-architecture.md](../ARCH-001-system-architecture.md)
 - **API Reference**: [API_REFERENCE.md](./API_REFERENCE.md)
 - **Deployment**: [DEPLOYMENT.md](./DEPLOYMENT.md)
-- **Hunter Protocol**: [HUNTER-PROTOCOL.md](./HUNTER-PROTOCOL.md)
-- **Troubleshooting**: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+- **Hunter Protocol**: [HUNTER-PROTOCOL.md](./features/hunter-protocol/HUNTER-PROTOCOL.md)
+- **Troubleshooting**: [TROUBLESHOOTING.md](./operations/TROUBLESHOOTING.md)
 
 ### Join the Community
 

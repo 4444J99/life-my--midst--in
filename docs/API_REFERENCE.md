@@ -822,7 +822,7 @@ When quota is exceeded, the API returns:
 - **GraphQL Playground**: `/graphql`
 - **Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
 - **Developer Guide**: [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
-- **Hunter Protocol Documentation**: [HUNTER-PROTOCOL.md](./HUNTER-PROTOCOL.md)
+- **Hunter Protocol Documentation**: [HUNTER-PROTOCOL.md](./features/hunter-protocol/HUNTER-PROTOCOL.md)
 
 ---
 

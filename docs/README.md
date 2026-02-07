@@ -1,292 +1,232 @@
 # Documentation Hub
 
-Welcome to the **In Midst My Life** documentation. This directory contains comprehensive guides, API references, architecture decisions, and operational runbooks.
+Central documentation for the **in-midst-my-life** interactive CV/resume system.
+
+## Quick Navigation
+
+| Category | Documents |
+|----------|-----------|
+| **Getting Started** | [Developer Guide](./DEVELOPER_GUIDE.md), [User Guide](./USER-GUIDE.md), [Deployment](./DEPLOYMENT.md) |
+| **Architecture** | [Diagrams](./ARCHITECTURE_DIAGRAMS.md), [API Reference](./API_REFERENCE.md), [ADRs](./adr/) |
+| **Operations** | [Runbooks](./operations/ON_CALL_RUNBOOK.md), [Troubleshooting](./operations/TROUBLESHOOTING.md), [Backup/Restore](./operations/BACKUP-RESTORE.md) |
+| **Features** | [Hunter Protocol](./features/hunter-protocol/), [Artifact System](./features/artifact-system/) |
+| **Quality** | [Feature Audit](./FEATURE-AUDIT.md), [Seed Alignment Audit](./SEED-ALIGNMENT-AUDIT.md), [Security](./SECURITY.md) |
+| **Philosophy** | [Covenant](./COVENANT.md), [Inverted Interview](./INVERTED-INTERVIEW.md) |
 
 ---
 
-## 🚀 Quick Start
+## By Task
 
-**New to the project?** Start here:
-
-1. **[Developer Guide](./DEVELOPER_GUIDE.md)** - Get set up in <30 minutes
-2. **[API Reference](./API_REFERENCE.md)** - Explore the REST API
-3. **[Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)** - Understand the system
-
----
-
-## 📚 Documentation Categories
-
-### For Developers
-
-#### Getting Started
-- **[Developer Guide](./DEVELOPER_GUIDE.md)** - Complete onboarding guide (<30 min setup)
-- **[Troubleshooting Guide](./TROUBLESHOOTING.md)** - Common issues and solutions
-- **[OpenAPI Setup](./OPENAPI_SETUP.md)** - Swagger UI / Redoc integration
-
-#### Architecture & Design
-- **[Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)** - Mermaid diagrams of system components
-- **[Architecture Decision Records (ADR)](./adr/)** - Key architectural decisions
-  - [ADR 001: Monorepo Structure](./adr/001-monorepo-structure.md)
-  - [ADR 002: PostgreSQL Database](./adr/002-postgresql-primary-database.md)
-  - [ADR 003: Redis Caching](./adr/003-redis-caching-queue.md)
-  - [ADR 004: Local-First LLM](./adr/004-local-llm-ollama.md)
-  - [ADR 005: Mask-Based Identity](./adr/005-mask-based-identity.md)
-  - [ADR 006: Next.js Frontend](./adr/006-nextjs-frontend.md)
-
-#### API Documentation
-- **[API Reference](./API_REFERENCE.md)** - Complete REST API documentation
-- **Interactive Docs**: http://localhost:3001/docs (Swagger UI)
-- **Alternative Docs**: http://localhost:3001/redoc (Redoc)
-- **OpenAPI Specs**: 
-  - Main API: `apps/api/openapi.yaml`
-  - Hunter Protocol: `apps/api/openapi-hunter.yaml`
-
-### For Operators
-
-#### Deployment
-- **[Deployment Guide](./DEPLOYMENT.md)** - Docker Compose & Kubernetes setup
-- **[Environment Variables](./ENVIRONMENT-VARS.md)** - Configuration reference
-- **[Database Management](./DATABASE-ROLLBACK.md)** - Migrations and rollbacks
-
-#### Operations
-- **[Phase 1 Runbook](./PHASE-1-RUNBOOK.md)** - Operational procedures
-- **[Monitoring Guide](./PHASE-1-MONITORING.md)** - Observability setup
-- **[Security Audit](./PHASE-1-SECURITY-AUDIT.md)** - Security considerations
-
-### For Product & Users
-
-#### Product Guides
-- **[User Guide](./USER-GUIDE.md)** - End-user documentation
-- **[Hunter Protocol Guide](./HUNTER-PROTOCOL-USER-GUIDE.md)** - Job search automation
-- **[Artifact System Guide](./ARTIFACT_SYSTEM_USER_GUIDE.md)** - Content management
-
-#### Specifications
-- **[Hunter Protocol Architecture](./HUNTER-PROTOCOL-ARCHITECTURE.md)** - Technical design
-- **[Implementation Summary](./IMPLEMENTATION-SUMMARY.md)** - Feature overview
+| What do you want to do? | Go here |
+|--------------------------|---------|
+| Set up dev environment | [Developer Guide](./DEVELOPER_GUIDE.md) |
+| Deploy to production | [Deployment Guide](./DEPLOYMENT.md) |
+| Configure environment vars | [Environment Variables](./ENVIRONMENT-VARS.md) |
+| Self-host the system | [Self-Hosting Guide](./SELF-HOSTING.md) |
+| Use the API | [API Reference](./API_REFERENCE.md) |
+| Troubleshoot issues | [Troubleshooting](./operations/TROUBLESHOOTING.md) |
+| Understand architecture | [Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md) |
+| Review security policy | [Security](./SECURITY.md) |
+| Check accessibility | [Accessibility](./ACCESSIBILITY.md) |
+| Integrate job data | [Job Integration Guide](./features/hunter-protocol/JOB-INTEGRATION-GUIDE.md) |
+| Work with artifacts | [Artifact System User Guide](./features/artifact-system/ARTIFACT_SYSTEM_USER_GUIDE.md) |
 
 ---
 
-## 🏗️ Project Structure
+## By Role
+
+### Developer
+Start here:
+1. [Developer Guide](./DEVELOPER_GUIDE.md) - Setup, architecture patterns, testing
+2. [API Reference](./API_REFERENCE.md) - REST and GraphQL contracts
+3. [Environment Variables](./ENVIRONMENT-VARS.md) - Configuration reference
+4. [Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md) - System topology
+
+Then explore:
+- [ADRs](./adr/) - Architecture decisions with rationale
+- [Feature Systems](./features/) - Hunter Protocol, Artifact System
+- [OpenAPI Setup](./OPENAPI_SETUP.md) - API documentation tooling
+
+### DevOps/SRE
+Start here:
+1. [Deployment Guide](./DEPLOYMENT.md) - Kubernetes, Docker Compose, CI/CD
+2. [Operations](./operations/OPERATIONS.md) - Monitoring, scaling, maintenance
+3. [On-Call Runbook](./operations/ON_CALL_RUNBOOK.md) - Incident response
+
+Then explore:
+- [Troubleshooting](./operations/TROUBLESHOOTING.md) - Common issues and fixes
+- [Backup & Restore](./operations/BACKUP-RESTORE.md) - Data recovery procedures
+- [Database Rollback](./operations/DATABASE-ROLLBACK.md) - Migration rollback
+- [Self-Hosting Guide](./SELF-HOSTING.md) - Self-hosting requirements
+
+### Product Manager
+Start here:
+1. [User Guide](./USER-GUIDE.md) - End-user workflows
+2. [Feature Audit](./FEATURE-AUDIT.md) - Implemented vs planned features
+3. [Covenant](./COVENANT.md) - Project philosophy and principles
+
+Then explore:
+- [Hunter Protocol User Guide](./features/hunter-protocol/HUNTER-PROTOCOL-USER-GUIDE.md)
+- [Artifact System User Guide](./features/artifact-system/ARTIFACT_SYSTEM_USER_GUIDE.md)
+- [Inverted Interview](./INVERTED-INTERVIEW.md) - Conceptual foundation
+
+### Architect
+Start here:
+1. [Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md) - Visual topology
+2. [ADRs](./adr/) - Decision records (013 total)
+3. [API Reference](./API_REFERENCE.md) - Service contracts
+
+Then explore:
+- [Hunter Protocol Architecture](./features/hunter-protocol/HUNTER-PROTOCOL-ARCHITECTURE.md)
+- [Seed Alignment Audit](./SEED-ALIGNMENT-AUDIT.md) - Philosophy-to-code traceability
+- [Security Policy](./SECURITY.md) - Threat model and controls
+
+---
+
+## Project Structure
 
 ```
-in-midst-my-life/
-├── apps/
-│   ├── api/                    # Fastify REST API
-│   │   ├── openapi.yaml       # Main API spec
-│   │   └── openapi-hunter.yaml # Hunter Protocol spec
-│   ├── orchestrator/          # Background workers
-│   └── web/                   # Next.js frontend
-├── packages/
-│   ├── schema/                # Zod schemas
-│   ├── core/                  # Business logic
-│   ├── content-model/         # Content graph
-│   └── design-system/         # UI components
-└── docs/                      # Documentation (you are here)
-    ├── adr/                   # Architecture Decision Records
-    └── specs/                 # Detailed specifications
+docs/
+├── README.md                      # This file
+├── COVENANT.md                    # Philosophy
+├── INVERTED-INTERVIEW.md          # Conceptual foundation
+├── SEED-ALIGNMENT-AUDIT.md        # Active audit (philosophy-to-code)
+├── FEATURE-AUDIT.md               # Active audit (feature completeness)
+├── API_REFERENCE.md               # API contract
+├── ARCHITECTURE_DIAGRAMS.md       # Architecture visuals
+├── SECURITY.md                    # Security policy
+├── ACCESSIBILITY.md               # Accessibility policy
+├── DEVELOPER_GUIDE.md             # Developer onboarding
+├── USER-GUIDE.md                  # User documentation
+├── DEPLOYMENT.md                  # Deployment guide
+├── ENVIRONMENT-VARS.md            # Env var reference
+├── SELF-HOSTING.md                # Self-hosting guide
+├── OPENAPI_SETUP.md               # API docs setup
+│
+├── operations/                    # Operations & runbooks
+│   ├── OPERATIONS.md
+│   ├── ON_CALL_RUNBOOK.md
+│   ├── TROUBLESHOOTING.md
+│   ├── BACKUP-RESTORE.md
+│   └── DATABASE-ROLLBACK.md
+│
+├── features/                      # Feature subsystem suites
+│   ├── hunter-protocol/
+│   │   ├── HUNTER-PROTOCOL.md
+│   │   ├── HUNTER-PROTOCOL-ARCHITECTURE.md
+│   │   ├── HUNTER-PROTOCOL-USER-GUIDE.md
+│   │   └── JOB-INTEGRATION-GUIDE.md
+│   └── artifact-system/
+│       ├── ARTIFACT_SYSTEM_API_GUIDE.md
+│       ├── ARTIFACT_SYSTEM_USER_GUIDE.md
+│       ├── ARTIFACT_SYSTEM_DEPLOYMENT.md
+│       └── ARTIFACT_SYSTEM_OPERATIONS.md
+│
+├── phases/                        # Completed phase/milestone reports
+│   └── (20 phase completion documents)
+│
+├── adr/                           # Architecture Decision Records
+│   └── (013 ADRs: 000-index through 012-*)
+│
+└── archived/                      # Historical documents
+    ├── foundations/               # FOUND-001 through FOUND-005
+    ├── specifications/            # SPEC-001 through SPEC-004
+    ├── architecture/              # ARCH-001 through ARCH-005
+    ├── planning/                  # PLAN-001 through PLAN-006
+    ├── orchestration/             # ORCH-001 through ORCH-005
+    ├── workflows/                 # WORK-001 through WORK-005
+    ├── meta/                      # META-001 through META-004
+    ├── completions/               # Phase/workstream completion reports
+    ├── reports/                   # Test reports and audits
+    └── guides/                    # Historical guides and tracking
 ```
 
 ---
 
-## 🔑 Key Concepts
+## Architecture Decision Records
 
-### Mask-Based Identity System
+The `adr/` directory contains 13 ADRs documenting key architectural choices:
 
-**Masks** are contextual filters that present different facets of your professional identity without duplicating data. Think of it as:
-- **CV = Blockchain**: Immutable ledger of all experiences
-- **Résumé = State Snapshot**: Derived view at a point in time
-- **Mask = Query Function**: How to extract and present data
+- **ADR-000**: [Index](./adr/000-index.md) - Overview and template
+- **ADR-001**: [Monorepo Structure](./adr/001-monorepo-structure.md)
+- **ADR-002**: [Database Choice](./adr/002-postgresql-primary-database.md)
+- **ADR-003**: [Redis Caching](./adr/003-redis-caching-queue.md)
+- **ADR-004**: [Local-First LLM](./adr/004-local-llm-ollama.md)
+- **ADR-005**: [Mask-Based Identity](./adr/005-mask-based-identity.md)
+- **ADR-006**: [Next.js Frontend](./adr/006-nextjs-frontend.md)
+- **ADR-007-012**: Additional decisions (see [index](./adr/000-index.md))
 
-Learn more: [ADR 005: Mask-Based Identity](./adr/005-mask-based-identity.md)
+---
+
+## Feature Systems
 
 ### Hunter Protocol
+Job discovery and tracking system with webhook support.
 
-Autonomous job search agent that:
-1. **Searches** for relevant jobs
-2. **Analyzes** skill gaps
-3. **Tailors** résumés with appropriate masks
-4. **Generates** cover letters
+- [Overview](./features/hunter-protocol/HUNTER-PROTOCOL.md)
+- [Architecture](./features/hunter-protocol/HUNTER-PROTOCOL-ARCHITECTURE.md)
+- [User Guide](./features/hunter-protocol/HUNTER-PROTOCOL-USER-GUIDE.md)
+- [Integration Guide](./features/hunter-protocol/JOB-INTEGRATION-GUIDE.md)
 
-Learn more: [Hunter Protocol Guide](./HUNTER-PROTOCOL.md)
+### Artifact System
+File and document management with version control.
 
-### Three-Layer Architecture
-
-1. **Frontend**: Next.js 15 with App Router (Server Components)
-2. **API**: Fastify REST API with OpenAPI spec
-3. **Orchestrator**: Background workers with LLM integration
-
-Learn more: [Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)
+- [API Guide](./features/artifact-system/ARTIFACT_SYSTEM_API_GUIDE.md)
+- [User Guide](./features/artifact-system/ARTIFACT_SYSTEM_USER_GUIDE.md)
+- [Deployment](./features/artifact-system/ARTIFACT_SYSTEM_DEPLOYMENT.md)
+- [Operations](./features/artifact-system/ARTIFACT_SYSTEM_OPERATIONS.md)
 
 ---
 
-## 📖 Documentation Standards
-
-### For Contributors
-
-When adding documentation:
-
-1. **Use Markdown** with consistent formatting
-2. **Include examples** for complex concepts
-3. **Add diagrams** where helpful (Mermaid preferred)
-4. **Link related docs** for context
-5. **Update this index** when adding new docs
-
-### Documentation Types
-
-- **Guides**: Step-by-step instructions (imperative)
-- **References**: Complete information (declarative)
-- **ADRs**: Decision context and rationale
-- **Runbooks**: Operational procedures
-
----
-
-## 🔍 Finding Information
-
-### By Task
-
-| I want to... | Read this... |
-|-------------|-------------|
-| Set up dev environment | [Developer Guide](./DEVELOPER_GUIDE.md) |
-| Understand API endpoints | [API Reference](./API_REFERENCE.md) |
-| Deploy to production | [Deployment Guide](./DEPLOYMENT.md) |
-| Debug an issue | [Troubleshooting Guide](./TROUBLESHOOTING.md) |
-| Understand architecture | [Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md) |
-| Learn about masks | [ADR 005: Mask System](./adr/005-mask-based-identity.md) |
-| Use Hunter Protocol | [Hunter Protocol Guide](./HUNTER-PROTOCOL.md) |
-| Understand design decisions | [ADR Index](./adr/) |
-
-### By Role
-
-**Developer:**
-1. [Developer Guide](./DEVELOPER_GUIDE.md)
-2. [API Reference](./API_REFERENCE.md)
-3. [Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)
-4. [Troubleshooting Guide](./TROUBLESHOOTING.md)
-
-**DevOps/SRE:**
-1. [Deployment Guide](./DEPLOYMENT.md)
-2. [Phase 1 Runbook](./PHASE-1-RUNBOOK.md)
-3. [Monitoring Guide](./PHASE-1-MONITORING.md)
-4. [Database Rollback](./DATABASE-ROLLBACK.md)
-
-**Product Manager:**
-1. [User Guide](./USER-GUIDE.md)
-2. [Implementation Summary](./IMPLEMENTATION-SUMMARY.md)
-3. [Hunter Protocol Architecture](./HUNTER-PROTOCOL-ARCHITECTURE.md)
-
-**Architect:**
-1. [Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)
-2. [All ADRs](./adr/)
-3. [System Design Spec](../SPEC-002-system-design.md)
-
----
-
-## 🛠️ Development Workflow
+## Development Workflow
 
 ```bash
-# 1. Start services
-./scripts/dev-up.sh
+# Install dependencies
+pnpm install
 
-# 2. Run migrations
-pnpm --filter @in-midst-my-life/api migrate
-pnpm --filter @in-midst-my-life/orchestrator migrate
+# Start dev services (Postgres, Redis)
+scripts/dev-up.sh
 
-# 3. Start dev servers
+# Run all dev servers (web, api, orchestrator)
 pnpm dev
 
-# 4. Access services
-# - Web UI: http://localhost:3000
-# - API: http://localhost:3001
-# - API Docs: http://localhost:3001/docs
-# - Orchestrator: http://localhost:3002
+# Run tests
+pnpm test                    # Unit tests
+pnpm integration             # Integration tests
+pnpm test:e2e                # End-to-end tests
+
+# Type checking and linting
+pnpm typecheck
+pnpm lint
+
+# Build production bundles
+pnpm build
 ```
 
-See [Developer Guide](./DEVELOPER_GUIDE.md) for full setup instructions.
+See [Developer Guide](./DEVELOPER_GUIDE.md) for complete workflow.
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting Quick Links
 
-**Common issues:**
-
-- **Database connection refused** → [DB Issues](./TROUBLESHOOTING.md#database-issues)
-- **Redis connection failed** → [Redis Issues](./TROUBLESHOOTING.md#redis--caching-issues)
-- **Port already in use** → [Port Conflicts](./TROUBLESHOOTING.md#port-already-in-use)
-- **Jobs not processing** → [Queue Issues](./TROUBLESHOOTING.md#orchestrator--job-queue-issues)
-- **LLM timeout** → [LLM Issues](./TROUBLESHOOTING.md#llm--agent-issues)
-
-Full troubleshooting guide: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+| Issue | Resource |
+|-------|----------|
+| Services won't start | [Troubleshooting](./operations/TROUBLESHOOTING.md#services) |
+| Database connection errors | [Troubleshooting](./operations/TROUBLESHOOTING.md#database) |
+| API authentication failures | [Troubleshooting](./operations/TROUBLESHOOTING.md#auth) |
+| Build or type errors | [Developer Guide](./DEVELOPER_GUIDE.md#common-issues) |
+| Production incidents | [On-Call Runbook](./operations/ON_CALL_RUNBOOK.md) |
 
 ---
 
-## 📊 Documentation Coverage
+## Contributing
 
-### E1: Documentation & Developer Experience ✅
+See the root [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines.
 
-**Completed deliverables:**
-
-- ✅ **API Reference** (API_REFERENCE.md) - Auto-generated from OpenAPI specs
-- ✅ **Deployment Guide** (DEPLOYMENT.md) - Docker Compose + Kubernetes Helm
-- ✅ **Developer Onboarding** (DEVELOPER_GUIDE.md) - <30 min setup guide
-- ✅ **Architecture Diagrams** (ARCHITECTURE_DIAGRAMS.md) - Mermaid visualizations
-- ✅ **Hunter Protocol Docs** (HUNTER-PROTOCOL.md, HUNTER-PROTOCOL-USER-GUIDE.md)
-- ✅ **Troubleshooting Guide** (TROUBLESHOOTING.md) - Common errors & solutions
-- ✅ **Architecture Decision Records** (adr/) - 6 ADRs documenting key decisions
-- ✅ **OpenAPI Setup** (OPENAPI_SETUP.md) - Swagger UI/Redoc integration
-
-**Statistics:**
-- Total docs: 20+ files
-- API endpoints documented: 50+
-- Mermaid diagrams: 15+
-- ADRs: 6
-- Troubleshooting scenarios: 30+
+All architectural changes require an ADR. Use the template in [adr/000-index.md](./adr/000-index.md).
 
 ---
 
-## 🚀 Next Steps
+## License
 
-### For New Developers
-
-1. **Read** [Developer Guide](./DEVELOPER_GUIDE.md)
-2. **Follow** the setup instructions
-3. **Make** your first contribution
-4. **Review** [Architecture Diagrams](./ARCHITECTURE_DIAGRAMS.md)
-
-### For Experienced Developers
-
-1. **Explore** [ADR directory](./adr/)
-2. **Review** [API Reference](./API_REFERENCE.md)
-3. **Understand** mask system via [ADR 005](./adr/005-mask-based-identity.md)
-4. **Deploy** using [Deployment Guide](./DEPLOYMENT.md)
-
-### For Contributors
-
-1. **Read** documentation standards (above)
-2. **Create** new ADR if making architectural decisions
-3. **Update** relevant docs when changing code
-4. **Link** to related documentation
-
----
-
-## 📞 Support
-
-Need help?
-
-- **GitHub Issues**: https://github.com/anthropics/in-midst-my-life/issues
-- **Troubleshooting**: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-- **Email**: padavano.anthony@gmail.com
-
----
-
-**Welcome to In Midst My Life! 🎭**
-
-High-level documentation for the interactive CV system.
-
-See the parent directory for design documents organized as:
-- FOUND-* (Foundational concepts)
-- SPEC-* (Specifications)
-- ARCH-* (Architecture)
-- PLAN-* (Planning)
-- WORK-* (Workflows)
-- ORCH-* (Orchestration)
-- META-* (Meta-organization)
+See root [LICENSE](../LICENSE) file.

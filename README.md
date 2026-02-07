@@ -105,8 +105,8 @@ cd life-my--midst--in
 # 2. Read the essentials first
 cat CLAUDE.md                          # AI guidance
 cat EXECUTION-SUMMARY.md               # Overview + Phase 0
-cat docs/PHASE-ROADMAP.md              # Full 140 EU roadmap
-cat docs/PARALLEL-EXECUTION-GUIDE.md   # How to work in parallel
+cat docs/phases/PHASE-ROADMAP.md              # Full 140 EU roadmap
+cat docs/phases/PARALLEL-EXECUTION-GUIDE.md   # How to work in parallel
 
 # 3. Install and run
 pnpm install
@@ -130,8 +130,8 @@ ls -la packages/schema/src/             # Data models
 
 1. **Read these first** (order matters):
    - `EXECUTION-SUMMARY.md` ← Start here for context + Phase 0 priorities
-   - `docs/PHASE-ROADMAP.md` ← Full 140 EU unified roadmap with philosophy
-   - `docs/PARALLEL-EXECUTION-GUIDE.md` ← Your work streams and dependencies
+   - `docs/phases/PHASE-ROADMAP.md` ← Full 140 EU unified roadmap with philosophy
+   - `docs/phases/PARALLEL-EXECUTION-GUIDE.md` ← Your work streams and dependencies
    - `CLAUDE.md` ← Development guidelines and patterns
 
 2. **Find your role**:
@@ -142,7 +142,7 @@ ls -la packages/schema/src/             # Data models
 3. **Understand dependencies**:
    - Phase 0 must complete before others start (Week 1-2)
    - Stripe (1A) must complete before Billing UI (1D)
-   - See `/docs/PARALLEL-EXECUTION-GUIDE.md` for full matrix
+   - See `/docs/phases/PARALLEL-EXECUTION-GUIDE.md` for full matrix
 
 4. **Start with Phase 0** (next 2 weeks):
    - **0A - Hunter Protocol**: Implement search provider, wire agent tools
@@ -157,11 +157,11 @@ ls -la packages/schema/src/             # Data models
 
 Read in this order:
 
-1. **FOUND-001-blockchain-cv-analogy.md** - Core metaphor
-2. **META-001-project-bible.md** - Comprehensive design vision
+1. **docs/archived/foundations/FOUND-001-blockchain-cv-analogy.md** - Core metaphor
+2. **docs/archived/meta/META-001-project-bible.md** - Comprehensive design vision
 3. **COVENANT.md** (or EVOLUTION-PLAN.md) - Philosophical boundaries
-4. **FOUND-004-identity-narrative-questions.md** - 8 foundational identity questions
-5. **docs/PHASE-ROADMAP.md** → Section "The Philosophical Foundation"
+4. **docs/archived/foundations/FOUND-004-identity-narrative-questions.md** - 8 foundational identity questions
+5. **docs/phases/PHASE-ROADMAP.md** → Section "The Philosophical Foundation"
 
 These documents explain WHY the system is designed this way.
 
@@ -262,32 +262,22 @@ life-my--midst--in/
 ├── 📄 COVENANT.md (or EVOLUTION-PLAN)   ← Philosophical boundaries
 │
 ├── 📁 docs/
-│   ├── PHASE-ROADMAP.md                  ← Complete 140 EU unified roadmap
-│   ├── PARALLEL-EXECUTION-GUIDE.md       ← How to work in parallel (14 streams)
-│   └── SECURITY.md                       ← Security checklist
-│
-├── 📁 Foundational Docs
-│   ├── FOUND-001-blockchain-cv-analogy.md
-│   ├── FOUND-002-blockchain-cv-vs-resume.md
-│   ├── FOUND-003-meta-latin-etymology.md
-│   ├── FOUND-004-identity-narrative-questions.md
-│   └── FOUND-005-prospecting-research-prompts.md
-│
-├── 📁 Planning & Execution
-│   ├── META-001-project-bible.md         ← Comprehensive design doc
-│   ├── META-002-thread-enumeration.md
-│   ├── META-003-dependency-graph.md
-│   ├── META-004-vision-deck.md
-│   ├── ORCH-001-agent-meta-prompt.md
-│   ├── ORCH-002-execution-strategy.md
-│   ├── ORCH-003-resource-allocation.md
-│   ├── ORCH-004-template-system.md
-│   ├── ORCH-005-master-index.md
-│   ├── WORK-001-content-pipeline.md
-│   ├── WORK-002-automation-spec.md
-│   ├── WORK-003-bpmn-diagrams.md
-│   ├── WORK-004-orchestration-graphs.md
-│   └── WORK-005-autonomous-code-growth.md
+│   ├── 15 active docs            ← New-era reference documents
+│   ├── operations/               ← Runbooks & troubleshooting (5 files)
+│   ├── features/                 ← Hunter Protocol & Artifact System (8 files)
+│   ├── phases/                   ← Completed phase reports (20 files)
+│   ├── adr/                      ← Architecture Decision Records (13 ADRs)
+│   └── archived/                 ← Historical seed documents (9 subdirs, 64 files)
+│       ├── foundations/           ← FOUND-001 through FOUND-005
+│       ├── specifications/        ← SPEC-001 through SPEC-004
+│       ├── architecture/          ← ARCH-001 through ARCH-005
+│       ├── planning/              ← PLAN-001 through PLAN-006
+│       ├── orchestration/         ← ORCH-001 through ORCH-005
+│       ├── workflows/             ← WORK-001 through WORK-005
+│       ├── meta/                  ← META-001 through META-004
+│       ├── completions/           ← Phase completion reports (14 files)
+│       ├── reports/               ← Test reports & audits (5 files)
+│       └── guides/                ← Historical guides & tracking (11 files)
 │
 ├── 📁 Implementation
 │   ├── apps/
@@ -538,7 +528,7 @@ CI=true pnpm test         # Full coverage report (CI mode)
 | **5: Community** | 9-13 | 16 | Content, beta, GitHub, Discord | 📋 Ready |
 | **6: Launch** | 12-16 | 15 | Product Hunt, HN, iteration | 📋 Ready |
 
-**See `/docs/PHASE-ROADMAP.md` for complete breakdown.**
+**See `/docs/phases/PHASE-ROADMAP.md` for complete breakdown.**
 
 ---
 
@@ -650,14 +640,14 @@ If you're an AI assistant working on a phase:
 
 **Start with these** (in order):
 1. **EXECUTION-SUMMARY.md** - Overview + Phase 0
-2. **docs/PHASE-ROADMAP.md** - Full roadmap with philosophy
-3. **docs/PARALLEL-EXECUTION-GUIDE.md** - How to work in parallel
+2. **docs/phases/PHASE-ROADMAP.md** - Full roadmap with philosophy
+3. **docs/phases/PARALLEL-EXECUTION-GUIDE.md** - How to work in parallel
 4. **CLAUDE.md** - Development guidelines
 
 **Then explore**:
-5. **META-001-project-bible.md** - Comprehensive design vision
-6. **FOUND-001-blockchain-cv-analogy.md** - Core metaphor
-7. **FOUND-004-identity-narrative-questions.md** - Foundational questions
+5. **docs/archived/meta/META-001-project-bible.md** - Comprehensive design vision
+6. **docs/archived/foundations/FOUND-001-blockchain-cv-analogy.md** - Core metaphor
+7. **docs/archived/foundations/FOUND-004-identity-narrative-questions.md** - Foundational questions
 8. **seed.yaml** - Development constraints
 
 **Reference while coding**:
@@ -726,8 +716,8 @@ git reset --hard origin/main
 - [EXECUTION-SUMMARY.md](EXECUTION-SUMMARY.md) - Quick reference
 - [CLAUDE.md](CLAUDE.md) - AI development guidance
 - [docs/SECURITY.md](docs/SECURITY.md) - Security checklist
-- [docs/PHASE-ROADMAP.md](docs/PHASE-ROADMAP.md) - Complete roadmap
-- [docs/PARALLEL-EXECUTION-GUIDE.md](docs/PARALLEL-EXECUTION-GUIDE.md) - Parallel work streams
+- [docs/phases/PHASE-ROADMAP.md](docs/phases/PHASE-ROADMAP.md) - Complete roadmap
+- [docs/phases/PARALLEL-EXECUTION-GUIDE.md](docs/phases/PARALLEL-EXECUTION-GUIDE.md) - Parallel work streams
 
 **External Standards**:
 - [W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)
@@ -772,9 +762,9 @@ See the [LICENSE](LICENSE) file for the full text.
 ## 💬 Questions?
 
 If you're:
-- **A developer**: Check [CLAUDE.md](CLAUDE.md) and [docs/PHASE-ROADMAP.md](docs/PHASE-ROADMAP.md)
-- **An AI assistant**: Check [EXECUTION-SUMMARY.md](EXECUTION-SUMMARY.md) and [docs/PARALLEL-EXECUTION-GUIDE.md](docs/PARALLEL-EXECUTION-GUIDE.md)
-- **Philosophically curious**: Read [FOUND-001-blockchain-cv-analogy.md](FOUND-001-blockchain-cv-analogy.md) and [META-001-project-bible.md](META-001-project-bible.md)
+- **A developer**: Check [CLAUDE.md](CLAUDE.md) and [docs/phases/PHASE-ROADMAP.md](docs/phases/PHASE-ROADMAP.md)
+- **An AI assistant**: Check [EXECUTION-SUMMARY.md](EXECUTION-SUMMARY.md) and [docs/phases/PARALLEL-EXECUTION-GUIDE.md](docs/phases/PARALLEL-EXECUTION-GUIDE.md)
+- **Philosophically curious**: Read [docs/archived/foundations/FOUND-001-blockchain-cv-analogy.md](docs/archived/foundations/FOUND-001-blockchain-cv-analogy.md) and [docs/archived/meta/META-001-project-bible.md](docs/archived/meta/META-001-project-bible.md)
 
 ---
 
@@ -784,7 +774,7 @@ If you're:
 
 *Transforming professional identity from static document to living, theatrical system*
 
-[Phase Roadmap](docs/PHASE-ROADMAP.md) • [Execution Guide](docs/PARALLEL-EXECUTION-GUIDE.md) • [Project Bible](META-001-project-bible.md) • [Security](docs/SECURITY.md)
+[Phase Roadmap](docs/phases/PHASE-ROADMAP.md) • [Execution Guide](docs/phases/PARALLEL-EXECUTION-GUIDE.md) • [Project Bible](docs/archived/meta/META-001-project-bible.md) • [Security](docs/SECURITY.md)
 
 **Status**: 90% Implementation ✅ + 0% Commercialization → Ready for Phase 0 Launch 🚀
 
