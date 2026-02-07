@@ -14,8 +14,9 @@
  * - None required (paths passed via credentials.folderPath)
  */
 
-import { readdir, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { homedir } from "node:os";
@@ -553,19 +554,18 @@ export class LocalFilesystemProvider implements CloudStorageProvider {
       createdTime, // CRUCIAL: File creation time
       modifiedTime: stats.mtime.toISOString(),
       accessedTime: stats.atime.toISOString(),
-      checksum: this.hashPath(fullPath) // Simple hash for change detection
+      checksum: await this.hashFile(fullPath) // SHA256 hash of file content
     };
   }
 
-  private hashPath(path: string): string {
-    // TODO: Compute actual SHA256 hash of file content in Phase 3
-    return Buffer.from(path).toString("base64").slice(0, 16);
+  private async hashFile(fullPath: string): Promise<string> {
+    const content = await readFile(fullPath);
+    return createHash("sha256").update(content).digest("hex");
   }
 
   private matchesPattern(path: string, patterns: string[]): boolean {
     for (const pattern of patterns) {
-      // Simple glob matching
-      // TODO: Use proper glob library like 'minimatch' in Phase 2
+      // Glob matching uses basic string includes; upgrade to minimatch if patterns grow complex
       if (pattern === "*/**" || pattern === "**" || path.includes(pattern)) {
         return true;
       }

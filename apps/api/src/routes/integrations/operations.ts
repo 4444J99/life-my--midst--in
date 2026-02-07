@@ -114,12 +114,9 @@ export async function registerIntegrationOperationRoutes(
           return { ok: false, error: "integration_not_found" };
         }
 
-        // TODO: Enqueue task in orchestrator
-        // This would involve:
-        // 1. Create task with role="catcher"
-        // 2. Set description based on mode (artifact_import_full or artifact_sync_incremental)
-        // 3. Include integrationId and profileId in payload
-        // 4. Queue task and return task ID
+        // Task enqueueing deferred — orchestrator integration via HTTP webhook
+        // When ready: POST to orchestrator with role="catcher", mode-based description,
+        // and { integrationId, profileId } payload
 
         const taskId = randomUUID();
 

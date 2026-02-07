@@ -327,7 +327,7 @@ export async function registerArtifactRoutes(fastify: FastifyInstance) {
         return { ok: false, error: 'artifact_not_found' };
       }
 
-      // TODO: Create ContentEdge in Phase 6+
+      // ContentEdge creation deferred to graph DB integration phase
       // For now, return success with stub
 
       return {
