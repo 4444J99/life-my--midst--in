@@ -419,7 +419,7 @@ graph TB
 
 | Component | Tech Stack |
 |-----------|-----------|
-| **Frontend** | Next.js 15, React 18, Tailwind CSS, D3.js |
+| **Frontend** | Next.js 16, React 19, Tailwind CSS, D3.js |
 | **API** | Fastify, TypeScript, Zod, OpenAPI |
 | **Orchestrator** | Node.js, BullMQ, LangChain (optional) |
 | **Database** | PostgreSQL 15 with pgvector |

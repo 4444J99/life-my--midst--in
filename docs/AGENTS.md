@@ -6,12 +6,12 @@ Global policy: /Users/4jp/AGENTS.md applies. If a parent AGENTS.md exists, follo
 - apps/: `apps/api` (Fastify), `apps/orchestrator` (workers/LLM), `apps/web` (Next.js).
 - packages/: shared libraries in `packages/schema`, `packages/core`, `packages/content-model`, `packages/design-system`.
 - Data layer: `apps/api/migrations`, `apps/api/seeds`, `apps/orchestrator/migrations`, `apps/orchestrator/seeds`.
-- Docs/specs: `SPEC-*`, `ARCH-*`, `PLAN-*`, `WORK-*`, `ORCH-*` at repo root; `docs/` for security/spec notes; `infra/` and `docker-compose.yml` for deployment/dev services.
+- Docs/specs: Design documents archived under `docs/archived/`; active docs in `docs/`; `infra/docker-compose.yml` for deployment/dev services.
 
 ## Build, Test, and Development Commands
 - Install: `pnpm install`.
 - Dev all: `pnpm dev`; per app: `pnpm --filter @in-midst-my-life/api dev`, `pnpm --filter @in-midst-my-life/orchestrator dev`, `pnpm --filter @in-midst-my-life/web dev`.
-- DB/Redis: `scripts/dev-up.sh` or `docker-compose up postgres redis`; shells via `scripts/dev-shell.sh`.
+- DB/Redis: `scripts/dev-up.sh` or `docker-compose -f infra/docker-compose.yml up postgres redis`; shells via `scripts/dev-shell.sh`.
 - Migrate/seed: `pnpm --filter @in-midst-my-life/api migrate` / `seed` and `pnpm --filter @in-midst-my-life/orchestrator migrate` / `seed`.
 - Quality: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`; integration: `INTEGRATION_POSTGRES_URL=... INTEGRATION_REDIS_URL=... pnpm integration`.
 

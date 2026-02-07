@@ -809,10 +809,10 @@ Why is this the right decision? List reasons.
 
 ## Related Documents
 
-- [seed.yaml](seed.yaml) — Repository constraints and governance
+- [seed.yaml](../seed.yaml) — Repository constraints and governance
 - [DEFINITIONS.md](DEFINITIONS.md) — Unified glossary
-- [CONSOLIDATED-SPECIFICATIONS.md](CONSOLIDATED-SPECIFICATIONS.md) — Technical specifications
-- [ARCH-*.md](ARCH-001-system-architecture.md) — Original architecture conversations
+- [CONSOLIDATED-SPECIFICATIONS.md](archived/CONSOLIDATED-SPECIFICATIONS.md) — Technical specifications
+- [ARCH-*.md](archived/architecture/) — Original architecture conversations
 
 ---
 

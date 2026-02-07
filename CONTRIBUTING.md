@@ -146,7 +146,7 @@ pnpm --filter @in-midst-my-life/core test:coverage
 
 ```
 apps/
-├── web/              Next.js 15 frontend (port 3000)
+├── web/              Next.js 16 frontend (port 3000)
 ├── api/              Fastify REST API (port 3001)
 └── orchestrator/     Node.js worker service (port 3002)
 

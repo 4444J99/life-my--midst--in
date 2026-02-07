@@ -42,9 +42,9 @@ brew install gh  # macOS
 
 ```bash
 # Read in this order:
-cat MANIFEST.md                           # System overview
-cat CONSOLIDATED-SPECIFICATIONS.md         # Technical specs
-cat META-001-project-bible.md             # Complete design
+cat docs/MANIFEST.md                      # System overview
+cat docs/archived/CONSOLIDATED-SPECIFICATIONS.md  # Technical specs
+cat docs/archived/meta/META-001-project-bible.md  # Complete design
 cat seed.yaml                              # Development constraints
 ```
 
@@ -62,7 +62,7 @@ ls -1 {FOUND,SPEC,ARCH,PLAN,WORK,ORCH,META}-*.md | wc -l
 # Should output: 32
 
 # Check key artifacts exist
-ls -1 seed.yaml MANIFEST.md README.md CONSOLIDATED-SPECIFICATIONS.md
+ls -1 seed.yaml docs/MANIFEST.md README.md docs/archived/CONSOLIDATED-SPECIFICATIONS.md
 ```
 
 ### Step 3: Create Implementation Directory
@@ -82,13 +82,13 @@ git commit -m "Initial commit: Design documents and specifications"
 
 ## 🔧 Database Migrations & Seeds
 
-- **Services**: Use `docker-compose.yml` via `scripts/dev-up.sh` to start Postgres/Redis; `scripts/dev-shell.sh` opens psql/redis-cli for inspection.
+- **Services**: Use `infra/docker-compose.yml` via `scripts/dev-up.sh` to start Postgres/Redis; `scripts/dev-shell.sh` opens psql/redis-cli for inspection.
 - **URLs**: API reads `DATABASE_URL`/`POSTGRES_URL`; orchestrator reads `DATABASE_URL` (or `ORCH_TASK_STORE=postgres`) and `REDIS_URL`. Keep per-env DBs (`midst_dev`, `midst_test`, `midst_integration`) to avoid collisions.
 - **Apply migrations**: `pnpm --filter @in-midst-my-life/api migrate` and `pnpm --filter @in-midst-my-life/orchestrator migrate`. Safe to re-run (idempotent by design).
 - **Seeds**: `pnpm --filter @in-midst-my-life/api seed` and `pnpm --filter @in-midst-my-life/orchestrator seed` load demo rows. Seeds use `ON CONFLICT DO NOTHING`; repeat runs are fine.
 - **Integration isolation**: point tests to `INTEGRATION_POSTGRES_URL`/`INTEGRATION_REDIS_URL` so local dev data stays untouched.
 - **End-to-end integration tests**: with services running and `INTEGRATION_*` URLs set, run `pnpm integration` (or package-scoped `pnpm --filter @in-midst-my-life/api integration`) to exercise Postgres/Redis paths.
-- **Full stack dev**: `docker-compose up api orchestrator web` to run everything with live UI at http://localhost:3000 (timeline/graph/gallery + Admin Studio); API/OpenAPI at http://localhost:3001/openapi.yaml (file in `apps/api/openapi.yaml`). Helm chart scaffold under `infra/helm` for k8s.
+- **Full stack dev**: `docker-compose -f infra/docker-compose.yml up api orchestrator web` to run everything with live UI at http://localhost:3000 (timeline/graph/gallery + Admin Studio); API/OpenAPI at http://localhost:3001/openapi.yaml (file in `apps/api/openapi.yaml`). Helm chart scaffold under `infra/helm` for k8s.
 - **Port conflicts**: set `REDIS_PORT`/`WEB_PORT` in `.env` to remap host ports, and use `ORCH_REDIS_URL=redis://redis:6379` so the orchestrator connects to the in-stack Redis.
 - **Env samples**: copy `.env.integration.example` to `.env.integration` (edit URLs) for live DB/queue tests.
 - **Secrets**: load `DATABASE_URL`/`POSTGRES_URL`/`REDIS_URL` via the 1Password-backed loader (`~/.config/op/load-env.sh`) instead of committing credentials.
@@ -685,8 +685,8 @@ You'll know you're on track when:
 
 - **Documentation**: All specs in this repository
 - **Design Rationale**: See META-001 (Project Bible)
-- **Technical Details**: CONSOLIDATED-SPECIFICATIONS.md
-- **Constraints**: seed.yaml
+- **Technical Details**: docs/archived/CONSOLIDATED-SPECIFICATIONS.md
+- **Constraints**: seed.yaml (repository root)
 
 ---
 

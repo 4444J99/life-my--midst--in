@@ -35,9 +35,9 @@ updates:
       - "dependencies"
       - "ci"
 
-  # Docker (base images in docker-compose.yml)
+  # Docker (base images in infra/docker-compose.yml)
   - package-ecosystem: "docker-compose"
-    directory: "/"
+    directory: "/infra"
     schedule:
       interval: "weekly"
       day: "monday"

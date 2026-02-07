@@ -53,7 +53,7 @@ This repository contains the **implemented** interactive CV/résumé system "in�
 life-my--midst--in/
 │
 ├── 📁 apps/                          # Deployable applications
-│   ├── web/                          # Next.js 15 dashboard (:3000)
+│   ├── web/                          # Next.js 16 dashboard (:3000)
 │   ├── api/                          # Fastify REST API (:3001)
 │   └── orchestrator/                 # Node.js worker service (:3002)
 │
@@ -84,13 +84,11 @@ life-my--midst--in/
 │   ├── pnpm-workspace.yaml           # Workspace config
 │   └── tsconfig.json                 # TypeScript config
 │
-└── 📄 Documentation Files
-    ├── README.md                     # Project overview
-    ├── CLAUDE.md                     # AI development guidance
+└── 📄 Documentation (docs/)
+    ├── MANIFEST.md                   # This file
     ├── DEFINITIONS.md                # Unified glossary
     ├── DECISION-LOG.md               # Architecture decisions
-    ├── MANIFEST.md                   # This file
-    └── CONSOLIDATED-SPECIFICATIONS.md # Technical specs
+    └── archived/CONSOLIDATED-SPECIFICATIONS.md # Technical specs
 ```
 
 ---
@@ -262,13 +260,13 @@ See **[DEFINITIONS.md](DEFINITIONS.md)** for complete glossary.
 
 | Document | Purpose |
 |----------|---------|
-| [README.md](README.md) | User-facing overview |
-| [CLAUDE.md](CLAUDE.md) | Development guidance |
+| [README.md](../README.md) | User-facing overview |
+| [CLAUDE.md](../CLAUDE.md) | Development guidance |
 | [DEFINITIONS.md](DEFINITIONS.md) | Terminology glossary |
 | [DECISION-LOG.md](DECISION-LOG.md) | Architecture decisions |
-| [seed.yaml](seed.yaml) | Repository constraints |
-| [docs/SECURITY.md](docs/SECURITY.md) | Security guidelines |
-| [docs/PHASE-ROADMAP.md](docs/PHASE-ROADMAP.md) | Complete roadmap |
+| [seed.yaml](../seed.yaml) | Repository constraints |
+| [SECURITY.md](SECURITY.md) | Security guidelines |
+| [PHASE-ROADMAP.md](phases/PHASE-ROADMAP.md) | Complete roadmap |
 
 ---
 
