@@ -1,3 +1,7 @@
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document reflects the state at time of writing and may not match current implementation.
+> For current status, see [`docs/FEATURE-AUDIT.md`](../FEATURE-AUDIT.md).
+
 # Archived Documentation Index
 
 This directory contains historical design documents, planning artifacts, completion reports, and legacy guides from the project's early development phases (Nov-Dec 2025).

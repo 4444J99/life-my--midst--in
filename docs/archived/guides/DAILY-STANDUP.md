@@ -1,3 +1,7 @@
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document reflects the state at time of writing and may not match current implementation.
+> For current status, see [`docs/FEATURE-AUDIT.md`](../../FEATURE-AUDIT.md).
+
 # 🎭 Phase 0 Daily Standup
 
 > **Historical Document** — This is an archived guide document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.

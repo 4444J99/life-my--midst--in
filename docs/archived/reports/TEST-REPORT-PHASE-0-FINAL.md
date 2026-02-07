@@ -1,3 +1,7 @@
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document reflects the state at time of writing and may not match current implementation.
+> For current status, see [`docs/FEATURE-AUDIT.md`](../../FEATURE-AUDIT.md).
+
 # Phase 0 Integration Test Report (Final)
 
 > **Historical Document** — This file documents Phase 0 test results at time of completion. The test infrastructure has evolved since this was written. See `docs/README.md` for current documentation.

@@ -9,7 +9,9 @@ The Hunter Protocol is an autonomous job-searching agent that continuously monit
 1. **SearchProvider** (`packages/core/src/search.ts`)
    - Abstract interface for job board integration
    - Concrete implementations: `SerperJobSearchProvider`, `MockJobSearchProvider`
-   - Handles job discovery and metadata extraction
+   - Production provider uses Serper (google.serper.dev) for live Google Jobs results
+   - Set `SERPER_API_KEY` env var to activate; falls back to mock provider when absent
+   - Handles job discovery, metadata extraction, and response mapping
 
 2. **HunterAgent** (`apps/orchestrator/src/agents/hunter.ts`)
    - Orchestrates the four core tools

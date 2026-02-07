@@ -1,3 +1,7 @@
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document reflects the state at time of writing and may not match current implementation.
+> For current status, see [`docs/FEATURE-AUDIT.md`](../../FEATURE-AUDIT.md).
+
 # ORGANIZATION COMPLETE ✨
 
 > **Historical Document** — This file documents the original organization design phase. The implementation has evolved significantly since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.

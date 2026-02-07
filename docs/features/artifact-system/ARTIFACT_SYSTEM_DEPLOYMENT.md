@@ -5,11 +5,15 @@
 **Audience**: DevOps Engineers, System Administrators
 
 > **Implementation Status**: Core infrastructure (database tables, API routes,
-> provider interfaces) is implemented. The local filesystem provider is fully
-> functional. Cloud providers (Google Drive, Dropbox, iCloud) have interface
-> implementations but require OAuth credentials to be configured. LLM-powered
-> classification falls back to heuristic matching when `OPENAI_API_KEY` is not
-> set. S3/MinIO artifact storage is planned but not yet wired.
+> provider interfaces, CatcherAgent pipeline, sync state tracking) is fully
+> implemented. The local filesystem provider is verified end-to-end. Cloud
+> providers (Google Drive, Dropbox, iCloud) have complete interface
+> implementations including OAuth token handling, file listing with pagination,
+> download, and incremental sync — but **have not been verified with live
+> OAuth credentials**. LLM-powered classification falls back to heuristic
+> matching when no LLM endpoint is available; the **AI classification path
+> requires verification with a live LLM endpoint**. S3/MinIO artifact storage
+> is planned but not yet wired.
 
 ## Table of Contents
 

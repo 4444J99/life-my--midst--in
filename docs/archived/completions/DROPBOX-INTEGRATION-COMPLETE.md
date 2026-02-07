@@ -1,3 +1,7 @@
+> **⚠️ ARCHIVED — HISTORICAL SNAPSHOT**
+> This document reflects the state at time of writing and may not match current implementation.
+> For current status, see [`docs/FEATURE-AUDIT.md`](../../FEATURE-AUDIT.md).
+
 # DropboxIntegration Implementation - Completion Report
 
 > **Historical Document** — This file documents work completed during the Dropbox integration phase. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.

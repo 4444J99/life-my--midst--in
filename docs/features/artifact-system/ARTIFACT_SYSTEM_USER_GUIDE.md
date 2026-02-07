@@ -4,12 +4,16 @@
 **Last Updated**: January 16, 2026
 **Audience**: End Users
 
-> **Implementation Status**: The artifact system API routes and database
-> schema are implemented. Cloud storage discovery (Google Drive, Dropbox)
-> has provider interfaces and a working local filesystem provider. LLM-based
-> classification is stubbed with heuristic fallback — full AI classification
-> requires an `OPENAI_API_KEY`. The web UI for artifact review is partially
-> implemented. See `ARTIFACT_SYSTEM_DEPLOYMENT.md` for current deployment
+> **Implementation Status**: The artifact system API routes, database schema,
+> and orchestrator pipeline are implemented. Cloud storage providers (Google
+> Drive, Dropbox, iCloud) have full interface implementations including OAuth
+> flows, file listing, download, and sync state tracking. The local filesystem
+> provider is fully functional and verified. **Cloud providers are scaffolded
+> but not verified end-to-end** — they require valid OAuth credentials and
+> live API access to test. LLM-based classification falls back to heuristic
+> matching when no LLM endpoint is configured. The CatcherAgent classification
+> pipeline **requires verification with a live LLM endpoint** for the AI
+> classification path. See `ARTIFACT_SYSTEM_DEPLOYMENT.md` for deployment
 > requirements.
 
 ## Table of Contents
