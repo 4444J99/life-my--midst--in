@@ -1,13 +1,21 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unused-vars, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unused-vars, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import type { Profile } from '@in-midst-my-life/schema';
 import {
   CompatibilityAnalyzer,
+  ToneAnalyzer,
   selectWeightedMasks,
   MASK_TAXONOMY,
   type InterviewerProfile,
 } from '@in-midst-my-life/content-model';
+import type {
+  InterviewSessionRepo,
+  InterviewSessionRecord,
+} from '../repositories/interview-sessions';
+import { createInterviewSessionRepo } from '../repositories/interview-sessions';
+import type { PubSubEngine } from '../services/pubsub';
+import { interviewScoreUpdatedTopic, interviewCompletedTopic } from '../services/pubsub';
 
 const InterviewAnswerSchema = z.object({
   questionId: z.string(),
@@ -16,37 +24,6 @@ const InterviewAnswerSchema = z.object({
   timestamp: z.string().datetime(),
   tone: z.enum(['defensive', 'neutral', 'transparent', 'enthusiastic']).optional(),
 });
-
-const InterviewSessionSchema = z.object({
-  id: z.string().uuid(),
-  profileId: z.string().uuid(),
-  interviewerName: z.string(),
-  organizationName: z.string(),
-  jobTitle: z.string(),
-  jobRequirements: z.array(
-    z.object({
-      skill: z.string(),
-      level: z.enum(['novice', 'intermediate', 'advanced', 'expert']),
-      required: z.boolean(),
-    }),
-  ),
-  salaryRange: z
-    .object({
-      min: z.number(),
-      max: z.number(),
-    })
-    .optional(),
-  answers: z.array(InterviewAnswerSchema),
-  status: z.enum(['in-progress', 'completed', 'archived']),
-  compatibilityScore: z.number().optional(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
-
-type InterviewSession = z.infer<typeof InterviewSessionSchema>;
-
-// Mock storage (would be replaced with database)
-const sessions = new Map<string, InterviewSession>();
 
 type QuestionCategory =
   | 'culture'
@@ -269,7 +246,38 @@ function selectQuestions(options: {
   return selected;
 }
 
+/**
+ * Build an InterviewerProfile from session data for the CompatibilityAnalyzer.
+ */
+function buildInterviewerProfile(session: InterviewSessionRecord): InterviewerProfile {
+  return {
+    organizationName: session.organizationName,
+    hiringManagerName: session.interviewerName,
+    jobTitle: session.jobTitle,
+    jobRequirements: session.jobRequirements as any,
+    salaryRange: session.salaryRange as any,
+    answers: Object.fromEntries(session.answers.map((a) => [a.questionId, a.answer])),
+    culture: session.answers
+      .filter((a) => a.questionId.includes('culture'))
+      .map((a) => a.answer)
+      .join(' '),
+    growth: session.answers
+      .filter((a) => a.questionId.includes('growth'))
+      .map((a) => a.answer)
+      .join(' '),
+    kpis: [],
+  };
+}
+
+const toneAnalyzer = new ToneAnalyzer();
+const compatibilityAnalyzer = new CompatibilityAnalyzer();
+
 export const interviewRoutes: FastifyPluginAsync = async (server) => {
+  // Resolve dependencies: repo + pubsub are injected via server.decorate or fallback
+  const repo: InterviewSessionRepo =
+    (server as any)['interviewSessionRepo'] ?? createInterviewSessionRepo();
+  const pubsub: PubSubEngine | undefined = (server as any)['pubsub'];
+
   /**
    * GET /interviews/:profileId/questions
    * Get interview questions for a candidate's profile.
@@ -337,7 +345,7 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
     const sessionId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    const session: InterviewSession = {
+    const session: InterviewSessionRecord = {
       id: sessionId,
       profileId,
       interviewerName: body.interviewerName,
@@ -351,7 +359,7 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
       updatedAt: now,
     };
 
-    sessions.set(sessionId, session);
+    await repo.create(session);
 
     return reply.status(201).send({
       sessionId,
@@ -363,25 +371,70 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
 
   /**
    * POST /interviews/sessions/:sessionId/answer
-   * Record an answer to an interview question
+   * Record an answer to an interview question.
+   * Runs incremental tone analysis and publishes a score update event.
    */
   server.post('/interviews/sessions/:sessionId/answer', async (req, reply) => {
     const { sessionId } = req.params as { sessionId: string };
     const body = InterviewAnswerSchema.parse(req.body);
 
-    const session = sessions.get(sessionId);
+    const session = await repo.find(sessionId);
     if (!session) {
       return reply.status(404).send({ error: 'Interview session not found' });
     }
 
-    session.answers.push(body);
-    session.updatedAt = new Date().toISOString();
-    sessions.set(sessionId, session);
+    // Auto-detect tone if not provided by the client
+    const tone = body.tone ?? toneAnalyzer.analyze(body.answer).tone;
+
+    const answer = { ...body, tone };
+    session.answers.push(answer);
+    const now = new Date().toISOString();
+
+    await repo.update(sessionId, {
+      answers: session.answers,
+      updatedAt: now,
+    });
+
+    // Run incremental scoring if we have enough answers (2+) and publish event
+    let incrementalScore: Record<string, unknown> | undefined;
+    if (session.answers.length >= 2 && pubsub) {
+      try {
+        // Build a partial interviewer profile from answers so far
+        const partial = buildInterviewerProfile(session);
+        // Fetch candidate profile for scoring
+        const profileResponse = await fetch(`http://localhost:3001/profiles/${session.profileId}`);
+        if (profileResponse.ok) {
+          const profile = (await profileResponse.json()) as Profile;
+          const analysis = compatibilityAnalyzer.analyzeCompatibility(profile, partial);
+
+          incrementalScore = {
+            sessionId,
+            profileId: session.profileId,
+            answersCount: session.answers.length,
+            overallScore: analysis.scores.overall,
+            categoryScores: {
+              skillMatch: analysis.scores.skillMatch,
+              valuesAlign: analysis.scores.valuesAlign,
+              growthFit: analysis.scores.growthFit,
+              sustainability: analysis.scores.sustainability,
+              compensationFit: analysis.scores.compensationFit,
+            },
+            updatedAt: now,
+          };
+
+          void pubsub.publish(interviewScoreUpdatedTopic(sessionId), incrementalScore);
+        }
+      } catch {
+        // Incremental scoring is best-effort; don't fail the answer recording
+      }
+    }
 
     return reply.send({
       sessionId,
       answerRecorded: true,
       totalAnswers: session.answers.length,
+      tone,
+      ...(incrementalScore ? { incrementalScore } : {}),
     });
   });
 
@@ -392,7 +445,7 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
   server.post('/interviews/sessions/:sessionId/complete', async (req, reply) => {
     const { sessionId } = req.params as { sessionId: string };
 
-    const session = sessions.get(sessionId);
+    const session = await repo.find(sessionId);
     if (!session) {
       return reply.status(404).send({ error: 'Interview session not found' });
     }
@@ -405,33 +458,27 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
     const profile = (await profileResponse.json()) as Profile;
 
     // Build interviewer profile from session data
-    const interviewerProfile: InterviewerProfile = {
-      organizationName: session.organizationName,
-      hiringManagerName: session.interviewerName,
-      jobTitle: session.jobTitle,
-      jobRequirements: session.jobRequirements as any,
-      salaryRange: session.salaryRange as any,
-      answers: Object.fromEntries(session.answers.map((a) => [a.questionId, a.answer])),
-      culture: session.answers
-        .filter((a) => a.questionId.includes('culture'))
-        .map((a) => a.answer)
-        .join(' '),
-      growth: session.answers
-        .filter((a) => a.questionId.includes('growth'))
-        .map((a) => a.answer)
-        .join(' '),
-      kpis: [], // Could extract from answers
-    };
+    const interviewerProfile = buildInterviewerProfile(session);
 
     // Analyze compatibility
-    const analyzer = new CompatibilityAnalyzer();
-    const analysis = analyzer.analyzeCompatibility(profile, interviewerProfile);
+    const analysis = compatibilityAnalyzer.analyzeCompatibility(profile, interviewerProfile);
+    const now = new Date().toISOString();
 
-    // Update session
-    session.status = 'completed';
-    session.compatibilityScore = analysis.scores.overall;
-    session.updatedAt = new Date().toISOString();
-    sessions.set(sessionId, session);
+    // Persist final results
+    await repo.update(sessionId, {
+      status: 'completed',
+      compatibilityScore: analysis.scores.overall,
+      compatibilityAnalysis: analysis as unknown as Record<string, unknown>,
+      updatedAt: now,
+    });
+
+    // Publish completion event
+    if (pubsub) {
+      const completedSession = await repo.find(sessionId);
+      if (completedSession) {
+        void pubsub.publish(interviewCompletedTopic(sessionId), completedSession);
+      }
+    }
 
     return reply.send({
       sessionId,
@@ -448,7 +495,7 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
   server.get('/interviews/sessions/:sessionId', async (req, reply) => {
     const { sessionId } = req.params as { sessionId: string };
 
-    const session = sessions.get(sessionId);
+    const session = await repo.find(sessionId);
     if (!session) {
       return reply.status(404).send({ error: 'Interview session not found' });
     }
@@ -464,7 +511,7 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
   server.post('/interviews/sessions/:sessionId/suggest-masks', async (req, reply) => {
     const { sessionId } = req.params as { sessionId: string };
 
-    const session = sessions.get(sessionId);
+    const session = await repo.find(sessionId);
     if (!session) {
       return reply.status(404).send({ error: 'Interview session not found' });
     }
@@ -509,7 +556,7 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
   server.get('/interviews/:profileId/history', async (req, _reply) => {
     const { profileId } = req.params as { profileId: string };
 
-    const history = Array.from(sessions.values()).filter((s) => s.profileId === profileId);
+    const history = await repo.listByProfile(profileId);
 
     return {
       profileId,

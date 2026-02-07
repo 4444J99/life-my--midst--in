@@ -24,7 +24,12 @@ import type { NarrativeRepo } from '../repositories/narratives';
 import { renderTimeline, renderTimelineForMask } from '@in-midst-my-life/content-model';
 import { hashPayload } from '@in-midst-my-life/core';
 import type { PubSubEngine } from './pubsub';
-import { profileUpdatedTopic, narrativeGeneratedTopic } from './pubsub';
+import {
+  profileUpdatedTopic,
+  narrativeGeneratedTopic,
+  interviewScoreUpdatedTopic,
+  interviewCompletedTopic,
+} from './pubsub';
 
 export interface GraphQLContext {
   profileRepo?: ProfileRepo;
@@ -508,6 +513,20 @@ export const subscriptionResolvers = {
     const topic = narrativeGeneratedTopic(args.profileId);
     const source = context.pubsub.subscribe(topic);
     return mapAsyncIterator(source, (payload) => ({ narrativeGenerated: payload }));
+  },
+
+  interviewScoreUpdated: (args: { sessionId: string }, context: GraphQLContext) => {
+    if (!context.pubsub) throw new Error('PubSub not available');
+    const topic = interviewScoreUpdatedTopic(args.sessionId);
+    const source = context.pubsub.subscribe(topic);
+    return mapAsyncIterator(source, (payload) => ({ interviewScoreUpdated: payload }));
+  },
+
+  interviewCompleted: (args: { sessionId: string }, context: GraphQLContext) => {
+    if (!context.pubsub) throw new Error('PubSub not available');
+    const topic = interviewCompletedTopic(args.sessionId);
+    const source = context.pubsub.subscribe(topic);
+    return mapAsyncIterator(source, (payload) => ({ interviewCompleted: payload }));
   },
 };
 

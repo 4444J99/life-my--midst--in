@@ -476,12 +476,11 @@ These ideas appear in the originals but not in `CONSOLIDATED-SPECIFICATIONS.md`:
 - **COVENANT Position**: Explicitly "Long Term"
 - **Recommendation**: Document as intentionally deferred
 
-### G11: Real-Time Interview Analysis ([#34](https://github.com/4444J99/life-my--midst--in/issues/34))
+### ~~G11: Real-Time Interview Analysis ([#34](https://github.com/4444J99/life-my--midst--in/issues/34))~~ — RESOLVED
 
-- **Severity**: Medium
+- **Severity**: ~~Medium~~ **None**
 - **Seed Source**: PLAN-008 (Act II staging, live compatibility, tone analysis)
-- **Current State**: Post-hoc scoring, not live. No tone analysis.
-- **Recommendation**: WebSocket live scoring; LLM tone analysis on answer submission
+- **Resolution**: Incremental compatibility scoring runs after each answer (2+ answers), published via PubSub `interviewScoreUpdated` events. GraphQL subscriptions `interviewScoreUpdated(sessionId)` and `interviewCompleted(sessionId)` added. `ToneAnalyzer` (keyword-based, Strategy pattern) auto-detects answer tone (defensive/neutral/transparent/enthusiastic). Sessions persisted to Postgres via `InterviewSessionRepo` (migration 018). Live dashboard at `/interview/[profileId]/live` with SVG score gauge, category breakdown bars, and answer feed with tone indicators. WebSocket subscription hook (`useInterviewSubscription`) with REST polling fallback.
 
 ### G12: Dynamic Mask Triggering From Interview ([#35](https://github.com/4444J99/life-my--midst--in/issues/35))
 
@@ -935,7 +934,7 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 | Gap | Action | Effort |
 |-----|--------|--------|
 | **G9** | Dynamic interview question generation | 4-6 hours |
-| **G11** | WebSocket live interview scoring | 6-8 hours |
+| ~~**G11**~~ | ~~WebSocket live interview scoring~~ | **RESOLVED** |
 | **G12** | Auto-suggest masks from interview context | 3-4 hours |
 
 ### Priority 5 — System Maturation (Higher effort)

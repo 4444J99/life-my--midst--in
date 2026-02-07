@@ -25,6 +25,7 @@ import { registerAgentRoutes } from './routes/agent-interface';
 import { registerAttestationBlockRoutes } from './routes/attestation-blocks';
 import { jobRoutes } from './routes/jobs';
 import { interviewRoutes } from './routes/interviews';
+import { createInterviewSessionRepo } from './repositories/interview-sessions';
 import { registerHunterProtocolRoutes } from './routes/hunter-protocol';
 import { registerArtifactRoutes } from './routes/artifacts';
 import { registerIntegrationRoutes } from './routes/integrations';
@@ -509,6 +510,16 @@ export function buildServer(options: ApiServerOptions = {}) {
     });
     scope.register(registerAttestationBlockRoutes);
     scope.register(jobRoutes);
+    const interviewSessionRepo =
+      process.env['NODE_ENV'] === 'test'
+        ? createInterviewSessionRepo()
+        : createInterviewSessionRepo(
+            new Pool({
+              connectionString: process.env['DATABASE_URL'] ?? process.env['POSTGRES_URL'],
+            }),
+          );
+    scope.decorate('interviewSessionRepo', interviewSessionRepo);
+    scope.decorate('pubsub', pubsub);
     scope.register(interviewRoutes);
     scope.register(registerHunterProtocolRoutes, {
       prefix: '/profiles',

@@ -8,9 +8,9 @@ export type {
   Template,
   WeightedMask,
   MaskedProfile,
-  TimelineRenderOptions
-} from "./types";
-export type { Personality, Setting } from "@in-midst-my-life/schema";
+  TimelineRenderOptions,
+} from './types';
+export type { Personality, Setting } from '@in-midst-my-life/schema';
 
 // Taxonomy (static definitions)
 export {
@@ -22,8 +22,8 @@ export {
   PERSONALITY_TAXONOMY,
   SETTING_TAXONOMY,
   STAGE_SETTING_RELATIONS,
-  STAGE_TAXONOMY
-} from "./taxonomy";
+  STAGE_TAXONOMY,
+} from './taxonomy';
 
 // Templates
 export {
@@ -35,8 +35,8 @@ export {
   TIMELINE_TEMPLATES,
   filterTemplatesByScore,
   interpolate,
-  sortTemplatesByWeight
-} from "./templates";
+  sortTemplatesByWeight,
+} from './templates';
 
 // Timeline processing
 export {
@@ -59,8 +59,8 @@ export {
   renderTimelineForMask,
   resolveEpochs,
   resolveSettings,
-  resolveStages
-} from "./timeline";
+  resolveStages,
+} from './timeline';
 
 // Mask selection
 export {
@@ -70,8 +70,8 @@ export {
   selectBestMask,
   selectMasksForView,
   selectWeightedMasks,
-  stageWeight
-} from "./mask-selection";
+  stageWeight,
+} from './mask-selection';
 
 // Narrative generation
 export {
@@ -80,17 +80,20 @@ export {
   buildNarrativeOutput,
   buildNarrativeWithEpochs,
   buildNarrativeWithTimeline,
-  buildWeightedNarrative
-} from "./narrative";
+  buildWeightedNarrative,
+} from './narrative';
 
 // Weighting (block scoring)
-export * from "./weighting";
+export * from './weighting';
 
 // LLM provider
-export * from "./llm-provider";
+export * from './llm-provider';
 
 // JSON-LD exports
-export * from "./json-ld";
+export * from './json-ld';
 
 // Compatibility utilities
-export * from "./compatibility";
+export * from './compatibility';
+
+// Tone analysis
+export * from './tone';

@@ -26,6 +26,16 @@ export function narrativeGeneratedTopic(profileId: string): string {
   return `narrative:${profileId}:generated`;
 }
 
+/** Topic helper: interview score update events (fired per answer) */
+export function interviewScoreUpdatedTopic(sessionId: string): string {
+  return `interview:${sessionId}:score`;
+}
+
+/** Topic helper: interview session completed events */
+export function interviewCompletedTopic(sessionId: string): string {
+  return `interview:${sessionId}:completed`;
+}
+
 export class InMemoryPubSub implements PubSubEngine {
   private emitter = new EventEmitter();
 

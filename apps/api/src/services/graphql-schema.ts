@@ -313,6 +313,89 @@ export const graphqlSchema = `
     rejected
   }
 
+  # ============ Interview Types ============
+
+  """
+  A single answer recorded during an interview session.
+  """
+  type InterviewAnswer {
+    """Question identifier"""
+    questionId: String!
+    """The interviewer's response text"""
+    answer: String!
+    """Time taken in seconds"""
+    duration: Int!
+    """ISO 8601 timestamp of when the answer was recorded"""
+    timestamp: DateTime!
+    """Detected tone of the answer"""
+    tone: InterviewTone
+  }
+
+  enum InterviewTone {
+    defensive
+    neutral
+    transparent
+    enthusiastic
+  }
+
+  """
+  Incremental compatibility scores emitted after each answer.
+  """
+  type InterviewScoreEvent {
+    """Interview session ID"""
+    sessionId: ID!
+    """Profile being interviewed about"""
+    profileId: ID!
+    """Number of answers recorded so far"""
+    answersCount: Int!
+    """Current overall compatibility score (0-100)"""
+    overallScore: Int!
+    """Per-category breakdown"""
+    categoryScores: InterviewCategoryScores!
+    """Timestamp of the score update"""
+    updatedAt: DateTime!
+  }
+
+  type InterviewCategoryScores {
+    skillMatch: Int!
+    valuesAlign: Int!
+    growthFit: Int!
+    sustainability: Int!
+    compensationFit: Int!
+  }
+
+  """
+  Complete interview session with answers and analysis.
+  """
+  type InterviewSession {
+    """Session identifier"""
+    id: ID!
+    """Candidate profile ID"""
+    profileId: ID!
+    """Interviewer name"""
+    interviewerName: String!
+    """Organization name"""
+    organizationName: String!
+    """Target job title"""
+    jobTitle: String!
+    """Session status"""
+    status: InterviewStatus!
+    """Recorded answers"""
+    answers: [InterviewAnswer!]!
+    """Final compatibility score (set on completion)"""
+    compatibilityScore: Int
+    """Creation timestamp"""
+    createdAt: DateTime!
+    """Last update timestamp"""
+    updatedAt: DateTime!
+  }
+
+  enum InterviewStatus {
+    in_progress
+    completed
+    archived
+  }
+
   # ============ Epoch & Stage Types ============
   
   """
@@ -410,9 +493,16 @@ export const graphqlSchema = `
     # Stage queries
     """Retrieve a stage by ID"""
     stage(id: ID!): Stage
-    
+
     """List stages in an epoch"""
     stagesInEpoch(epochId: ID!): [Stage!]!
+
+    # Interview queries
+    """Retrieve an interview session by ID"""
+    interviewSession(sessionId: ID!): InterviewSession
+
+    """List interview sessions for a candidate"""
+    interviewHistory(profileId: ID!, limit: Int = 20): [InterviewSession!]!
   }
 
   # ============ Mutation Types ============
@@ -475,5 +565,11 @@ export const graphqlSchema = `
     
     """Subscribe to narrative generation completion"""
     narrativeGenerated(profileId: ID!): NarrativeSnapshot!
+
+    """Subscribe to live interview score updates (fired per answer)"""
+    interviewScoreUpdated(sessionId: ID!): InterviewScoreEvent!
+
+    """Subscribe to interview session completion"""
+    interviewCompleted(sessionId: ID!): InterviewSession!
   }
 `;
