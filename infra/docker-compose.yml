@@ -95,7 +95,7 @@ services:
       - redis
 
   postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.15.0
+    image: prometheuscommunity/postgres-exporter:v0.19.0
     container_name: inmidst-postgres-exporter
     restart: unless-stopped
     ports:
