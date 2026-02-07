@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import {
   useInterviewSubscription,
   type InterviewScoreEvent,
+  type MaskResonanceEntry,
 } from '@/hooks/useInterviewSubscription';
 
 interface AnswerFeedItem {
@@ -383,6 +384,89 @@ export default function LiveInterviewDashboard() {
                   />
                 ))}
               </div>
+
+              {/* Recommended Mask Panel */}
+              {latestScore?.maskResonance && latestScore.maskResonance.length > 0 && (
+                <div
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 16,
+                    padding: '1.5rem',
+                  }}
+                >
+                  <h2
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: 'rgba(255,255,255,0.5)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      margin: '0 0 1rem',
+                    }}
+                  >
+                    Recommended Masks
+                  </h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {latestScore.maskResonance.map((mask: MaskResonanceEntry, i: number) => (
+                      <div
+                        key={mask.maskName}
+                        style={{
+                          padding: '8px 12px',
+                          background:
+                            i === 0
+                              ? 'linear-gradient(135deg, rgba(124,58,237,0.2), rgba(219,39,119,0.2))'
+                              : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${i === 0 ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                          borderRadius: 10,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 14,
+                              fontWeight: i === 0 ? 700 : 500,
+                              color: i === 0 ? '#c4b5fd' : 'rgba(255,255,255,0.7)',
+                            }}
+                          >
+                            {i === 0 ? `★ ${mask.maskName}` : mask.maskName}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color:
+                                mask.fitScore >= 70
+                                  ? '#22c55e'
+                                  : mask.fitScore >= 40
+                                    ? '#eab308'
+                                    : '#9ca3af',
+                            }}
+                          >
+                            {mask.fitScore}%
+                          </span>
+                        </div>
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: 'rgba(255,255,255,0.4)',
+                            margin: '4px 0 0',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {mask.reasoning}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right panel: Answer feed */}

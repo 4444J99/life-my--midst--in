@@ -1,4 +1,6 @@
 import type { Profile, Skill } from '@in-midst-my-life/schema';
+import { MASK_TAXONOMY } from './taxonomy';
+import { selectWeightedMasks } from './mask-selection';
 
 export interface JobRequirement {
   skill: string;
@@ -392,7 +394,12 @@ export class CompatibilityAnalyzer {
   }
 
   /**
-   * Analyze which masks resonate with this opportunity
+   * Analyze which masks resonate with this opportunity.
+   *
+   * Uses the full 16-mask taxonomy scored against the job's context
+   * (title keywords, required skills, answer content). Returns the top 5
+   * masks sorted by fit score, with reasoning derived from the mask's
+   * functional_scope and the job's requirements.
    */
   private analyzeMaskResonance(
     _candidate: Profile,
@@ -402,27 +409,45 @@ export class CompatibilityAnalyzer {
     fitScore: number;
     reasoning: string;
   }> {
-    // This would integrate with the mask system
-    // For now, return placeholder analysis
+    // Build context from job metadata + answer content for mask scoring
+    const contexts = [
+      interviewer.jobTitle.toLowerCase(),
+      ...interviewer.jobRequirements.map((r) => r.skill.toLowerCase()),
+    ];
+    const tags = [
+      ...interviewer.jobRequirements.filter((r) => r.required).map((r) => r.skill.toLowerCase()),
+      ...Object.values(interviewer.answers)
+        .join(' ')
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 4)
+        .slice(0, 20),
+    ];
 
-    const roles = ['Architect', 'Artisan', 'Synthesist', 'Analyst'];
-    const requirements = interviewer.jobRequirements;
+    // Score all 16 masks against the interview context
+    const weighted = selectWeightedMasks({
+      contexts,
+      tags,
+      availableMasks: MASK_TAXONOMY,
+      profile: {} as Profile,
+    });
 
-    return roles.map((role) => {
-      let score = 50;
+    // Normalize scores to 0-100 scale
+    const maxScore = weighted[0]?.score ?? 1;
 
-      if (role === 'Architect' && requirements.some((r) => r.skill.includes('system'))) {
-        score = 85;
-      } else if (role === 'Artisan' && interviewer.jobTitle?.includes('shipping')) {
-        score = 80;
-      } else if (role === 'Synthesist' && interviewer.culture?.includes('team')) {
-        score = 75;
-      }
+    return weighted.slice(0, 5).map((w) => {
+      const fitScore = Math.round((w.score / Math.max(maxScore, 1)) * 100);
+      const matchedSkills = interviewer.jobRequirements
+        .filter((r) => r.required)
+        .map((r) => r.skill)
+        .slice(0, 2);
+      const skillContext =
+        matchedSkills.length > 0 ? matchedSkills.join(', ') : interviewer.jobTitle;
 
       return {
-        maskName: role,
-        fitScore: score,
-        reasoning: `${role} persona aligns with ${interviewer.jobTitle} requirements`,
+        maskName: w.mask.name,
+        fitScore: Math.max(fitScore, 10), // floor at 10 so every returned mask has some relevance
+        reasoning: `${w.mask.name} (${w.mask.functional_scope}) resonates with ${skillContext} requirements`,
       };
     });
   }

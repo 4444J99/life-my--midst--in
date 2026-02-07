@@ -5,6 +5,7 @@ import type { Profile } from '@in-midst-my-life/schema';
 import {
   CompatibilityAnalyzer,
   ToneAnalyzer,
+  FollowUpGenerator,
   selectWeightedMasks,
   MASK_TAXONOMY,
   type InterviewerProfile,
@@ -271,6 +272,7 @@ function buildInterviewerProfile(session: InterviewSessionRecord): InterviewerPr
 
 const toneAnalyzer = new ToneAnalyzer();
 const compatibilityAnalyzer = new CompatibilityAnalyzer();
+const followUpGenerator = new FollowUpGenerator();
 
 export const interviewRoutes: FastifyPluginAsync = async (server) => {
   // Resolve dependencies: repo + pubsub are injected via server.decorate or fallback
@@ -419,6 +421,7 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
               sustainability: analysis.scores.sustainability,
               compensationFit: analysis.scores.compensationFit,
             },
+            maskResonance: analysis.maskResonance,
             updatedAt: now,
           };
 
@@ -429,12 +432,30 @@ export const interviewRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
+    // Generate contextual follow-up questions based on detected gaps + tone
+    let suggestedFollowUps: string[] = [];
+    if (incrementalScore) {
+      const scores = incrementalScore as {
+        categoryScores: Record<string, number>;
+      };
+      const gaps = Object.entries(scores.categoryScores).map(([category, score]) => ({
+        category,
+        score: score,
+      }));
+      suggestedFollowUps = followUpGenerator.generate(
+        gaps,
+        tone,
+        session.answers.map((a) => a.questionId),
+      );
+    }
+
     return reply.send({
       sessionId,
       answerRecorded: true,
       totalAnswers: session.answers.length,
       tone,
       ...(incrementalScore ? { incrementalScore } : {}),
+      ...(suggestedFollowUps.length > 0 ? { suggestedFollowUps } : {}),
     });
   });
 

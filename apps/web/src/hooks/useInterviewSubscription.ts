@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+export interface MaskResonanceEntry {
+  maskName: string;
+  fitScore: number;
+  reasoning: string;
+}
+
 export interface InterviewScoreEvent {
   sessionId: string;
   profileId: string;
@@ -14,6 +20,7 @@ export interface InterviewScoreEvent {
     sustainability: number;
     compensationFit: number;
   };
+  maskResonance?: MaskResonanceEntry[];
   updatedAt: string;
 }
 
