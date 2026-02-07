@@ -9,15 +9,20 @@
  * 4. write_cover_letter - Personalized, authentic
  */
 
-export * from "./hunter-agent";
-export * from "./job-search";
-export * from "./compatibility-analyzer";
-export * from "./document-generator";
+export * from './hunter-agent';
+export * from './job-search';
+export * from './compatibility-analyzer';
+export * from './document-generator';
+export * from './market-rate';
 
-import { HunterAgent } from "./hunter-agent";
-import { MockJobSearchProvider, createJobSearchProvider } from "./job-search";
-import { DefaultCompatibilityAnalyzer } from "./compatibility-analyzer";
-import { DefaultResumeTailor, DefaultCoverLetterGenerator, DocumentGenerator } from "./document-generator";
+import { HunterAgent } from './hunter-agent';
+import { MockJobSearchProvider, createJobSearchProvider } from './job-search';
+import { DefaultCompatibilityAnalyzer } from './compatibility-analyzer';
+import {
+  DefaultResumeTailor,
+  DefaultCoverLetterGenerator,
+  DocumentGenerator,
+} from './document-generator';
 
 /**
  * Factory function to create fully configured Hunter Agent
@@ -32,7 +37,7 @@ export function createHunterProtocolAgent(useMockData = true): HunterAgent {
     jobSearchService,
     compatibilityAnalyzer,
     resumeTailor,
-    coverLetterGenerator
+    coverLetterGenerator,
   );
 }
 

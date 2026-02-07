@@ -3,8 +3,10 @@ import type {
   CompatibilityAnalysis,
   Profile,
   SkillGap,
-} from "@in-midst-my-life/schema";
-import type { CompatibilityAnalyzer } from "./hunter-agent";
+} from '@in-midst-my-life/schema';
+import type { CompatibilityAnalyzer } from './hunter-agent';
+import type { MarketRateEstimate } from './market-rate';
+import { compareSalary } from './market-rate';
 
 /**
  * Compatibility Analyzer
@@ -21,26 +23,21 @@ import type { CompatibilityAnalyzer } from "./hunter-agent";
  */
 
 export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
-  async analyze(input: {
+  analyze(input: {
     job_id: string;
     profile_id: string;
     persona_id: string;
     job: JobListing;
     profile: Profile;
+    marketRate?: MarketRateEstimate;
   }): Promise<CompatibilityAnalysis> {
-    const {
-      job_id,
-      profile_id,
-      persona_id,
-      job,
-      profile,
-    } = input;
+    const { job_id, profile_id, persona_id, job, profile, marketRate } = input;
 
     // Analyze each dimension
     const skillMatch = this.analyzeSkillMatch(job, profile);
     const culturalMatch = this.analyzeCulturalFit(job, profile);
     const growthPotential = this.analyzeGrowthPotential(job, profile);
-    const compensationFit = this.analyzeCompensationFit(job);
+    const compensationFit = this.analyzeCompensationFit(job, marketRate);
     const locationSuitability = this.analyzeLocationSuitability(job);
 
     // Calculate overall score (weighted average)
@@ -49,7 +46,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
         culturalMatch * 0.25 +
         growthPotential * 0.15 +
         compensationFit * 0.15 +
-        locationSuitability * 0.1
+        locationSuitability * 0.1,
     );
 
     // Analyze skill gaps
@@ -64,7 +61,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     // Negotiation points
     const negotiationPoints = this.identifyNegotiationPoints(job);
 
-    return {
+    return Promise.resolve({
       job_id,
       profile_id,
       persona_id,
@@ -83,8 +80,9 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
       key_points_to_emphasize: strengths,
       areas_to_de_emphasize: skillGaps.map((gap) => gap.skill),
       analysis_date: new Date(),
-      effort_estimate_minutes: 20 + skillGaps.filter(g => g.gap_severity === 'critical').length * 10,
-    };
+      effort_estimate_minutes:
+        20 + skillGaps.filter((g) => g.gap_severity === 'critical').length * 10,
+    });
   }
 
   /**
@@ -97,25 +95,19 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     }
 
     // Count matching technologies
-    const profileText = (
-      profile.summaryMarkdown || ""
-    ).toLowerCase();
+    const profileText = (profile.summaryMarkdown || '').toLowerCase();
 
     const matchCount = job.technologies.filter((tech) =>
-      profileText.includes(tech.toLowerCase())
+      profileText.includes(tech.toLowerCase()),
     ).length;
 
     const matchPercentage = (matchCount / job.technologies.length) * 100;
 
     // Boost if core techs match
     let boost = 0;
-    if (
-      matchCount >= job.technologies.length * 0.7
-    ) {
+    if (matchCount >= job.technologies.length * 0.7) {
       boost = 15;
-    } else if (
-      matchCount >= job.technologies.length * 0.5
-    ) {
+    } else if (matchCount >= job.technologies.length * 0.5) {
       boost = 5;
     }
 
@@ -130,15 +122,15 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     let score = 50; // Neutral baseline
 
     // Company size preference
-    if (job.company_size === "startup" && profile.summaryMarkdown?.includes("startup")) {
+    if (job.company_size === 'startup' && profile.summaryMarkdown?.includes('startup')) {
       score += 15;
     }
-    if (job.company_size === "enterprise" && profile.summaryMarkdown?.includes("enterprise")) {
+    if (job.company_size === 'enterprise' && profile.summaryMarkdown?.includes('enterprise')) {
       score += 10;
     }
 
     // Remote preference
-    if (job.remote === "fully") {
+    if (job.remote === 'fully') {
       score += 10; // Usually implies flexible culture
     }
 
@@ -158,11 +150,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     let score = 50;
 
     // Higher level role = more growth (mentor others)
-    if (
-      job.title.includes("Lead") ||
-      job.title.includes("Senior") ||
-      job.title.includes("Staff")
-    ) {
+    if (job.title.includes('Lead') || job.title.includes('Senior') || job.title.includes('Staff')) {
       score += 20;
     }
 
@@ -173,11 +161,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     }
 
     // New technologies
-    if (
-      job.technologies?.some(
-        (tech) => !profile.summaryMarkdown?.includes(tech.toLowerCase())
-      )
-    ) {
+    if (job.technologies?.some((tech) => !profile.summaryMarkdown?.includes(tech.toLowerCase()))) {
       score += 10;
     }
 
@@ -186,32 +170,33 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
 
   /**
    * Compensation Fit (0-100)
-   * Analyzes salary alignment
+   * When a MarketRateEstimate is available, uses real market data via compareSalary().
+   * Falls back to heuristic title-based estimation otherwise.
    */
-  private analyzeCompensationFit(job: JobListing): number {
-    // Without profile salary info, estimate based on role level
-    let estimatedSalary = 120000; // Base estimate
-
-    if (
-      job.title.includes("Senior") ||
-      job.title.includes("Lead")
-    ) {
-      estimatedSalary = 160000;
-    }
-    if (job.title.includes("Staff") || job.title.includes("Director")) {
-      estimatedSalary = 220000;
-    }
-
-    // Compare to job salary range
-    if (!job.salary_min || !job.salary_max) {
+  private analyzeCompensationFit(job: JobListing, marketRate?: MarketRateEstimate): number {
+    if (!job.salary_min && !job.salary_max) {
       return 75; // Can't determine without salary info
     }
 
-    const midpoint = (job.salary_min + job.salary_max) / 2;
-    const diff = Math.abs(estimatedSalary - midpoint);
-    const percentDiff = (diff / midpoint) * 100;
+    const offeredMidpoint = ((job.salary_min ?? 0) + (job.salary_max ?? 0)) / 2;
 
-    // 0% diff = 100 points, -20% diff = 80 points, etc
+    // Use real market data when available
+    if (marketRate && marketRate.sampleSize > 0) {
+      return compareSalary(offeredMidpoint, marketRate).score;
+    }
+
+    // Fallback: heuristic title-based estimation
+    let estimatedSalary = 120000;
+
+    if (job.title.includes('Senior') || job.title.includes('Lead')) {
+      estimatedSalary = 160000;
+    }
+    if (job.title.includes('Staff') || job.title.includes('Director')) {
+      estimatedSalary = 220000;
+    }
+
+    const diff = Math.abs(estimatedSalary - offeredMidpoint);
+    const percentDiff = (diff / offeredMidpoint) * 100;
     return Math.max(0, 100 - percentDiff);
   }
 
@@ -224,9 +209,9 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     let score = 50;
 
     // Remote is most flexible
-    if (job.remote === "fully") {
+    if (job.remote === 'fully') {
       score = 100;
-    } else if (job.remote === "hybrid") {
+    } else if (job.remote === 'hybrid') {
       score = 80;
     }
 
@@ -238,7 +223,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    * Returns specific missing skills with severity
    */
   private identifySkillGaps(job: JobListing, profile: Profile): SkillGap[] {
-    const profileText = (profile.summaryMarkdown || "").toLowerCase();
+    const profileText = (profile.summaryMarkdown || '').toLowerCase();
     const gaps: SkillGap[] = [];
 
     // Parse job requirements (simple keyword matching for MVP)
@@ -251,29 +236,26 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     for (const requirement of requiredKeywords) {
       if (!profileText.includes(requirement)) {
         // Determine severity
-        let severity: "critical" | "high" | "medium" | "low" | "none" = "medium";
+        let severity: 'critical' | 'high' | 'medium' | 'low' | 'none' = 'medium';
 
         if (
-          requirement.includes("require") ||
-          requirement.includes("must") ||
-          requirement.includes("essential")
+          requirement.includes('require') ||
+          requirement.includes('must') ||
+          requirement.includes('essential')
         ) {
-          severity = "critical";
-        } else if (
-          requirement.includes("strong") ||
-          requirement.includes("advanced")
-        ) {
-          severity = "high";
-        } else if (requirement.includes("prefer") || requirement.includes("nice")) {
-          severity = "low";
+          severity = 'critical';
+        } else if (requirement.includes('strong') || requirement.includes('advanced')) {
+          severity = 'high';
+        } else if (requirement.includes('prefer') || requirement.includes('nice')) {
+          severity = 'low';
         }
 
         // Assess learnability
-        const learnable = !requirement.includes("years");
+        const learnable = !requirement.includes('years');
 
         gaps.push({
           skill: requirement,
-          required_level: "intermediate",
+          required_level: 'intermediate',
           gap_severity: severity,
           explanation: `Job requires ${requirement}, which is not apparent in your background`,
           learnable,
@@ -289,7 +271,7 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    * Returns matching strengths vs job requirements
    */
   private identifyStrengths(job: JobListing, profile: Profile): string[] {
-    const profileText = profile.summaryMarkdown || "";
+    const profileText = profile.summaryMarkdown || '';
     const strengths: string[] = [];
 
     // Check technology matches
@@ -302,16 +284,13 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     }
 
     // Check role title alignment
-    if (profileText.includes("Engineer") && job.title.includes("Engineer")) {
-      strengths.push("Engineering background aligns with role");
+    if (profileText.includes('Engineer') && job.title.includes('Engineer')) {
+      strengths.push('Engineering background aligns with role');
     }
 
     // Check company size experience
-    if (
-      job.company_size === "startup" &&
-      profileText.toLowerCase().includes("startup")
-    ) {
-      strengths.push("Startup experience");
+    if (job.company_size === 'startup' && profileText.toLowerCase().includes('startup')) {
+      strengths.push('Startup experience');
     }
 
     return strengths.slice(0, 5);
@@ -321,31 +300,24 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
    * Identify Concerns
    * Returns potential red flags
    */
-  private identifyConcerns(
-    job: JobListing,
-    gaps: SkillGap[]
-  ): string[] {
+  private identifyConcerns(job: JobListing, gaps: SkillGap[]): string[] {
     const concerns: string[] = [];
 
     // Critical skill gaps
-    const criticalGaps = gaps.filter((g) => g.gap_severity === "critical");
+    const criticalGaps = gaps.filter((g) => g.gap_severity === 'critical');
     if (criticalGaps.length > 0) {
-      concerns.push(
-        `Missing critical skills: ${criticalGaps.map((g) => g.skill).join(", ")}`
-      );
+      concerns.push(`Missing critical skills: ${criticalGaps.map((g) => g.skill).join(', ')}`);
     }
 
     // Experience level mismatch (rough estimate)
-    const jobYears = parseInt(
-      job.requirements.match(/(\d+)\+?\s*years?/)?.[1] || "3"
-    );
+    const jobYears = parseInt(job.requirements.match(/(\d+)\+?\s*years?/)?.[1] || '3');
     if (jobYears > 10) {
-      concerns.push("Senior/expert role - high bar for experience");
+      concerns.push('Senior/expert role - high bar for experience');
     }
 
     // Location issues
-    if (job.remote === "onsite" && job.location.includes("CA")) {
-      concerns.push("Requires onsite presence in California");
+    if (job.remote === 'onsite' && job.location.includes('CA')) {
+      concerns.push('Requires onsite presence in California');
     }
 
     return concerns;
@@ -361,21 +333,21 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     // Salary negotiation if it's in range
     if (job.salary_min && job.salary_max) {
       points.push(
-        `Salary range: $${job.salary_min.toLocaleString()}-$${job.salary_max.toLocaleString()}`
+        `Salary range: $${job.salary_min.toLocaleString()}-$${job.salary_max.toLocaleString()}`,
       );
     }
 
     // Remote negotiation
-    if (job.remote === "onsite") {
-      points.push("Negotiate remote/hybrid work arrangement");
+    if (job.remote === 'onsite') {
+      points.push('Negotiate remote/hybrid work arrangement');
     }
 
     // Professional development
-    points.push("Negotiate learning budget / course access");
+    points.push('Negotiate learning budget / course access');
 
     // Equity (if startup)
-    if (job.company_size === "startup") {
-      points.push("Negotiate equity percentage and vesting");
+    if (job.company_size === 'startup') {
+      points.push('Negotiate equity percentage and vesting');
     }
 
     return points.slice(0, 5);
@@ -389,31 +361,31 @@ export class DefaultCompatibilityAnalyzer implements CompatibilityAnalyzer {
     // Default mask selection logic
     // In production: would analyze which mask best matches job requirements
 
-    if (job.title.includes("Senior") || job.title.includes("Lead")) {
-      return "Architect"; // Senior roles → architect persona
+    if (job.title.includes('Senior') || job.title.includes('Lead')) {
+      return 'Architect'; // Senior roles → architect persona
     }
 
-    if (job.company_size === "startup") {
-      return "Generalist"; // Startups need broad skills
+    if (job.company_size === 'startup') {
+      return 'Generalist'; // Startups need broad skills
     }
 
-    if (job.title.includes("Technical")) {
-      return "Technician"; // Technical roles → technical persona
+    if (job.title.includes('Technical')) {
+      return 'Technician'; // Technical roles → technical persona
     }
 
-    return "Engineer"; // Default
+    return 'Engineer'; // Default
   }
 
   /**
    * Score to Recommendation
    */
   private scoreToRecommendation(
-    score: number
-  ): "apply_now" | "strong_candidate" | "moderate_fit" | "stretch_goal" | "skip" {
-    if (score >= 80) return "apply_now";
-    if (score >= 70) return "strong_candidate";
-    if (score >= 60) return "moderate_fit";
-    if (score >= 40) return "stretch_goal";
-    return "skip";
+    score: number,
+  ): 'apply_now' | 'strong_candidate' | 'moderate_fit' | 'stretch_goal' | 'skip' {
+    if (score >= 80) return 'apply_now';
+    if (score >= 70) return 'strong_candidate';
+    if (score >= 60) return 'moderate_fit';
+    if (score >= 40) return 'stretch_goal';
+    return 'skip';
   }
 }

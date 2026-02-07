@@ -1,8 +1,8 @@
-import type { Profile, Skill } from "@in-midst-my-life/schema";
+import type { Profile, Skill } from '@in-midst-my-life/schema';
 
 export interface JobRequirement {
   skill: string;
-  level: "novice" | "intermediate" | "advanced" | "expert";
+  level: 'novice' | 'intermediate' | 'advanced' | 'expert';
   required: boolean;
 }
 
@@ -16,6 +16,8 @@ export interface InterviewerProfile {
   growth?: string;
   culture?: string;
   kpis?: string[];
+  /** Pre-computed market-rate compensation score (0-100) from MarketRateAnalyzer */
+  marketCompensationScore?: number;
 }
 
 export interface CompatibilityScores {
@@ -49,7 +51,7 @@ export class CompatibilityAnalyzer {
    */
   analyzeCompatibility(
     candidateProfile: Profile,
-    interviewer: InterviewerProfile
+    interviewer: InterviewerProfile,
   ): CompatibilityAnalysis {
     const skillMatch = this.analyzeSkillMatch(candidateProfile, interviewer);
     const valuesAlign = this.analyzeValuesAlignment(candidateProfile, interviewer);
@@ -62,7 +64,7 @@ export class CompatibilityAnalyzer {
     const maskResonance = this.analyzeMaskResonance(candidateProfile, interviewer);
 
     const overall = Math.round(
-      (skillMatch + valuesAlign + growthFit + sustainability + compensationFit) / 5
+      (skillMatch + valuesAlign + growthFit + sustainability + compensationFit) / 5,
     );
 
     const recommendations = this.generateRecommendations(
@@ -71,7 +73,7 @@ export class CompatibilityAnalyzer {
       growthFit,
       sustainability,
       compensationFit,
-      redFlags
+      redFlags,
     );
 
     return {
@@ -81,12 +83,12 @@ export class CompatibilityAnalyzer {
         valuesAlign,
         growthFit,
         sustainability,
-        compensationFit
+        compensationFit,
       },
       greenFlags,
       redFlags,
       recommendations,
-      maskResonance
+      maskResonance,
     };
   }
 
@@ -128,18 +130,15 @@ export class CompatibilityAnalyzer {
   /**
    * Score how well candidate's skill level matches requirement
    */
-  private scoreLevelMatch(
-    candidateLevel: string | undefined,
-    requiredLevel: string
-  ): number {
+  private scoreLevelMatch(candidateLevel: string | undefined, requiredLevel: string): number {
     const levelValues: Record<string, number> = {
       novice: 1,
       intermediate: 2,
       advanced: 3,
-      expert: 4
+      expert: 4,
     };
 
-    const candidateScore = levelValues[candidateLevel?.toLowerCase() ?? "novice"] ?? 0;
+    const candidateScore = levelValues[candidateLevel?.toLowerCase() ?? 'novice'] ?? 0;
     const requiredScore = levelValues[requiredLevel.toLowerCase()] ?? 2;
 
     if (candidateScore >= requiredScore) return 1; // Exceeds requirement
@@ -152,7 +151,7 @@ export class CompatibilityAnalyzer {
    */
   private analyzeValuesAlignment(candidate: Profile, interviewer: InterviewerProfile): number {
     const answers = interviewer.answers;
-    const answerText = Object.values(answers).join(" ").toLowerCase();
+    const answerText = Object.values(answers).join(' ').toLowerCase();
 
     const candidateValues = this.extractCandidateValues(candidate);
 
@@ -161,12 +160,12 @@ export class CompatibilityAnalyzer {
 
     // Values-to-keywords mapping
     const valueKeywords: Record<string, string[]> = {
-      autonomy: ["trust", "autonomy", "independence", "self-directed", "ownership"],
-      impact: ["mission", "purpose", "impact", "meaningful", "change"],
-      learning: ["learning", "growth", "development", "skill", "challenge"],
-      structure: ["process", "clear", "defined", "organization", "system"],
-      collaboration: ["team", "together", "communication", "group", "collective"],
-      innovation: ["new", "experiment", "novel", "creative", "breakthrough"]
+      autonomy: ['trust', 'autonomy', 'independence', 'self-directed', 'ownership'],
+      impact: ['mission', 'purpose', 'impact', 'meaningful', 'change'],
+      learning: ['learning', 'growth', 'development', 'skill', 'challenge'],
+      structure: ['process', 'clear', 'defined', 'organization', 'system'],
+      collaboration: ['team', 'together', 'communication', 'group', 'collective'],
+      innovation: ['new', 'experiment', 'novel', 'creative', 'breakthrough'],
     };
 
     for (const [value, keywords] of Object.entries(valueKeywords)) {
@@ -190,15 +189,15 @@ export class CompatibilityAnalyzer {
 
     if (candidate.personalThesis?.thesis) {
       const thesis = candidate.personalThesis.thesis.toLowerCase();
-      if (thesis.includes("autonomous") || thesis.includes("independent")) values.push("autonomy");
-      if (thesis.includes("impact") || thesis.includes("mission")) values.push("impact");
-      if (thesis.includes("learning") || thesis.includes("growth")) values.push("learning");
-      if (thesis.includes("structured") || thesis.includes("organized")) values.push("structure");
-      if (thesis.includes("team") || thesis.includes("collaborate")) values.push("collaboration");
-      if (thesis.includes("innovate") || thesis.includes("novel")) values.push("innovation");
+      if (thesis.includes('autonomous') || thesis.includes('independent')) values.push('autonomy');
+      if (thesis.includes('impact') || thesis.includes('mission')) values.push('impact');
+      if (thesis.includes('learning') || thesis.includes('growth')) values.push('learning');
+      if (thesis.includes('structured') || thesis.includes('organized')) values.push('structure');
+      if (thesis.includes('team') || thesis.includes('collaborate')) values.push('collaboration');
+      if (thesis.includes('innovate') || thesis.includes('novel')) values.push('innovation');
     }
 
-    return values.length > 0 ? values : ["learning", "growth"];
+    return values.length > 0 ? values : ['learning', 'growth'];
   }
 
   /**
@@ -206,16 +205,16 @@ export class CompatibilityAnalyzer {
    */
   private analyzeGrowthAlignment(candidate: Profile, interviewer: InterviewerProfile): number {
     const candidateTrajectory = this.extractGrowthTrajectory(candidate);
-    const rolesGrowth = interviewer.growth?.toLowerCase() ?? "";
+    const rolesGrowth = interviewer.growth?.toLowerCase() ?? '';
 
     let score = 50; // Neutral baseline
 
     // Growth trajectory keywords
     const trajectoryMap: Record<string, string[]> = {
-      technical: ["architect", "system design", "technical depth", "deep expertise"],
-      leadership: ["manager", "lead", "team", "people", "organization"],
-      breadth: ["full stack", "generalist", "diverse", "many", "varied"],
-      depth: ["specialist", "expert", "focus", "mastery", "deep"]
+      technical: ['architect', 'system design', 'technical depth', 'deep expertise'],
+      leadership: ['manager', 'lead', 'team', 'people', 'organization'],
+      breadth: ['full stack', 'generalist', 'diverse', 'many', 'varied'],
+      depth: ['specialist', 'expert', 'focus', 'mastery', 'deep'],
     };
 
     for (const [category, keywords] of Object.entries(trajectoryMap)) {
@@ -229,8 +228,8 @@ export class CompatibilityAnalyzer {
 
     // Detect misalignment
     if (
-      (candidateTrajectory.includes("technical") && rolesGrowth.includes("manager")) ||
-      (candidateTrajectory.includes("leadership") && !rolesGrowth.includes("lead"))
+      (candidateTrajectory.includes('technical') && rolesGrowth.includes('manager')) ||
+      (candidateTrajectory.includes('leadership') && !rolesGrowth.includes('lead'))
     ) {
       score = Math.max(0, score - 15);
     }
@@ -248,17 +247,20 @@ export class CompatibilityAnalyzer {
     const experiences = candidate.experiences ?? [];
     const recent = experiences[0];
     if (recent) {
-      if (recent.roleTitle.toLowerCase().includes("lead") || recent.roleTitle.toLowerCase().includes("manager")) {
-        trajectory.push("leadership");
-      } else if (
-        recent.roleTitle.toLowerCase().includes("architect") ||
-        recent.roleTitle.toLowerCase().includes("senior")
+      if (
+        recent.roleTitle.toLowerCase().includes('lead') ||
+        recent.roleTitle.toLowerCase().includes('manager')
       ) {
-        trajectory.push("technical");
+        trajectory.push('leadership');
+      } else if (
+        recent.roleTitle.toLowerCase().includes('architect') ||
+        recent.roleTitle.toLowerCase().includes('senior')
+      ) {
+        trajectory.push('technical');
       }
     }
 
-    return trajectory.length > 0 ? trajectory : ["technical"];
+    return trajectory.length > 0 ? trajectory : ['technical'];
   }
 
   /**
@@ -268,21 +270,21 @@ export class CompatibilityAnalyzer {
     // Note: interviewer.kpis could be used for more sophisticated analysis in future enhancements
     let score = 75; // Assume sustainable unless evidence otherwise
 
-    const answerText = Object.values(interviewer.answers).join(" ").toLowerCase();
+    const answerText = Object.values(interviewer.answers).join(' ').toLowerCase();
 
     // Red flags in interviewer's language
-    if (answerText.includes("burnout") || answerText.includes("churn")) {
+    if (answerText.includes('burnout') || answerText.includes('churn')) {
       score -= 20;
     }
-    if (answerText.includes("chaos") || answerText.includes("hectic")) {
+    if (answerText.includes('chaos') || answerText.includes('hectic')) {
       score -= 10;
     }
 
     // Green flags
-    if (answerText.includes("sustainable") || answerText.includes("balance")) {
+    if (answerText.includes('sustainable') || answerText.includes('balance')) {
       score += 15;
     }
-    if (answerText.includes("reasonable") || answerText.includes("manageable")) {
+    if (answerText.includes('reasonable') || answerText.includes('manageable')) {
       score += 10;
     }
 
@@ -304,14 +306,21 @@ export class CompatibilityAnalyzer {
   }
 
   /**
-   * Analyze compensation alignment
+   * Analyze compensation alignment.
+   * Uses pre-computed market-rate score when available (from MarketRateAnalyzer),
+   * falls back to heuristic experience-based estimation otherwise.
    */
   private analyzeCompensation(candidate: Profile, interviewer: InterviewerProfile): number {
+    // Use real market data when pre-computed by MarketRateAnalyzer
+    if (typeof interviewer.marketCompensationScore === 'number') {
+      return interviewer.marketCompensationScore;
+    }
+
     if (!interviewer.salaryRange) return 50; // No salary data
 
-    // Estimate candidate's market value based on experience
+    // Fallback: estimate candidate's market value based on experience
     const yearsOfExperience = candidate.experiences?.length ?? 0;
-    const estimatedMarket = 80000 + yearsOfExperience * 15000; // Rough estimate
+    const estimatedMarket = 80000 + yearsOfExperience * 15000;
 
     const offered = interviewer.salaryRange.min;
     const market = estimatedMarket;
@@ -327,25 +336,26 @@ export class CompatibilityAnalyzer {
    */
   private identifyGreenFlags(candidate: Profile, interviewer: InterviewerProfile): string[] {
     const flags: string[] = [];
-    const answers = Object.values(interviewer.answers).join(" ").toLowerCase();
+    const answers = Object.values(interviewer.answers).join(' ').toLowerCase();
 
-    if (answers.includes("hire for fit")) flags.push("'Hire for fit' philosophy matches candidate-centered approach");
-    if (answers.includes("trust") && answers.includes("autonomy"))
-      flags.push("High-trust culture aligns with autonomous candidates");
-    if (answers.includes("learning") || answers.includes("growth"))
-      flags.push("Learning-focused org matches growth-oriented mindset");
-    if (answers.includes("mistake") || answers.includes("failure"))
-      flags.push("Transparent about failures - sign of psychological safety");
+    if (answers.includes('hire for fit'))
+      flags.push("'Hire for fit' philosophy matches candidate-centered approach");
+    if (answers.includes('trust') && answers.includes('autonomy'))
+      flags.push('High-trust culture aligns with autonomous candidates');
+    if (answers.includes('learning') || answers.includes('growth'))
+      flags.push('Learning-focused org matches growth-oriented mindset');
+    if (answers.includes('mistake') || answers.includes('failure'))
+      flags.push('Transparent about failures - sign of psychological safety');
 
     // Skills analysis
     const skillMatches = interviewer.jobRequirements
       .filter((req) =>
-        candidate.skills?.some((s) => s.name.toLowerCase() === req.skill.toLowerCase())
+        candidate.skills?.some((s) => s.name.toLowerCase() === req.skill.toLowerCase()),
       )
       .map((r) => r.skill);
 
     if (skillMatches.length > 0) {
-      flags.push(`Strong skill alignment in: ${skillMatches.slice(0, 3).join(", ")}`);
+      flags.push(`Strong skill alignment in: ${skillMatches.slice(0, 3).join(', ')}`);
     }
 
     return flags;
@@ -356,26 +366,26 @@ export class CompatibilityAnalyzer {
    */
   private identifyRedFlags(candidate: Profile, interviewer: InterviewerProfile): string[] {
     const flags: string[] = [];
-    const answers = Object.values(interviewer.answers).join(" ").toLowerCase();
+    const answers = Object.values(interviewer.answers).join(' ').toLowerCase();
 
-    if (answers.includes("credentials") || answers.includes("degree"))
-      flags.push("Over-emphasis on credentials - may not value diverse backgrounds");
-    if (answers.includes("burnout") || answers.includes("high churn"))
-      flags.push("History of team burnout - sustainability concern");
-    if (answers.includes("perfect") || answers.includes("ideal candidate"))
-      flags.push("Unrealistic expectations - may lead to disappointment");
+    if (answers.includes('credentials') || answers.includes('degree'))
+      flags.push('Over-emphasis on credentials - may not value diverse backgrounds');
+    if (answers.includes('burnout') || answers.includes('high churn'))
+      flags.push('History of team burnout - sustainability concern');
+    if (answers.includes('perfect') || answers.includes('ideal candidate'))
+      flags.push('Unrealistic expectations - may lead to disappointment');
 
     // Skill gaps
     const criticalMissing = interviewer.jobRequirements
       .filter(
         (req) =>
           req.required &&
-          !candidate.skills?.some((s) => s.name.toLowerCase() === req.skill.toLowerCase())
+          !candidate.skills?.some((s) => s.name.toLowerCase() === req.skill.toLowerCase()),
       )
       .map((r) => r.skill);
 
     if (criticalMissing.length > 3) {
-      flags.push(`Multiple critical skills missing: ${criticalMissing.slice(0, 3).join(", ")}`);
+      flags.push(`Multiple critical skills missing: ${criticalMissing.slice(0, 3).join(', ')}`);
     }
 
     return flags;
@@ -384,7 +394,10 @@ export class CompatibilityAnalyzer {
   /**
    * Analyze which masks resonate with this opportunity
    */
-  private analyzeMaskResonance(_candidate: Profile, interviewer: InterviewerProfile): Array<{
+  private analyzeMaskResonance(
+    _candidate: Profile,
+    interviewer: InterviewerProfile,
+  ): Array<{
     maskName: string;
     fitScore: number;
     reasoning: string;
@@ -392,24 +405,24 @@ export class CompatibilityAnalyzer {
     // This would integrate with the mask system
     // For now, return placeholder analysis
 
-    const roles = ["Architect", "Artisan", "Synthesist", "Analyst"];
+    const roles = ['Architect', 'Artisan', 'Synthesist', 'Analyst'];
     const requirements = interviewer.jobRequirements;
 
     return roles.map((role) => {
       let score = 50;
 
-      if (role === "Architect" && requirements.some((r) => r.skill.includes("system"))) {
+      if (role === 'Architect' && requirements.some((r) => r.skill.includes('system'))) {
         score = 85;
-      } else if (role === "Artisan" && interviewer.jobTitle?.includes("shipping")) {
+      } else if (role === 'Artisan' && interviewer.jobTitle?.includes('shipping')) {
         score = 80;
-      } else if (role === "Synthesist" && interviewer.culture?.includes("team")) {
+      } else if (role === 'Synthesist' && interviewer.culture?.includes('team')) {
         score = 75;
       }
 
       return {
         maskName: role,
         fitScore: score,
-        reasoning: `${role} persona aligns with ${interviewer.jobTitle} requirements`
+        reasoning: `${role} persona aligns with ${interviewer.jobTitle} requirements`,
       };
     });
   }
@@ -423,28 +436,28 @@ export class CompatibilityAnalyzer {
     growthFit: number,
     sustainability: number,
     compensationFit: number,
-    redFlags: string[]
+    redFlags: string[],
   ): string[] {
     const recs: string[] = [];
 
     if (skillMatch < 70) {
-      recs.push("Skill gap exists - discuss learning plan with them");
+      recs.push('Skill gap exists - discuss learning plan with them');
     }
     if (valuesAlign < 60) {
-      recs.push("Values misalignment - clarify expectations before proceeding");
+      recs.push('Values misalignment - clarify expectations before proceeding');
     }
     if (growthFit < 50) {
-      recs.push("Growth trajectory divergent - may lead to frustration");
+      recs.push('Growth trajectory divergent - may lead to frustration');
     }
     if (sustainability < 60) {
-      recs.push("Sustainability concern - ask detailed questions about pace and workload");
+      recs.push('Sustainability concern - ask detailed questions about pace and workload');
     }
     if (compensationFit < 50) {
-      recs.push("Compensation below market - negotiate or reconsider");
+      recs.push('Compensation below market - negotiate or reconsider');
     }
 
     if (redFlags.length === 0 && skillMatch > 80) {
-      recs.push("Strong fit overall - proceed to deeper conversation");
+      recs.push('Strong fit overall - proceed to deeper conversation');
     }
 
     return recs.slice(0, 4); // Top 4 recommendations
