@@ -34,6 +34,7 @@ import { registerDidRoutes } from './routes/did';
 import sbtRoutes from './routes/sbt';
 import marketplaceRoutes from './routes/marketplace';
 import { registerIdentityRoutes } from './routes/identity';
+import { demoRoutes } from './routes/demo';
 import { registerGraphQLRoute } from './routes/graphql';
 import { InMemoryPubSub } from './services/pubsub';
 import type { ProfileRepo } from './repositories/profiles';
@@ -424,6 +425,8 @@ export function buildServer(options: ApiServerOptions = {}) {
     // Prefix-based routes that skip auth (matched with startsWith)
     const publicPrefixes = [
       '/graphql', // GraphQL endpoint (has its own introspection guards)
+      '/demo', // Demo mode for unauthenticated visitors
+      '/share', // Public share pages
     ];
 
     // Prefix-based routes that use optional auth on GET requests
@@ -560,6 +563,7 @@ export function buildServer(options: ApiServerOptions = {}) {
     });
     scope.register(registerDidRoutes, { prefix: '/did' });
     scope.register(registerIdentityRoutes, { prefix: '/profiles' });
+    scope.register(demoRoutes);
     scope.register(registerGraphQLRoute, {
       profileRepo: options.profileRepo ?? profileRepo,
       maskRepo,

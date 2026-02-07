@@ -70,13 +70,28 @@ export default function LandingPage() {
         <p style={{ color: 'var(--stone)', marginBottom: '2rem' }}>
           Start building your composable identity today.
         </p>
-        <Link
-          href="/dashboard"
-          className="button"
-          style={{ fontSize: '1.05rem', padding: '0.8rem 2rem' }}
-        >
-          Get Started
-        </Link>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link
+            href="/demo"
+            className="button"
+            style={{
+              fontSize: '1.05rem',
+              padding: '0.8rem 2rem',
+              background: 'transparent',
+              color: 'var(--ink)',
+              border: '2px solid var(--ink)',
+            }}
+          >
+            Try Demo
+          </Link>
+          <Link
+            href="/dashboard"
+            className="button"
+            style={{ fontSize: '1.05rem', padding: '0.8rem 2rem' }}
+          >
+            Get Started
+          </Link>
+        </div>
       </section>
     </>
   );
