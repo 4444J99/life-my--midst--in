@@ -46,9 +46,9 @@ describe('task worker retries and dead-lettering', () => {
     });
 
     await worker.tickOnce(); // first attempt fails
-    vi.advanceTimersByTime(30); // backoff enqueue
+    await vi.advanceTimersByTimeAsync(30); // backoff enqueue
     await worker.tickOnce(); // second attempt fails
-    vi.advanceTimersByTime(30);
+    await vi.advanceTimersByTimeAsync(30);
     await worker.tickOnce(); // exceeds max retries -> dead letter
 
     const failedTask = await store.get('retry-task');

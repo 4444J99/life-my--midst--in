@@ -31,7 +31,8 @@
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
     ".next/types/**/*.ts",
-    "test/vitest-setup.d.ts"
+    "test/vitest-setup.d.ts",
+    "../../packages/core/src/integrations/smb2.d.ts"
   ],
   "exclude": [
     "node_modules",

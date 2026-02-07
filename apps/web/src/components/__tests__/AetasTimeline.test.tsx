@@ -4,11 +4,14 @@ import userEvent from '@testing-library/user-event';
 import AetasTimeline, { Epoch } from '../AetasTimeline';
 
 // Mock ResizeObserver since it's not available in JSDOM
-const mockResizeObserver = vi.fn(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+// Vitest 4 requires `function` for mocks used as constructors (not arrow functions)
+const mockResizeObserver = vi.fn().mockImplementation(function () {
+  return {
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  };
+});
 
 beforeAll(() => {
   vi.stubGlobal('ResizeObserver', mockResizeObserver);

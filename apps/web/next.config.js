@@ -7,7 +7,7 @@ const nextConfig = {
   // Produce a self-contained server bundle for Docker deployment
   output: 'standalone',
 
-  // Configure webpack to handle server-only dependencies
+  // Configure webpack fallback for server-only dependencies (used with --webpack)
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Prevent webpack from trying to bundle server-only modules with native dependencies
@@ -27,6 +27,15 @@ const nextConfig = {
     return config;
   },
 
+  // Turbopack config (default bundler in Next.js 16)
+  turbopack: {
+    resolveAlias: {
+      'ssh2': { browser: '' },
+      'cpu-features': { browser: '' },
+      'smb2': { browser: '' },
+    },
+  },
+
   // Handle Google Fonts gracefully in offline environments
   experimental: {
     optimizePackageImports: ['@in-midst-my-life/core']
@@ -36,12 +45,6 @@ const nextConfig = {
   typescript: {
     tsconfigPath: './tsconfig.json'
   },
-
-  // Lint in a dedicated CI step (`pnpm lint`), not during `next build`.
-  // This avoids treating ESLint warnings as build-breaking errors.
-  eslint: {
-    ignoreDuringBuilds: true,
-  }
 };
 
 module.exports = withBundleAnalyzer(nextConfig);
