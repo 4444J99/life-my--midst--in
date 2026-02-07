@@ -1,9 +1,9 @@
-import { randomUUID } from "node:crypto";
-import type { AgentTask } from "./agents";
-import type { TaskQueue } from "./queue";
-import type { TaskStore } from "./persistence";
-import type { RunRecord, RunStore } from "./runs";
-import type { TrackedTask } from "./tasks";
+import { randomUUID } from 'node:crypto';
+import type { AgentTask } from './agents';
+import type { TaskQueue } from './queue';
+import type { TaskStore } from './persistence';
+import type { RunRecord, RunStore } from './runs';
+import type { TrackedTask } from './tasks';
 
 export interface ArtifactSyncSchedulerOptions {
   intervalMs?: number;
@@ -28,12 +28,17 @@ export class ArtifactSyncScheduler {
   private apiBaseUrl: string;
   private timer?: NodeJS.Timeout;
 
-  constructor(queue: TaskQueue, store: TaskStore, runStore: RunStore, options: ArtifactSyncSchedulerOptions = {}) {
+  constructor(
+    queue: TaskQueue,
+    store: TaskStore,
+    runStore: RunStore,
+    options: ArtifactSyncSchedulerOptions = {},
+  ) {
     this.queue = queue;
     this.store = store;
     this.runStore = runStore;
     this.intervalMs = options.intervalMs ?? 86_400_000; // 24 hours default
-    this.apiBaseUrl = options.apiBaseUrl ?? "http://localhost:3001";
+    this.apiBaseUrl = options.apiBaseUrl ?? 'http://localhost:3001';
   }
 
   /**
@@ -41,9 +46,10 @@ export class ArtifactSyncScheduler {
    */
   start() {
     if (this.timer) return;
-    const loop = async () => {
-      await this.tick();
-      this.timer = setTimeout(loop, this.intervalMs);
+    const loop = () => {
+      void this.tick().then(() => {
+        this.timer = setTimeout(loop, this.intervalMs);
+      });
     };
     this.timer = setTimeout(loop, this.intervalMs);
   }
@@ -61,47 +67,55 @@ export class ArtifactSyncScheduler {
   }
 
   /**
-   * Enqueue artifact sync tasks for all profiles with active integrations
+   * Enqueue artifact sync tasks for all profiles with active integrations.
    *
-   * TODO: Phase 6.2 - Query API for profiles with active cloud integrations
-   * For MVP, we enqueue a single stub task to demonstrate the flow
+   * Queries the API for profiles with active cloud storage integrations,
+   * then enqueues incremental sync tasks for the Catcher agent.
+   * Falls back gracefully when the API is unavailable.
    */
   private async tick() {
     const runId = `artifact-sync-${randomUUID()}`;
     const scheduledAt = new Date().toISOString();
     const tasks: AgentTask[] = [];
 
-    // TODO: Phase 6.2 - Query API endpoint:
-    // GET /profiles (or iterate profiles in the system)
-    // For each profile, check if they have active integrations:
-    //   GET /profiles/{profileId}/integrations?status=active
-    //
-    // For each active integration, enqueue an artifact_sync_incremental task:
-    //   {
-    //     id: `${runId}-sync-${profileId}-${integrationId}`,
-    //     runId,
-    //     role: "catcher",
-    //     description: `Sync artifacts from ${provider}`,
-    //     payload: {
-    //       profileId,
-    //       integrationId,
-    //       source: "schedule"
-    //     }
-    //   }
+    try {
+      // Query API for profiles with active cloud integrations
+      const profilesRes = await fetch(`${this.apiBaseUrl}/profiles`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!profilesRes.ok) throw new Error(`API returned ${String(profilesRes.status)}`);
+      const { data: profiles } = (await profilesRes.json()) as { data: Array<{ id: string }> };
 
-    // For MVP, enqueue a stub task
-    const stubTask: AgentTask = {
-      id: `${runId}-stub`,
-      runId,
-      role: "catcher",
-      description: "[STUB] Artifact sync scheduled (Phase 6.2: query API for active integrations)",
-      payload: {
-        source: "artifact-sync-scheduler",
-        scheduledAt,
-        mode: "incremental"
+      for (const profile of profiles) {
+        const integrationsRes = await fetch(
+          `${this.apiBaseUrl}/profiles/${profile.id}/integrations?status=active`,
+          { signal: AbortSignal.timeout(5000) },
+        );
+        if (!integrationsRes.ok) continue;
+        const { data: integrations } = (await integrationsRes.json()) as {
+          data: Array<{ id: string; provider: string }>;
+        };
+
+        for (const integration of integrations) {
+          tasks.push({
+            id: `${runId}-sync-${profile.id}-${integration.id}`,
+            runId,
+            role: 'catcher',
+            description: `Sync artifacts from ${integration.provider} (incremental)`,
+            payload: {
+              profileId: profile.id,
+              integrationId: integration.id,
+              source: 'schedule',
+              scheduledAt,
+              mode: 'incremental',
+            },
+          });
+        }
       }
-    };
-    tasks.push(stubTask);
+    } catch {
+      // API unavailable — no-op; sync will retry on next interval
+      return;
+    }
 
     if (tasks.length === 0) {
       return;
@@ -110,20 +124,20 @@ export class ArtifactSyncScheduler {
     // Create run record
     const run: RunRecord = {
       id: runId,
-      type: "schedule",
-      status: "queued",
+      type: 'schedule',
+      status: 'queued',
       payload: {
         scheduledAt,
         tasksCreated: tasks.length,
-        source: "artifact-sync-scheduler"
+        source: 'artifact-sync-scheduler',
       },
       taskIds: tasks.map((task) => task.id),
       metadata: {
-        source: "artifact-sync-scheduler",
-        type: "incremental-artifact-sync"
+        source: 'artifact-sync-scheduler',
+        type: 'incremental-artifact-sync',
       },
       createdAt: scheduledAt,
-      updatedAt: scheduledAt
+      updatedAt: scheduledAt,
     };
 
     await this.runStore.add(run);
@@ -133,9 +147,9 @@ export class ArtifactSyncScheduler {
       await this.queue.enqueue(task);
       const tracked: TrackedTask = {
         ...task,
-        status: "queued",
+        status: 'queued',
         attempts: 0,
-        history: []
+        history: [],
       };
       await this.store.add(tracked);
     }
@@ -149,7 +163,7 @@ export class ArtifactSyncScheduler {
       enabled: !!this.timer,
       intervalMs: this.intervalMs,
       apiBaseUrl: this.apiBaseUrl,
-      nextRunAt: this.timer ? new Date(Date.now() + this.intervalMs).toISOString() : null
+      nextRunAt: this.timer ? new Date(Date.now() + this.intervalMs).toISOString() : null,
     };
   }
 }

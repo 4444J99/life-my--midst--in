@@ -1,32 +1,35 @@
-import { mkdir, unlink } from "node:fs/promises";
-import { join } from "node:path";
-import { randomUUID } from "node:crypto";
-import type { Agent, AgentTask, AgentResult, AgentExecutor } from "../agents";
-import type { Artifact, CloudStorageIntegration, ArtifactSyncState, IntegrityProof, VerificationLog } from "@in-midst-my-life/schema";
-import {
-  hashPayload,
-  decrypt
-} from "@in-midst-my-life/core";
+import { mkdir, unlink } from 'node:fs/promises';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import type { Agent, AgentTask, AgentResult, AgentExecutor } from '../agents';
+import type {
+  Artifact,
+  CloudStorageIntegration,
+  ArtifactSyncState,
+  IntegrityProof,
+  VerificationLog,
+} from '@in-midst-my-life/schema';
+import { hashPayload, decrypt } from '@in-midst-my-life/core';
 import {
   type CloudStorageProvider,
   type CloudFile,
   type CloudCredentials,
-  createCloudStorageProvider
-} from "@in-midst-my-life/core/server";
-import { processFile } from "../processors";
-import { classifyByHeuristics, aggregateConfidence } from "../classification/heuristics";
-import { classifyWithLLM } from "../prompts/artifact-classification";
-import type { ArtifactRepo } from "../repositories/artifacts";
-import type { CloudIntegrationRepo } from "../repositories/cloud-integrations";
-import type { SyncStateRepo } from "../repositories/sync-state";
-import type { ProfileKeyRepo } from "../repositories/profile-keys";
-import type { VerificationLogRepo } from "../repositories/verification-logs";
-import { createArtifactRepo } from "../repositories/artifacts";
-import { createCloudIntegrationRepo } from "../repositories/cloud-integrations";
-import { createSyncStateRepo } from "../repositories/sync-state";
-import { createProfileKeyRepo } from "../repositories/profile-keys";
-import { createVerificationLogRepo } from "../repositories/verification-logs";
-import * as jose from "jose";
+  createCloudStorageProvider,
+} from '@in-midst-my-life/core/server';
+import { processFile } from '../processors';
+import { classifyByHeuristics, aggregateConfidence } from '../classification/heuristics';
+import { classifyWithLLM } from '../prompts/artifact-classification';
+import type { ArtifactRepo } from '../repositories/artifacts';
+import type { CloudIntegrationRepo } from '../repositories/cloud-integrations';
+import type { SyncStateRepo } from '../repositories/sync-state';
+import type { ProfileKeyRepo } from '../repositories/profile-keys';
+import type { VerificationLogRepo } from '../repositories/verification-logs';
+import { createArtifactRepo } from '../repositories/artifacts';
+import { createCloudIntegrationRepo } from '../repositories/cloud-integrations';
+import { createSyncStateRepo } from '../repositories/sync-state';
+import { createProfileKeyRepo } from '../repositories/profile-keys';
+import { createVerificationLogRepo } from '../repositories/verification-logs';
+import * as jose from 'jose';
 
 /**
  * CatcherAgent: Cloud Storage Artifact Ingestion
@@ -57,7 +60,7 @@ import * as jose from "jose";
  * - Temp files stored in /tmp/midst-artifacts/{taskId}/{fileId}
  */
 export class CatcherAgent implements Agent {
-  role: "catcher" = "catcher";
+  role = 'catcher' as const;
 
   /**
    * Repository instances for data persistence.
@@ -76,7 +79,7 @@ export class CatcherAgent implements Agent {
     syncStateRepo?: SyncStateRepo,
     profileKeyRepo?: ProfileKeyRepo,
     verificationLogRepo?: VerificationLogRepo,
-    executor?: AgentExecutor
+    executor?: AgentExecutor,
   ) {
     // Use provided repositories, or create defaults (in-memory for MVP, postgres for production)
     this.artifactRepo = artifactRepo || createArtifactRepo();
@@ -100,14 +103,14 @@ export class CatcherAgent implements Agent {
    * @throws Error if authentication or health check fails
    */
   private async authenticateProvider(
-    integration: CloudStorageIntegration
+    integration: CloudStorageIntegration,
   ): Promise<CloudStorageProvider> {
     try {
       // Decrypt credentials
       const accessToken = integration.accessTokenEncrypted
         ? decrypt<string>(integration.accessTokenEncrypted)
         : undefined;
-        
+
       const refreshToken = integration.refreshTokenEncrypted
         ? decrypt<string>(integration.refreshTokenEncrypted)
         : undefined;
@@ -120,13 +123,12 @@ export class CatcherAgent implements Agent {
         // In production, these would come from secret management service
         // For now, they are injected via env vars in the provider implementations
         // or could be stored encrypted in the integration record metadata
-        metadata: integration.metadata as Record<string, unknown>
+        metadata: integration.metadata as Record<string, unknown>,
       };
 
-      // Create provider instance
-      const provider = await createCloudStorageProvider(
-        integration.provider,
-        credentials
+      // Create provider instance (Promise.resolve wraps for CJS type resolution)
+      const provider = await Promise.resolve(
+        createCloudStorageProvider(integration.provider, credentials),
       );
 
       // Verify connection
@@ -143,7 +145,7 @@ export class CatcherAgent implements Agent {
           } catch (refreshErr) {
             // Update status to error if refresh fails
             await this.cloudIntegrationRepo.update(integration.id, integration.profileId, {
-              status: "expired"
+              status: 'expired',
             });
             throw new Error(`Failed to refresh token: ${String(refreshErr)}`);
           }
@@ -156,14 +158,14 @@ export class CatcherAgent implements Agent {
     } catch (err) {
       // Log error and update integration status
       console.error(`Failed to authenticate provider ${integration.id}:`, err);
-      
+
       // Only update status if it's a persistent auth error
-      if (String(err).includes("decrypt") || String(err).includes("auth")) {
+      if (String(err).includes('decrypt') || String(err).includes('auth')) {
         await this.cloudIntegrationRepo.update(integration.id, integration.profileId, {
-          status: "error"
+          status: 'error',
         });
       }
-      
+
       throw err;
     }
   }
@@ -183,8 +185,8 @@ export class CatcherAgent implements Agent {
    * @returns AgentResult with status, notes, and output metrics
    */
   async execute(task: AgentTask): Promise<AgentResult> {
-    const taskDescription = task.description || "unknown";
-    const payload = task.payload as Record<string, unknown>;
+    const taskDescription = task.description || 'unknown';
+    const payload = task.payload;
 
     // Extract common payload fields
     const profileId = payload['profileId'] as string | undefined;
@@ -193,32 +195,32 @@ export class CatcherAgent implements Agent {
     if (!profileId) {
       return {
         taskId: task.id,
-        status: "failed",
-        notes: "missing_profile_id"
+        status: 'failed',
+        notes: 'missing_profile_id',
       };
     }
 
     try {
       // Route to appropriate handler based on task description
-      if (taskDescription.includes("full") || taskDescription.includes("import")) {
+      if (taskDescription.includes('full') || taskDescription.includes('import')) {
         return await this.handleFullImport(task.id, profileId, integrationId);
-      } else if (taskDescription.includes("incremental") || taskDescription.includes("sync")) {
+      } else if (taskDescription.includes('incremental') || taskDescription.includes('sync')) {
         return await this.handleIncrementalSync(task.id, profileId, integrationId);
-      } else if (taskDescription.includes("refresh")) {
+      } else if (taskDescription.includes('refresh')) {
         return await this.handleSingleSourceRefresh(task.id, profileId, integrationId);
       } else {
         return {
           taskId: task.id,
-          status: "failed",
-          notes: `unknown_task_description: ${taskDescription}`
+          status: 'failed',
+          notes: `unknown_task_description: ${taskDescription}`,
         };
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       return {
         taskId: task.id,
-        status: "failed",
-        notes: `catcher_error: ${errorMsg}`
+        status: 'failed',
+        notes: `catcher_error: ${errorMsg}`,
       };
     }
   }
@@ -235,31 +237,31 @@ export class CatcherAgent implements Agent {
       errors: [] as Array<{ filename: string; error: string }>,
       startTime: Date.now(),
 
-      recordSuccess: function() {
+      recordSuccess: function () {
         this.filesProcessed++;
       },
 
-      recordNew: function() {
+      recordNew: function () {
         this.newArtifacts++;
         this.filesProcessed++;
       },
 
-      recordModified: function() {
+      recordModified: function () {
         this.modifiedArtifacts++;
         this.filesProcessed++;
       },
 
-      recordDeleted: function() {
+      recordDeleted: function () {
         this.deletedArtifacts++;
       },
 
-      recordError: function(filename: string, error: string) {
+      recordError: function (filename: string, error: string) {
         this.errors.push({ filename, error });
       },
 
-      getDuration: function(): number {
+      getDuration: function (): number {
         return Date.now() - this.startTime;
-      }
+      },
     };
   }
 
@@ -293,10 +295,10 @@ export class CatcherAgent implements Agent {
   private async handleFullImport(
     taskId: string,
     profileId: string,
-    integrationId?: string
+    integrationId?: string,
   ): Promise<AgentResult> {
     const metrics = this.createMetricsCollector();
-    const tempDir = join("/tmp/midst-artifacts", taskId);
+    const tempDir = join('/tmp/midst-artifacts', taskId);
 
     try {
       // Create temp directory for downloads
@@ -306,54 +308,44 @@ export class CatcherAgent implements Agent {
       let integrations: CloudStorageIntegration[];
       if (integrationId) {
         // Single integration specified
-        const integration = await this.cloudIntegrationRepo.findById(
-          integrationId,
-          profileId
-        );
+        const integration = await this.cloudIntegrationRepo.findById(integrationId, profileId);
         integrations = integration ? [integration] : [];
       } else {
         // List all active integrations for profile
-        integrations = await this.cloudIntegrationRepo.listActiveByProfile(
-          profileId
-        );
+        integrations = await this.cloudIntegrationRepo.listActiveByProfile(profileId);
       }
 
       if (integrations.length === 0) {
         return {
           taskId,
-          status: "completed",
-          notes: "no_integrations_to_import"
+          status: 'completed',
+          notes: 'no_integrations_to_import',
         };
       }
 
       // Process each integration
       for (const integration of integrations) {
-        await this.processIntegrationFullImport(
-          integration,
-          profileId,
-          tempDir,
-          metrics
-        );
+        await this.processIntegrationFullImport(integration, profileId, tempDir, metrics);
       }
 
       return {
         taskId,
-        status: "completed",
+        status: 'completed',
         notes: `Full import completed: ${metrics.newArtifacts} new artifacts created`,
         output: {
           filesProcessed: metrics.filesProcessed,
           newArtifacts: metrics.newArtifacts,
           durationMs: metrics.getDuration(),
-          errors: metrics.errors
-        }
+          errors: metrics.errors,
+        },
       };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       return {
         taskId,
-        status: "failed",
+        status: 'failed',
         notes: `full_import_failed: ${errorMsg}`,
-        output: { errors: metrics.errors }
+        output: { errors: metrics.errors },
       };
     }
   }
@@ -368,19 +360,19 @@ export class CatcherAgent implements Agent {
     integration: CloudStorageIntegration,
     profileId: string,
     tempDir: string,
-    metrics: ReturnType<typeof this.createMetricsCollector>
+    metrics: ReturnType<typeof this.createMetricsCollector>,
   ): Promise<void> {
     try {
       const provider = await this.authenticateProvider(integration);
 
       // Iterate through configured folders
-      const folders = integration.folderConfig?.includedFolders || ["/"];
+      const folders = integration.folderConfig?.includedFolders || ['/'];
       const options = {
         recursive: true,
         filters: {
           maxFileSize: (integration.folderConfig?.maxFileSizeMB || 100) * 1024 * 1024,
-          excludePatterns: integration.folderConfig?.excludedPatterns
-        }
+          excludePatterns: integration.folderConfig?.excludedPatterns,
+        },
       };
 
       for (const folder of folders) {
@@ -395,7 +387,7 @@ export class CatcherAgent implements Agent {
     } catch (err) {
       metrics.recordError(
         integration.id,
-        `integration_error: ${err instanceof Error ? err.message : String(err)}`
+        `integration_error: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
@@ -405,24 +397,21 @@ export class CatcherAgent implements Agent {
    *
    * Downloads, extracts metadata, classifies, creates artifact, updates sync state.
    *
-   * @internal TODO: Phase 6 - Called when cloud providers are initialized
+   * @internal Called during full import and incremental sync via cloud providers
    */
   private async ingestSingleFile(
     cloudFile: CloudFile,
     integration: CloudStorageIntegration,
     profileId: string,
     tempDir: string,
-    metrics: ReturnType<typeof this.createMetricsCollector>
+    metrics: ReturnType<typeof this.createMetricsCollector>,
   ): Promise<void> {
     const fileId = cloudFile.fileId;
     const tempPath = join(tempDir, fileId);
 
     try {
       // Check if file was already synced with same checksum
-      const existingSync = await this.syncStateRepo.findByFile(
-        integration.id,
-        fileId
-      );
+      const existingSync = await this.syncStateRepo.findByFile(integration.id, fileId);
       if (existingSync && existingSync.checksum === cloudFile.checksum) {
         metrics.recordSuccess();
         return;
@@ -430,44 +419,46 @@ export class CatcherAgent implements Agent {
 
       // Instantiate provider to download file
       const provider = await this.authenticateProvider(integration);
-      
-      await provider.downloadFile(fileId, tempPath, (_bytes: number) => {
-        // console.log(`Downloaded ${_bytes} bytes from ${cloudFile.name}`);
+
+      await provider.downloadFile(fileId, tempPath, () => {
+        // progress callback (bytes downloaded)
       });
 
       // Extract metadata from file
-      const { metadata } = await processFile(
-        tempPath,
-        cloudFile.mimeType
-      );
-      const textContent = (metadata as any).textContent as string | undefined;
+      const { metadata } = await processFile(tempPath, cloudFile.mimeType);
+      const meta = metadata as Record<string, unknown> | undefined;
+      const textContent =
+        typeof meta?.['textContent'] === 'string' ? meta['textContent'] : undefined;
 
       // Classify artifact using heuristics
       const heuristicResult = classifyByHeuristics(
         cloudFile.name,
         cloudFile.path,
-        cloudFile.mimeType
+        cloudFile.mimeType,
       );
 
       let artifactType = heuristicResult.artifactType;
       let confidence = heuristicResult.confidence;
-      let title = (metadata as any).title || cloudFile.name;
-      let keywords = (metadata as any).keywords as string[] | undefined;
+      let title = (typeof meta?.['title'] === 'string' ? meta['title'] : null) || cloudFile.name;
+      let keywords = Array.isArray(meta?.['keywords']) ? (meta['keywords'] as string[]) : undefined;
       let summary: string | undefined = undefined;
 
       // LLM Classification (Phase 4)
       // If heuristic confidence is low (< 0.7) and LLM is available, use LLM
       if (heuristicResult.confidence < 0.7 && this.executor) {
         try {
-          const llmResult = await classifyWithLLM({
-            filename: cloudFile.name,
-            mimeType: cloudFile.mimeType,
-            createdDate: cloudFile.createdTime,
-            modifiedDate: cloudFile.modifiedTime,
-            fileSize: cloudFile.size,
-            textContent: textContent,
-            mediaMetadata: metadata as Record<string, unknown>
-          }, this.executor);
+          const llmResult = await classifyWithLLM(
+            {
+              filename: cloudFile.name,
+              mimeType: cloudFile.mimeType,
+              createdDate: cloudFile.createdTime,
+              modifiedDate: cloudFile.modifiedTime,
+              fileSize: cloudFile.size,
+              textContent: textContent,
+              mediaMetadata: meta ?? {},
+            },
+            this.executor,
+          );
 
           // Aggregate confidence
           confidence = aggregateConfidence(heuristicResult.confidence, llmResult.confidence);
@@ -475,10 +466,11 @@ export class CatcherAgent implements Agent {
           if (llmResult.title) title = llmResult.title;
           if (llmResult.keywords) keywords = llmResult.keywords;
           if (llmResult.summary) summary = llmResult.summary;
-          
         } catch (err) {
           // Log error but continue with heuristics
-          console.warn(`LLM classification failed for ${cloudFile.name}, falling back to heuristics: ${err}`);
+          console.warn(
+            `LLM classification failed for ${cloudFile.name}, falling back to heuristics: ${String(err)}`,
+          );
         }
       }
 
@@ -499,18 +491,15 @@ export class CatcherAgent implements Agent {
         title,
         keywords,
         descriptionMarkdown: summary,
-        mediaMetadata: (metadata as any) as Record<string, unknown> | undefined,
+        mediaMetadata: meta,
         confidence,
-        status: "pending",
+        status: 'pending',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       // Generate integrity proof before saving
-      artifact.integrity = await this.generateIntegrityProof(
-        artifact,
-        profileId
-      );
+      artifact.integrity = await this.generateIntegrityProof(artifact, profileId);
 
       // Persist artifact to database
       const createdArtifact = await this.artifactRepo.create(artifact);
@@ -523,7 +512,7 @@ export class CatcherAgent implements Agent {
         lastModified: cloudFile.modifiedTime,
         checksum: cloudFile.checksum,
         artifactId: createdArtifact.id,
-        syncedAt: new Date().toISOString()
+        syncedAt: new Date().toISOString(),
       };
       await this.syncStateRepo.upsert(syncState);
 
@@ -531,7 +520,7 @@ export class CatcherAgent implements Agent {
     } catch (err) {
       metrics.recordError(
         cloudFile.name,
-        `ingest_error: ${err instanceof Error ? err.message : String(err)}`
+        `ingest_error: ${err instanceof Error ? err.message : String(err)}`,
       );
     } finally {
       // Cleanup temp file
@@ -578,10 +567,10 @@ export class CatcherAgent implements Agent {
   private async handleIncrementalSync(
     taskId: string,
     profileId: string,
-    integrationId?: string
+    integrationId?: string,
   ): Promise<AgentResult> {
     const metrics = this.createMetricsCollector();
-    const tempDir = join("/tmp/midst-artifacts", taskId);
+    const tempDir = join('/tmp/midst-artifacts', taskId);
 
     try {
       await mkdir(tempDir, { recursive: true });
@@ -590,38 +579,28 @@ export class CatcherAgent implements Agent {
       let integrations: CloudStorageIntegration[];
       if (integrationId) {
         // Single integration specified
-        const integration = await this.cloudIntegrationRepo.findById(
-          integrationId,
-          profileId
-        );
+        const integration = await this.cloudIntegrationRepo.findById(integrationId, profileId);
         integrations = integration ? [integration] : [];
       } else {
         // List all active integrations for profile
-        integrations = await this.cloudIntegrationRepo.listActiveByProfile(
-          profileId
-        );
+        integrations = await this.cloudIntegrationRepo.listActiveByProfile(profileId);
       }
 
       if (integrations.length === 0) {
         return {
           taskId,
-          status: "completed",
-          notes: "no_integrations_to_sync"
+          status: 'completed',
+          notes: 'no_integrations_to_sync',
         };
       }
 
       for (const integration of integrations) {
-        await this.processIntegrationIncrementalSync(
-          integration,
-          profileId,
-          tempDir,
-          metrics
-        );
+        await this.processIntegrationIncrementalSync(integration, profileId, tempDir, metrics);
       }
 
       return {
         taskId,
-        status: "completed",
+        status: 'completed',
         notes: `Incremental sync completed: ${metrics.newArtifacts} new, ${metrics.modifiedArtifacts} modified, ${metrics.deletedArtifacts} deleted`,
         output: {
           filesProcessed: metrics.filesProcessed,
@@ -629,16 +608,16 @@ export class CatcherAgent implements Agent {
           modifiedArtifacts: metrics.modifiedArtifacts,
           deletedArtifacts: metrics.deletedArtifacts,
           durationMs: metrics.getDuration(),
-          errors: metrics.errors
-        }
+          errors: metrics.errors,
+        },
       };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       return {
         taskId,
-        status: "failed",
+        status: 'failed',
         notes: `incremental_sync_failed: ${errorMsg}`,
-        output: { errors: metrics.errors }
+        output: { errors: metrics.errors },
       };
     }
   }
@@ -652,20 +631,22 @@ export class CatcherAgent implements Agent {
     integration: CloudStorageIntegration,
     profileId: string,
     tempDir: string,
-    metrics: ReturnType<typeof this.createMetricsCollector>
+    metrics: ReturnType<typeof this.createMetricsCollector>,
   ): Promise<void> {
     try {
       const provider = await this.authenticateProvider(integration);
-      const lastSynced = integration.lastSyncedAt ? new Date(integration.lastSyncedAt) : new Date(0);
+      const lastSynced = integration.lastSyncedAt
+        ? new Date(integration.lastSyncedAt)
+        : new Date(0);
 
       // Iterate through configured folders
-      const folders = integration.folderConfig?.includedFolders || ["/"];
+      const folders = integration.folderConfig?.includedFolders || ['/'];
       const options = {
         recursive: true,
         filters: {
           maxFileSize: (integration.folderConfig?.maxFileSizeMB || 100) * 1024 * 1024,
-          excludePatterns: integration.folderConfig?.excludedPatterns
-        }
+          excludePatterns: integration.folderConfig?.excludedPatterns,
+        },
       };
 
       // Set to track observed files for deletion detection
@@ -676,18 +657,24 @@ export class CatcherAgent implements Agent {
           for await (const file of provider.listFiles(folder, options)) {
             observedFileIds.add(file.fileId);
             const modifiedTime = new Date(file.modifiedTime);
-            
+
             // If file modified after last sync, process it
             if (modifiedTime > lastSynced) {
               // Check if we already have this file
               const existingSync = await this.syncStateRepo.findByFile(integration.id, file.fileId);
-              
+
               if (existingSync) {
                 // Modified file
                 if (file.checksum !== existingSync.checksum) {
                   // Download file to temp
                   await provider.downloadFile(file.fileId, join(tempDir, file.fileId));
-                  await this.updateArtifactFromCloudFile(file, integration, profileId, tempDir, metrics);
+                  await this.updateArtifactFromCloudFile(
+                    file,
+                    integration,
+                    profileId,
+                    tempDir,
+                    metrics,
+                  );
                 }
               } else {
                 // New file
@@ -706,22 +693,21 @@ export class CatcherAgent implements Agent {
         if (!observedFileIds.has(state.sourceFileId)) {
           // File not seen in scan, mark as deleted
           if (state.artifactId) {
-            await this.artifactRepo.update(state.artifactId, profileId, { status: "archived" });
+            await this.artifactRepo.update(state.artifactId, profileId, { status: 'archived' });
             metrics.recordDeleted();
           }
           await this.syncStateRepo.delete(state.id);
         }
       }
-      
+
       // Update integration last synced time
       await this.cloudIntegrationRepo.update(integration.id, profileId, {
-        lastSyncedAt: new Date().toISOString()
+        lastSyncedAt: new Date().toISOString(),
       });
-      
     } catch (err) {
       metrics.recordError(
         integration.id,
-        `integration_error: ${err instanceof Error ? err.message : String(err)}`
+        `integration_error: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
@@ -731,40 +717,31 @@ export class CatcherAgent implements Agent {
    *
    * Re-downloads file, extracts metadata, optionally re-classifies.
    *
-   * @internal TODO: Phase 6 - Called during incremental sync with cloud providers
+   * @internal Called during incremental sync when a source file has been modified
    */
   private async updateArtifactFromCloudFile(
     cloudFile: CloudFile,
     integration: CloudStorageIntegration,
     profileId: string,
     tempDir: string,
-    metrics: ReturnType<typeof this.createMetricsCollector>
+    metrics: ReturnType<typeof this.createMetricsCollector>,
   ): Promise<void> {
     try {
       // Find existing sync state for this file
-      const syncState = await this.syncStateRepo.findByFile(
-        integration.id,
-        cloudFile.fileId
-      );
+      const syncState = await this.syncStateRepo.findByFile(integration.id, cloudFile.fileId);
       if (!syncState?.artifactId) return;
 
       // Re-extract metadata (file may have changed)
-      const { metadata } = await processFile(
-        join(tempDir, cloudFile.fileId),
-        cloudFile.mimeType
-      );
+      const { metadata } = await processFile(join(tempDir, cloudFile.fileId), cloudFile.mimeType);
+      const meta = metadata as Record<string, unknown> | undefined;
 
       // Update artifact metadata
-      const updatedArtifact = await this.artifactRepo.update(
-        syncState.artifactId,
-        profileId,
-        {
-          modifiedDate: cloudFile.modifiedTime,
-          title: (metadata as any).title,
-          keywords: (metadata as any).keywords,
-          mediaMetadata: (metadata as any) as Record<string, unknown> | undefined
-        }
-      );
+      const updatedArtifact = await this.artifactRepo.update(syncState.artifactId, profileId, {
+        modifiedDate: cloudFile.modifiedTime,
+        title: typeof meta?.['title'] === 'string' ? meta['title'] : undefined,
+        keywords: Array.isArray(meta?.['keywords']) ? (meta['keywords'] as string[]) : undefined,
+        mediaMetadata: meta,
+      });
 
       if (updatedArtifact) {
         // Update sync state with new modification info
@@ -772,14 +749,14 @@ export class CatcherAgent implements Agent {
           integration.id,
           cloudFile.fileId,
           cloudFile.modifiedTime,
-          cloudFile.checksum || ""
+          cloudFile.checksum || '',
         );
         metrics.recordModified();
       }
     } catch (err) {
       metrics.recordError(
         cloudFile.name,
-        `update_error: ${err instanceof Error ? err.message : String(err)}`
+        `update_error: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
@@ -809,46 +786,38 @@ export class CatcherAgent implements Agent {
   private async handleSingleSourceRefresh(
     taskId: string,
     profileId: string,
-    integrationId?: string
+    integrationId?: string,
   ): Promise<AgentResult> {
     if (!integrationId) {
       return {
         taskId,
-        status: "failed",
-        notes: "missing_integration_id_for_refresh"
+        status: 'failed',
+        notes: 'missing_integration_id_for_refresh',
       };
     }
 
     const metrics = this.createMetricsCollector();
-    const tempDir = join("/tmp/midst-artifacts", taskId);
+    const tempDir = join('/tmp/midst-artifacts', taskId);
 
     try {
       await mkdir(tempDir, { recursive: true });
 
       // Query the specific integration
-      const integration = await this.cloudIntegrationRepo.findById(
-        integrationId,
-        profileId
-      );
+      const integration = await this.cloudIntegrationRepo.findById(integrationId, profileId);
       if (!integration) {
         return {
           taskId,
-          status: "failed",
-          notes: "integration_not_found"
+          status: 'failed',
+          notes: 'integration_not_found',
         };
       }
 
       // Perform incremental sync for this single integration
-      await this.processIntegrationIncrementalSync(
-        integration,
-        profileId,
-        tempDir,
-        metrics
-      );
+      await this.processIntegrationIncrementalSync(integration, profileId, tempDir, metrics);
 
       return {
         taskId,
-        status: "completed",
+        status: 'completed',
         notes: `Single source refresh completed for ${integration.provider}`,
         output: {
           integrationId: integration.id,
@@ -857,16 +826,16 @@ export class CatcherAgent implements Agent {
           modifiedArtifacts: metrics.modifiedArtifacts,
           deletedArtifacts: metrics.deletedArtifacts,
           durationMs: metrics.getDuration(),
-          errors: metrics.errors
-        }
+          errors: metrics.errors,
+        },
       };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       return {
         taskId,
-        status: "failed",
+        status: 'failed',
         notes: `single_source_refresh_failed: ${errorMsg}`,
-        output: { errors: metrics.errors }
+        output: { errors: metrics.errors },
       };
     }
   }
@@ -897,7 +866,7 @@ export class CatcherAgent implements Agent {
    */
   private async generateIntegrityProof(
     artifact: Artifact,
-    profileId: string
+    profileId: string,
   ): Promise<IntegrityProof> {
     // Load profile's DID key pair from database (create if missing)
     let keyPair = await this.profileKeyRepo.getKeyPair(profileId);
@@ -905,7 +874,7 @@ export class CatcherAgent implements Agent {
       await this.profileKeyRepo.create(profileId);
       keyPair = await this.profileKeyRepo.getKeyPair(profileId);
       if (!keyPair) {
-        throw new Error("Failed to create or retrieve profile key pair");
+        throw new Error('Failed to create or retrieve profile key pair');
       }
     }
 
@@ -916,7 +885,7 @@ export class CatcherAgent implements Agent {
       sourcePath: artifact.sourcePath,
       fileSize: artifact.fileSize,
       capturedDate: artifact.capturedDate,
-      mimeType: artifact.mimeType
+      mimeType: artifact.mimeType,
     };
 
     // SHA256 hash the canonical JSON
@@ -933,26 +902,26 @@ export class CatcherAgent implements Agent {
       hash,
       signature,
       did: keyPair.did,
-      timestamp
+      timestamp,
     };
 
     // Create VerificationLog entry of type 'self_attestation'
     const verificationLog: VerificationLog = {
       id: randomUUID(),
       profileId,
-      entityType: "artifact",
+      entityType: 'artifact',
       entityId: artifact.id,
-      status: "verified",
-      source: "automated",
-      verifierLabel: "Self-attestation (DID signature)",
-      notes: "Cryptographic integrity proof generated at ingestion time",
+      status: 'verified',
+      source: 'automated',
+      verifierLabel: 'Self-attestation (DID signature)',
+      notes: 'Cryptographic integrity proof generated at ingestion time',
       metadata: {
-        method: "Ed25519",
+        method: 'Ed25519',
         hash,
-        did: keyPair.did
+        did: keyPair.did,
       },
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
     };
 
     await this.verificationLogRepo.create(verificationLog);

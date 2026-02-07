@@ -436,6 +436,7 @@ function MaskDetail({ mask }: { mask: Mask }) {
         )}
       </div>
 
+      {/* Stage visibility (scaenae where this mask is active) */}
       {mask.visibility_scope && mask.visibility_scope.length > 0 && (
         <div>
           <h3
@@ -445,29 +446,107 @@ function MaskDetail({ mask }: { mask: Mask }) {
               color: 'rgba(209, 213, 219, 0.8)',
             }}
           >
-            Visibility Scope
+            Stage Visibility
           </h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {mask.visibility_scope?.map((scope) => (
+            {mask.visibility_scope.map((stage) => (
               <span
-                key={scope}
+                key={stage}
                 style={{
-                  padding: '0.5rem 0.75rem',
-                  background: 'rgba(59, 130, 246, 0.15)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  padding: '0.35rem 0.65rem',
+                  background: 'rgba(34, 197, 94, 0.12)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
                   borderRadius: '4px',
-                  color: 'rgba(191, 219, 254, 0.9)',
-                  fontSize: '0.85rem',
+                  color: 'rgba(187, 247, 208, 0.9)',
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
                 }}
               >
-                {scope}
+                {stage}
               </span>
             ))}
           </div>
         </div>
       )}
 
-      {/* TODO: Show visibility stages, temporal range, and sample narrative preview */}
+      {/* Activation contexts and triggers */}
+      {mask.activation_rules && (
+        <div>
+          <h3
+            style={{
+              margin: '0 0 0.75rem 0',
+              fontSize: '0.9rem',
+              color: 'rgba(209, 213, 219, 0.8)',
+            }}
+          >
+            Activation Rules
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {mask.activation_rules.contexts.length > 0 && (
+              <div style={{ fontSize: '0.85rem', color: 'rgba(209, 213, 219, 0.7)' }}>
+                <strong style={{ color: 'rgba(209, 213, 219, 0.9)' }}>Contexts:</strong>{' '}
+                {mask.activation_rules.contexts.join(', ')}
+              </div>
+            )}
+            {mask.activation_rules.triggers.length > 0 && (
+              <div style={{ fontSize: '0.85rem', color: 'rgba(209, 213, 219, 0.7)' }}>
+                <strong style={{ color: 'rgba(209, 213, 219, 0.9)' }}>Triggers:</strong>{' '}
+                {mask.activation_rules.triggers.join(', ')}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Stylistic parameters & narrative preview */}
+      {mask.stylistic_parameters && (
+        <div>
+          <h3
+            style={{
+              margin: '0 0 0.75rem 0',
+              fontSize: '0.9rem',
+              color: 'rgba(209, 213, 219, 0.8)',
+            }}
+          >
+            Narrative Voice
+          </h3>
+          <div
+            style={{
+              padding: '0.75rem 1rem',
+              background: 'rgba(55, 65, 81, 0.4)',
+              borderRadius: '6px',
+              border: '1px solid rgba(107, 114, 128, 0.2)',
+              fontSize: '0.85rem',
+              color: 'rgba(209, 213, 219, 0.7)',
+              lineHeight: 1.5,
+            }}
+          >
+            <div>
+              <strong style={{ color: 'rgba(209, 213, 219, 0.9)' }}>Tone:</strong>{' '}
+              {mask.stylistic_parameters.tone}
+            </div>
+            <div>
+              <strong style={{ color: 'rgba(209, 213, 219, 0.9)' }}>Mode:</strong>{' '}
+              {mask.stylistic_parameters.rhetorical_mode}
+            </div>
+            <div>
+              <strong style={{ color: 'rgba(209, 213, 219, 0.9)' }}>Compression:</strong>{' '}
+              {Math.round(mask.stylistic_parameters.compression_ratio * 100)}%
+            </div>
+            {mask.motto && (
+              <div
+                style={{
+                  marginTop: '0.5rem',
+                  fontStyle: 'italic',
+                  color: 'rgba(191, 219, 254, 0.8)',
+                }}
+              >
+                &ldquo;{mask.motto}&rdquo;
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
