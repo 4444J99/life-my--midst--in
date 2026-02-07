@@ -9,6 +9,7 @@ import { initializeSentry, Sentry } from './sentry';
 import { startMetricsServer } from './metrics-server';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
 import rawBody from 'fastify-raw-body';
 import { Pool } from 'pg';
 import { register, httpRequestsTotal, httpRequestDuration, activeConnections } from './metrics';
@@ -186,6 +187,30 @@ export function buildServer(options: ApiServerOptions = {}) {
       ? undefined
       : 'dev-only-secret-do-not-use-in-prod-32chars!'); // allow-secret
   const jwtAuth = jwtSecret ? new JWTAuth({ secret: jwtSecret }) : undefined;
+
+  // Security headers (CSP, HSTS, X-Frame-Options, etc.)
+  if (process.env['NODE_ENV'] !== 'test') {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Fastify plugin type mismatch
+    fastify.register(helmet as any, {
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'", 'wss:', 'https:'],
+          fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          frameSrc: ["'none'"],
+        },
+      },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+    });
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Fastify plugin type mismatch
   fastify.register(rawBody as any, {

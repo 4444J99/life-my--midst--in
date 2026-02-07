@@ -172,25 +172,42 @@ All profile CRUD, narrative generation, export endpoints.
 - `GET /metrics` - Prometheus metrics
 - `POST /webhooks/github` - GitHub webhook ingestion
 
-### Security Headers
+### Security Headers (Implemented)
+
+Security headers are enforced via `@fastify/helmet` in `apps/api/src/index.ts`:
+
 ```typescript
-// apps/api/src/plugins/security.ts
-app.register(require('@fastify/helmet'), {
+fastify.register(helmet, {
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https:'],
-    }
+      connectSrc: ["'self'", 'wss:', 'https:'],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameSrc: ["'none'"],
+    },
   },
   hsts: {
     maxAge: 31536000,
     includeSubDomains: true,
-    preload: true
-  }
+    preload: true,
+  },
 });
 ```
+
+Headers set automatically on every response:
+- **Content-Security-Policy** — Restricts resource loading origins
+- **Strict-Transport-Security** — Forces HTTPS with 1-year max-age and preload
+- **X-Content-Type-Options** — Prevents MIME sniffing (`nosniff`)
+- **X-Frame-Options** — Prevents clickjacking (`SAMEORIGIN`)
+- **X-DNS-Prefetch-Control** — Disables DNS prefetching
+- **X-Download-Options** — Prevents IE from opening downloads directly
+- **X-Permitted-Cross-Domain-Policies** — Restricts Adobe cross-domain access
+
+> **Note:** Helmet is disabled in test mode to avoid CSP interfering with test harnesses.
 
 ### CORS Configuration
 ```typescript

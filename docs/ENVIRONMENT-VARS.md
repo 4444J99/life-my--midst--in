@@ -264,6 +264,172 @@ disable feature during maintenance.
 
 ---
 
+### API Server
+
+#### PORT
+**Type:** Number
+**Required:** No
+**Default:** 3001
+
+**Description:**
+Port the Fastify API server listens on.
+
+---
+
+#### METRICS_PORT
+**Type:** Number
+**Required:** No
+**Default:** 9464
+
+**Description:**
+Port for the Prometheus metrics endpoint (separate from the main API port).
+
+---
+
+#### OPENAI_API_KEY
+**Type:** String
+**Required:** No (falls back to mock)
+**Example:** `sk-...`
+
+**Description:**
+OpenAI API key for semantic search embeddings. If not set or set to
+`sk-test-mock`, the API uses a mock embeddings provider.
+
+---
+
+#### ORCHESTRATOR_URL
+**Type:** String (URL)
+**Required:** No
+**Default:** `http://localhost:3002`
+
+**Description:**
+URL of the orchestrator worker service. Used by the API when building
+narrative output to delegate tasks.
+
+---
+
+### Observability (Extended)
+
+#### SENTRY_ENVIRONMENT
+**Type:** String
+**Required:** No
+**Default:** Same as NODE_ENV
+
+**Description:**
+Environment label sent to Sentry. Useful for distinguishing staging
+vs production in the Sentry dashboard.
+
+---
+
+#### OTEL_EXPORTER_OTLP_ENDPOINT
+**Type:** String (URL)
+**Required:** No
+**Example:** `http://localhost:4318`
+
+**Description:**
+OpenTelemetry collector endpoint for distributed tracing. If not set,
+tracing data is not exported.
+
+---
+
+### Orchestrator Configuration
+
+The orchestrator (`apps/orchestrator`) has its own comprehensive set of
+environment variables, validated via Zod in `src/config.ts`.
+
+#### ORCH_HOST
+**Type:** String
+**Required:** No
+**Default:** `0.0.0.0`
+
+**Description:**
+Host address the orchestrator binds to.
+
+---
+
+#### ORCH_PORT
+**Type:** Number
+**Required:** No
+**Default:** 4000 (falls back to PORT if set)
+
+**Description:**
+Port the orchestrator HTTP server listens on.
+
+---
+
+#### LOCAL_LLM_API
+**Type:** Boolean
+**Required:** No
+**Default:** false
+
+**Description:**
+Enable local LLM API integration. When true, the orchestrator sends
+prompts to a local LLM server instead of cloud providers.
+
+---
+
+#### LOCAL_LLM_URL
+**Type:** String (URL)
+**Required:** No
+**Default:** `http://localhost:11434`
+
+**Description:**
+URL of the local LLM server (e.g., Ollama, llama.cpp server).
+
+---
+
+#### LOCAL_LLM_MODEL
+**Type:** String
+**Required:** No
+**Default:** `mistral`
+
+**Description:**
+Model name/tag to use with the local LLM server.
+
+---
+
+#### ORCH_LLM_POLICY
+**Type:** String (`oss` | `hosted` | `locked`)
+**Required:** No
+**Default:** `oss`
+
+**Description:**
+LLM usage policy. `oss` allows only open-source models, `hosted` allows
+cloud providers, `locked` disables all LLM calls.
+
+---
+
+#### ORCH_SCHEDULER_ENABLED
+**Type:** Boolean
+**Required:** No
+**Default:** false
+
+**Description:**
+Enable the periodic task scheduler. When true, the orchestrator
+automatically creates and runs scheduled tasks.
+
+---
+
+#### ORCH_RATE_LIMIT_WINDOW_MS
+**Type:** Number (milliseconds)
+**Required:** No
+**Default:** 60000
+
+**Description:**
+Rate limiting window duration for orchestrator API endpoints.
+
+---
+
+#### ORCH_RATE_LIMIT_MAX
+**Type:** Number
+**Required:** No
+**Default:** 100
+
+**Description:**
+Maximum requests per rate limit window for orchestrator endpoints.
+
+---
+
 ## Validation
 
 Check environment before deployment:

@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "13.0.2",
     "@fastify/websocket": "11.2.0",
     "@in-midst-my-life/content-model": "workspace:*",
     "@in-midst-my-life/core": "workspace:*",
