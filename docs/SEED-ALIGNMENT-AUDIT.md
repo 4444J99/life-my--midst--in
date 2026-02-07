@@ -844,12 +844,11 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 - **Current State**: Zero codebase matches for "marketplace"; community features split across messaging.ts, public-profiles.ts
 - **Recommendation**: Either implement marketplace or update PHASE-9-PLAN to reflect actual scope
 
-### G17-D: CI/CD Pipeline Overstated in PHASE-7-SUMMARY
+### ~~G17-D: CI/CD Pipeline Overstated in PHASE-7-SUMMARY~~ — RESOLVED
 
-- **Severity**: Low
+- **Severity**: ~~Low~~ **None**
 - **Source**: `docs/phases/PHASE-7-SUMMARY.md` claims "8-stage pipeline"
-- **Current State**: `ci-cd.yml` has 5 jobs (quality, test, security, build, notify); deploy stages absent
-- **Recommendation**: Update document to reflect actual 5-job pipeline
+- **Resolution**: `ci-cd.yml` actually has 8 stages (quality, test, security, build, deploy-staging, smoke-tests, deploy-production, notify). The claim is accurate.
 
 ### G18-C: WCAG 2.1 AA Commitment Unvalidated
 

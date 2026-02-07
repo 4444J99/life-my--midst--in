@@ -1,5 +1,7 @@
 # Accessibility (A11y) Guidelines
 
+> **Aspirational Document** — This document describes the *target state* for accessibility in the in–midst–my–life system, not the current implementation. The guidelines below represent our design goals and the standards we are working toward. Current implementation includes basic semantic HTML and ARIA attributes; full WCAG 2.1 AA compliance (skip navigation, focus management, contrast validation, keyboard trap prevention) is planned but not yet validated. See `docs/SEED-ALIGNMENT-AUDIT.md` gap G18 for current status.
+
 This document outlines accessibility standards, testing procedures, and best practices for the in–midst–my–life system.
 
 ## WCAG 2.1 Level AA Compliance
@@ -445,6 +447,6 @@ For accessibility questions or issues, please:
 
 ---
 
-**Last Updated:** January 2026
-**Status:** Active - Tests running in CI/CD pipeline
+**Last Updated:** February 2026
+**Status:** Aspirational — Target state, not current implementation
 **Target:** WCAG 2.1 Level AA Compliance

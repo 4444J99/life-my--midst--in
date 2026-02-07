@@ -256,4 +256,18 @@ Only three minor items remain unimplemented:
 
 ---
 
+## Scope Note: Relationship to SEED-ALIGNMENT-AUDIT
+
+This audit identifies **3 functional gaps** while the companion `docs/SEED-ALIGNMENT-AUDIT.md` registers **25 gaps**. These numbers are not contradictory — they use different lenses:
+
+| Dimension | FEATURE-AUDIT (this doc) | SEED-ALIGNMENT-AUDIT |
+|-----------|--------------------------|----------------------|
+| **Question** | Does the code implement what the specs describe? | Does the code honor the founding vision and philosophy? |
+| **Scope** | ~20 specification documents | 129 documents (full corpus) |
+| **Gap type** | Missing features | Missing depth, stale docs, unvalidated commitments |
+
+FEATURE-AUDIT's 3 gaps concern missing *features*; SEED-ALIGNMENT-AUDIT's 25 gaps concern missing *ontological depth*, *forward commitments*, and *documentation freshness*. Together they provide complementary coverage.
+
+---
+
 **Conclusion**: The in-midst-my-life project has achieved full implementation of all originally specified features across its 33-conversation design genesis. The three noted gaps are either architectural non-issues (CSRF, did:ethr→did:pkh) or low-priority future work (account lockout). The documentation has been updated to reflect this reality.

@@ -6,18 +6,21 @@ This document provides instructions for activating the CI/CD pipeline for the In
 
 The repository includes several workflow files:
 - **`ci-cd.yml`**: Comprehensive CI/CD pipeline (RECOMMENDED)
-- **`test.yml`**: Standalone testing workflow
+- **`test.yml`**: CI workflow — lint, typecheck, test (triggered on push/PR to master)
 - **`deploy.yml`**: Deployment workflow
 - **`security.yml`**: Security scanning workflow
-- **`ci.yml`**: Legacy CI workflow (can be disabled)
+- **`performance.yml`**: Bundle size and performance monitoring
+- **`release.yml`**: release-please automation
 
 ## Current Status
 
 ✅ **Active Workflows:**
-- `ci-cd.yml` - Primary CI/CD pipeline with all stages
-- `test.yml` - Simplified test workflow
+- `ci-cd.yml` - Primary CI/CD pipeline with all stages (quality, test, security, build, deploy-staging, smoke-tests, deploy-production, notify)
+- `test.yml` - CI workflow (lint, typecheck, unit + integration tests)
 - `deploy.yml` - Deployment to production
 - `security.yml` - Security scanning and compliance
+- `performance.yml` - Bundle size and performance monitoring
+- `release.yml` - release-please automation
 
 ## Prerequisites
 
@@ -230,9 +233,9 @@ timeout 30 bash -c 'until redis-cli -p 6379 ping; do sleep 1; done'
 ```
 
 ### pnpm Installation Issues
-The workflows use `pnpm@9.0.0`. If dependencies fail:
+The workflows use `pnpm@10`. If dependencies fail:
 - Check `pnpm-lock.yaml` is committed
-- Verify Node version compatibility (20.x)
+- Verify Node version compatibility (22.x)
 - Review package.json scripts
 
 ### Docker Build Failures
