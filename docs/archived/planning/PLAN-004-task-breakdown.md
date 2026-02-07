@@ -1,5 +1,7 @@
 # Engineering task mapping
 
+> **Historical Document** — This is an archived planning document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **User:** Anthony Padavano (padavano.anthony@gmail.com)  
 **Created:** 11/27/2025 15:03:53  
 **Updated:** 11/27/2025 15:04:49  

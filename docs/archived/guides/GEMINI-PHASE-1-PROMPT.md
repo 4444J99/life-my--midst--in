@@ -1,5 +1,7 @@
 # Phase 1 Prompt for Gemini
 
+> **Historical Document** — This is an archived guide document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 ## Phase 1: Monetization Foundation & Feature Gates
 
 **Objective**: Design and implement the foundational systems for monetizing the platform while maintaining Phase 0's operational excellence.

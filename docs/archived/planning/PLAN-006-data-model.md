@@ -1,5 +1,7 @@
 # Data Model Expansion (Draft)
 
+> **Historical Document** — This is an archived planning document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 Updated: 2025-12-28  
 Scope: CV entities, external IDs/settings, credentials, content graph, revisions.
 

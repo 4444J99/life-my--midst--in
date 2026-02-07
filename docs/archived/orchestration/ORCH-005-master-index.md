@@ -1,5 +1,7 @@
 # Generate master index
 
+> **Historical Document** — This is an archived orchestration design document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **User:** Anthony Padavano (padavano.anthony@gmail.com)  
 **Created:** 11/27/2025 14:41:30  
 **Updated:** 11/27/2025 14:42:51  

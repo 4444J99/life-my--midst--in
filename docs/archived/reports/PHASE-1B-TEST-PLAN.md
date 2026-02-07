@@ -1,5 +1,7 @@
 # Phase 1B Test Plan: Licensing & Feature Gates
 
+> **Historical Document** — This is an archived report document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **Status**: Planning
 **Target**: Stream 1B (Feature Gates)
 **Priority**: High (40%)

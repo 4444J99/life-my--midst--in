@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Users,
   TrendingUp,
@@ -48,13 +48,9 @@ export default function BetaDashboard() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('lastActive');
 
-  useEffect(() => {
-    void loadDashboardData();
-  }, []);
-
   const apiBase = process.env['NEXT_PUBLIC_API_BASE_URL'] || 'http://localhost:3001';
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
 
@@ -93,7 +89,11 @@ export default function BetaDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [apiBase]);
+
+  useEffect(() => {
+    void loadDashboardData();
+  }, [loadDashboardData]);
 
   const filteredUsers = betaUsers
     .filter((u) => filterStatus === 'all' || u.status === filterStatus)

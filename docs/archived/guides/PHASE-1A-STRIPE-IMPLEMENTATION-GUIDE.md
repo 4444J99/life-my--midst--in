@@ -1,5 +1,7 @@
 # Phase 1A: Stripe Implementation Guide
 
+> **Historical Document** — This is an archived guide document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **Status**: Ready for Implementation
 **Target**: Stream 1A (Stripe Integration)
 **Priority**: High (30%)

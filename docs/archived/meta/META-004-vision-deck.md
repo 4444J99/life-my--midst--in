@@ -1,5 +1,7 @@
 # Concept deck creation
 
+> **Historical Document** — This is an archived project meta document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **User:** Anthony Padavano (padavano.anthony@gmail.com)  
 **Created:** 11/25/2025 15:06:13  
 **Updated:** 11/25/2025 15:07:12  

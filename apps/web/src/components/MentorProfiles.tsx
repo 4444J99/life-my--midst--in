@@ -67,15 +67,7 @@ export default function MentorProfiles({
     setFilteredMentors(filtered);
   }, [mentors, selectedExpertise, availabilityFilter]);
 
-  useEffect(() => {
-    void loadMentors();
-  }, []);
-
-  useEffect(() => {
-    filterMentors();
-  }, [filterMentors]);
-
-  const loadMentors = async () => {
+  const loadMentors = useCallback(async () => {
     try {
       setIsLoading(true);
       const res = await fetch(`${apiBase}/community/mentors`);
@@ -89,7 +81,15 @@ export default function MentorProfiles({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [apiBase]);
+
+  useEffect(() => {
+    void loadMentors();
+  }, [loadMentors]);
+
+  useEffect(() => {
+    filterMentors();
+  }, [filterMentors]);
 
   const handleExpertiseToggle = (expertise: string) => {
     setSelectedExpertise((prev) =>

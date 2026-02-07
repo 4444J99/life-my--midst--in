@@ -1,5 +1,7 @@
 # in–midst–my-life
 
+> **Historical Document** — This is an archived guide document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **Interactive CV/Résumé System**: A blockchain-inspired, mask-based identity platform for dynamic professional narratives.
 
 ## 🌍 Project Overview

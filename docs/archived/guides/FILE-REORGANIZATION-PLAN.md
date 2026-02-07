@@ -1,5 +1,7 @@
 # FILE REORGANIZATION PLAN
 
+> **Historical Document** — This is an archived guide document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 ## Overview
 
 This document provides the complete mapping from current ChatGPT export filenames to the new organized naming scheme, plus bash commands to execute the reorganization.

@@ -1,5 +1,7 @@
 # Deploy Now - Zero Cost Stack
 
+> **Historical Document** — This is an archived guide document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **Estimated time**: 15-30 minutes
 **Cost**: $0/month (free tier forever)
 **Prerequisites**: GitHub account (you have this!)

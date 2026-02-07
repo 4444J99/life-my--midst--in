@@ -1,5 +1,7 @@
 # Spec-to-Code Coverage Audit
 
+> **Historical Document** — This is an archived report document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 Date: 2025-12-28
 Scope: SPEC-001..004, ARCH-001..005, WORK-001..005 vs apps/* and packages/*.
 

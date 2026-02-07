@@ -104,7 +104,7 @@ export default function HunterDashboard({ profileId, onApplyJob }: HunterDashboa
     } finally {
       setScheduleLoading(false);
     }
-  }, [profileId]);
+  }, [profileId, apiBase]);
 
   useEffect(() => {
     void fetchSubscription();

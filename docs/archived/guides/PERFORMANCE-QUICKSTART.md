@@ -1,5 +1,7 @@
 # Performance & Monitoring Quick Reference
 
+> **Historical Document** — This is an archived guide document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 ## 🚀 Quick Start
 
 Start the full monitoring stack:

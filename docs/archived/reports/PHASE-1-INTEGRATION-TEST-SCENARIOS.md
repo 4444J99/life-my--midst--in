@@ -1,5 +1,7 @@
 # Phase 1: Integration Test Scenarios
 
+> **Historical Document** — This is an archived report document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **Status**: Planning
 **Target**: QA / Integration Testing (Stream 1A+1B+1C)
 **Priority**: Medium (10%)

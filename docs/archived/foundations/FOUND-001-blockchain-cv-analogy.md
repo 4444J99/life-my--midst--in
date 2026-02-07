@@ -1,5 +1,7 @@
 # Blockchain as CV analogy
 
+> **Historical Document** — This is an archived foundational design document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **User:** Anthony Padavano (padavano.anthony@gmail.com)  
 **Created:** 11/25/2025 14:24:58  
 **Updated:** 11/25/2025 14:34:38  

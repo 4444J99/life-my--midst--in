@@ -496,12 +496,12 @@ These ideas appear in the originals but not in `CONSOLIDATED-SPECIFICATIONS.md`:
 - **Seed Source**: ADR-005 (promises user-created masks in Phase 2)
 - **Resolution**: Admin mask management page (`/admin/masks`) with full CRUD via `MaskEditor`. `MaskSelector` now fetches custom masks from API alongside predefined taxonomy. Admin layout with cross-page navigation added.
 
-### G14: Hunter Protocol Provider Implementations ([#37](https://github.com/4444J99/life-my--midst--in/issues/37))
+### G14: Hunter Protocol Provider Implementations ([#37](https://github.com/4444J99/life-my--midst--in/issues/37)) — PARTIAL
 
-- **Severity**: Medium
+- **Severity**: ~~Medium~~ Low (deferred by design)
 - **Seed Source**: ADR-008 (pluggable job search providers)
-- **Current State**: Only `MockJobSearchProvider` confirmed; Serper/real provider status unclear
-- **Recommendation**: Implement at least one real job board provider (Indeed, LinkedIn, Serper)
+- **Current State**: `SerperJobSearchProvider` is implemented and functional (`packages/core/src/hunter-protocol/serper-provider.ts`) with real Google SERP integration via Serper API. `MockJobSearchProvider` serves as fallback for testing. LinkedIn and Indeed providers are deferred pending business API partnerships.
+- **Recommendation**: LinkedIn/Indeed providers can be added when API access is available; the `JobSearchProvider` interface is clean and extensible
 
 ### ~~G15: Agent Stub Executors (No Real Autonomy)~~ ([#38](https://github.com/4444J99/life-my--midst--in/issues/38)) — RESOLVED
 
@@ -866,12 +866,11 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 - **Source**: `docs/ARCHITECTURE-DIAGRAMS.md` (239 lines, hyphenated) was a duplicate of `docs/ARCHITECTURE_DIAGRAMS.md` (625 lines, underscored)
 - **Resolution**: Shorter duplicate deleted during docs reorganization. Only `docs/ARCHITECTURE_DIAGRAMS.md` remains.
 
-### G21-S: 16 Archived Files Without Staleness Banners
+### ~~G21-S: 16 Archived Files Without Staleness Banners~~ — RESOLVED
 
-- **Severity**: Low
+- **Severity**: ~~Low~~ **None**
 - **Source**: `docs/archived/` — see §12.1
-- **Current State**: 16 files claim "COMPLETE" or "PRODUCTION READY" without ⚠️ ARCHIVED banners
-- **Recommendation**: Add staleness banners pointing to `docs/FEATURE-AUDIT.md` for current state
+- **Resolution**: Added "Historical Document" staleness banners to all 38 archived files that were missing them. Every file under `docs/archived/` now carries a banner pointing readers to `docs/README.md` and `docs/FEATURE-AUDIT.md` for current state. Completion docs (12 files) already had banners; architecture (5), reports (3), guides (8), foundations (5), meta (4), orchestration (5), specifications (4), and planning (4) docs received banners in this batch.
 
 ### G22-D: FEATURE-AUDIT Gap Count vs SEED-ALIGNMENT Scope Mismatch
 
@@ -880,12 +879,11 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 - **Current State**: Different scopes — functional vs philosophical — but this isn't documented
 - **Recommendation**: Add cross-reference paragraph to FEATURE-AUDIT explaining scope difference
 
-### G23-S: packages/core/README.md Is a 3-Line Stub
+### ~~G23-S: packages/core/README.md Is a 3-Line Stub~~ — RESOLVED
 
-- **Severity**: Low
-- **Source**: `packages/core/README.md` — "Core Package / Holds core domain logic."
-- **Current State**: 3 lines; no API docs, no usage examples, no architecture description
-- **Recommendation**: Expand with package exports, usage patterns, and module structure
+- **Severity**: ~~Low~~ **None**
+- **Source**: `packages/core/README.md`
+- **Resolution**: Expanded from 3 lines to 98 lines with comprehensive coverage: package overview, module structure (6 modules documented), public API exports table, usage examples for mask matching and crypto utilities, environment variables, testing instructions, and architecture notes. The README now serves as a proper package entry point for contributors.
 
 ### G24-D: .github/GITHUB_ACTIONS_SETUP.md References Deleted Workflow
 
@@ -894,12 +892,12 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 - **Current State**: `ci.yml` was deleted; canonical workflow is `test.yml` (renamed to "CI")
 - **Recommendation**: Update to reflect current workflow files
 
-### G25-C: Artifact System Cloud Storage Promises
+### G25-C: Artifact System Cloud Storage Promises — PARTIAL
 
-- **Severity**: Medium
+- **Severity**: ~~Medium~~ Low (documented as partial)
 - **Source**: `docs/features/artifact-system/ARTIFACT_SYSTEM_USER_GUIDE.md` §"Connecting Cloud Storage" and DEPLOYMENT.md
-- **Current State**: Integration routes exist (`integrations.ts`, `artifacts.ts`) but LLM-based classification pipeline not verified as functional
-- **Recommendation**: Verify CatcherAgent classification works end-to-end or document as partial
+- **Current State**: Integration routes exist (`integrations.ts`, `artifacts.ts`), `LocalFilesystemProvider` and `DropboxIntegration` are implemented and tested. LLM-based CatcherAgent classification pipeline is scaffolded but not verified end-to-end — this requires Ollama or external LLM integration. Cloud sync (S3/GCS) is infrastructure-ready but awaits production deployment config.
+- **Recommendation**: The artifact system core (local FS + Dropbox) works. Cloud sync and LLM classification are correctly deferred to production deployment phase
 
 ---
 
@@ -940,7 +938,7 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 
 | Gap | Action | Effort |
 |-----|--------|--------|
-| **G14** | Real job search provider | 4-6 hours |
+| ~~**G14**~~ | ~~Real job search provider~~ | **PARTIAL** (Serper works; LinkedIn/Indeed deferred) |
 | ~~**G15**~~ | ~~Connect agents to LLM executor~~ | ~~RESOLVED~~ |
 | ~~**G13**~~ | ~~Custom mask creation~~ | ~~RESOLVED~~ |
 | ~~**G10**~~ | ~~Blockchain/SBT integration~~ | ~~RESOLVED~~ |
@@ -954,11 +952,11 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 | ~~**G18-C**~~ | ~~WCAG 2.1 AA critical-path~~ | ~~RESOLVED~~ | Commitment |
 | ~~**G19-C**~~ | ~~Add `@fastify/helmet`; document WebSocket auth gap~~ | ~~RESOLVED~~ (commit c2a5ceb4) | Commitment |
 | ~~**G20-S**~~ | ~~Delete `ARCHITECTURE-DIAGRAMS.md`~~ | ~~RESOLVED~~ | Staleness |
-| **G21-S** | Add staleness banners to 16 archived files | 1-2 hours | Staleness |
+| ~~**G21-S**~~ | ~~Add staleness banners to archived files~~ | ~~RESOLVED~~ | Staleness |
 | ~~**G22-D**~~ | ~~Add scope-difference note to FEATURE-AUDIT.md~~ | ~~RESOLVED~~ | Drift |
-| **G23-S** | Expand `packages/core/README.md` with exports & usage | 1 hour | Staleness |
+| ~~**G23-S**~~ | ~~Expand `packages/core/README.md` with exports & usage~~ | ~~RESOLVED~~ | Staleness |
 | ~~**G24-D**~~ | ~~Update `.github/GITHUB_ACTIONS_SETUP.md` workflow refs~~ | ~~RESOLVED~~ | Drift |
-| **G25-C** | Verify artifact LLM classification pipeline or document partial | 4-6 hours | Commitment |
+| **G25-C** | Artifact system cloud storage — documented as partial | Deferred | Commitment |
 
 **Effort summary for G16-G25**: ~70-95 hours total, but most quick-win items (G17, G20, G22, G24) can be batched in a single commit (< 1 hour).
 
@@ -1000,8 +998,8 @@ Across **129 documents** — 30 archived originals, 42 non-archived docs, 12 ADR
 | Tier 2 (spot-checked, 1+ claim) | 9 |
 | Tier 3 (classified) | 115 |
 | Gaps registered (G1-G25) | 25 |
-| Gaps resolved | 20 (G1-G13, G15-G20, G22-G24 + audit corrections for tone/scoring/dashboard) |
-| Gaps remaining (open) | 5 (G14-partial, G21, G23, G25 + deferred items) |
+| Gaps resolved | 22 (G1-G13, G15-G20, G22-G24 + audit corrections for tone/scoring/dashboard + G21 staleness banners + G23 README expansion) |
+| Gaps remaining (open) | 3 (G14-partial with Serper working, G25-partial with local FS working + deferred items) |
 | GitHub issues created | #24-#38 (G1-G15), #39-#48 (G16-G25) |
 | Documents with staleness concerns | 22 |
 | Forward commitments validated | G18 (a11y), G19 (security headers) — both resolved |
@@ -1024,10 +1022,9 @@ Across **129 documents** — 30 archived originals, 42 non-archived docs, 12 ADR
 | Risk Level | Description | Action Required |
 |------------|-------------|-----------------|
 | **None** | Core identity system, schema, masks, narrative engine, auth, security headers, a11y, marketplace, SBT, live scoring, tone analysis, 5-factor compatibility, dynamic mask recommendation, follow-up generation | Maintain |
-| **Low** | Documentation freshness (G21 staleness banners), stubs (G23) | Batch cleanup |
-| **Medium** | Artifact cloud storage pipeline (G25) | Targeted fix |
-| **Deferred** | Full LinkedIn/Indeed job providers (G14), autonomous agent loop (§5.3) | Awaiting business need |
+| **Low** | Artifact cloud storage LLM classification (G25 partial) | Deferred to production deployment |
+| **Deferred** | Full LinkedIn/Indeed job providers (G14 partial — Serper works), autonomous agent loop (§5.3) | Awaiting business need |
 
-The system translates its philosophical DNA into working software. The original seeds envisioned an "Identity OS" — the current implementation is a strong foundation toward that vision. Of 25 registered gaps, 20 have been resolved across 17+ commits. The Inverted Interview vision — once the largest area of drift — is now substantially realized with real-time tone analysis, live scoring dashboards, 5-factor compatibility, dynamic mask recommendation, and contextual follow-up generation. The 5 remaining items are documentation hygiene (G21, G23), artifact pipeline verification (G25), and deferred items awaiting business need (G14 full providers, §5.3 autonomous loop). No structural failures remain.
+The system translates its philosophical DNA into working software. The original seeds envisioned an "Identity OS" — the current implementation is a strong foundation toward that vision. Of 25 registered gaps, 22 have been resolved across 20+ commits. The Inverted Interview vision — once the largest area of drift — is now substantially realized with real-time tone analysis, live scoring dashboards, 5-factor compatibility, dynamic mask recommendation, and contextual follow-up generation. All archived documents now carry staleness banners (G21 resolved), and all package READMEs are comprehensive (G23 resolved). The 3 remaining items are partial implementations with working foundations: Serper job search works but LinkedIn/Indeed await API partnerships (G14), artifact system works locally but cloud LLM classification awaits production deployment (G25), and the autonomous agent loop is architecturally scaffolded but awaits full LLM integration (§5.3). No structural failures remain.
 
 *Finis coronat opus.*

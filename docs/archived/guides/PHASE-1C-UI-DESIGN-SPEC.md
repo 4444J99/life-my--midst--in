@@ -1,5 +1,7 @@
 # Phase 1C: UI Design & Marketing Spec
 
+> **Historical Document** — This is an archived guide document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **Status**: Planning
 **Target**: Stream 1C (Frontend & Marketing)
 **Priority**: Medium (20%)

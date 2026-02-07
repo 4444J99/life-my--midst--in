@@ -1,5 +1,7 @@
 # 🎭 Phase 0 Daily Standup
 
+> **Historical Document** — This is an archived guide document. The implementation has evolved since this was written. See `docs/README.md` for current documentation and `docs/FEATURE-AUDIT.md` for current feature status.
+
 **Timeline**: Week 1-2 (12 EU total)
 **Goal**: Complete Hunter Protocol (6 EU) + Theatrical UI (6 EU)
 **Status**: 🟡 IN PROGRESS
