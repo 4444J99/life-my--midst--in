@@ -36,6 +36,7 @@ export * from './billing/billing-service';
 export * from './analytics/events';
 export * from './analytics/analytics-service';
 export { EmbeddingsService, type EmbeddingsConfig } from './embeddings/service';
+export * from './evm';
 
 // Server-only exports (cloud storage integrations with ssh2, smb2, etc.)
 // are available from '@in-midst-my-life/core/server' to prevent webpack bundling issues

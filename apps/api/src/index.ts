@@ -31,6 +31,7 @@ import { registerArtifactRoutes } from './routes/artifacts';
 import { registerIntegrationRoutes } from './routes/integrations';
 import { registerSearchRoutes } from './routes/search';
 import { registerDidRoutes } from './routes/did';
+import sbtRoutes from './routes/sbt';
 import { registerIdentityRoutes } from './routes/identity';
 import { registerGraphQLRoute } from './routes/graphql';
 import { InMemoryPubSub } from './services/pubsub';
@@ -537,6 +538,7 @@ export function buildServer(options: ApiServerOptions = {}) {
     scope.register(registerAdminServiceStatusRoutes);
     scope.register(registerAdminSettingsRoutes, { settingsRepo });
     scope.register(registerArtifactRoutes);
+    scope.register(sbtRoutes);
     scope.register(registerIntegrationRoutes);
     scope.register(registerSearchRoutes, {
       prefix: '/search',

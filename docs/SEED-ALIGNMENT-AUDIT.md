@@ -469,12 +469,13 @@ These ideas appear in the originals but not in `CONSOLIDATED-SPECIFICATIONS.md`:
 - **Current State**: 9 static questions in API, 5 in UI. No gap-based follow-up generation.
 - **Recommendation**: LLM-powered question generation from profile/job context, with static fallback
 
-### G10: Blockchain/Wallet/SBT Not Implemented ([#33](https://github.com/4444J99/life-my--midst--in/issues/33))
+### ~~G10: Blockchain/Wallet/SBT Not Implemented~~ ([#33](https://github.com/4444J99/life-my--midst--in/issues/33)) — RESOLVED
 
-- **Severity**: Deferred (by design)
+- **Severity**: ~~Deferred (by design)~~ → Resolved
 - **Seed Source**: FOUND-002, SPEC-001, COVENANT §XI
-- **COVENANT Position**: Explicitly "Long Term"
-- **Recommendation**: Document as intentionally deferred
+- **Resolution**: Full ERC-5192 Soulbound Token integration via `viem`. SBT schema (`SoulboundTokenSchema`, `WalletConnectionSchema`, `SBTMintRequestSchema`), EVM interaction layer (`SBTService` with mint/burn/query + dry-run mode), API routes (`POST /attestations/:id/mint-sbt`, `GET /sbt/:addr`, `POST /wallet/connect`), Postgres migration (019), MetaMask wallet connection UI, verification page at `/profile/:id/verification`. Target: Sepolia testnet. See ADR-014.
+- **Files**: `packages/schema/src/verification.ts`, `packages/core/src/evm/`, `apps/api/src/routes/sbt.ts`, `apps/api/src/repositories/sbt-tokens.ts`, `apps/web/src/components/WalletConnect.tsx`, `apps/web/src/app/profile/[profileId]/verification/page.tsx`
+- **Tests**: 33 new tests (14 schema + 19 EVM)
 
 ### ~~G11: Real-Time Interview Analysis ([#34](https://github.com/4444J99/life-my--midst--in/issues/34))~~ — RESOLVED
 
@@ -944,7 +945,7 @@ Gap types: **-D** = Drift, **-C** = Commitment, **-S** = Staleness
 | **G14** | Real job search provider | 4-6 hours |
 | ~~**G15**~~ | ~~Connect agents to LLM executor~~ | ~~RESOLVED~~ |
 | ~~**G13**~~ | ~~Custom mask creation~~ | ~~RESOLVED~~ |
-| **G10** | Blockchain/SBT integration | Significant (future) |
+| ~~**G10**~~ | ~~Blockchain/SBT integration~~ | ~~RESOLVED~~ |
 
 ### Priority 6 — Expanded Audit Gaps (G16-G25)
 
