@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { TabulaPersonarumEntry, PersonaResonance } from '@in-midst-my-life/schema';
+import { MASK_PERSONALITY_RELATIONS, PERSONALITY_TAXONOMY } from '@in-midst-my-life/content-model';
 
 interface PersonaeSelectorProps {
   personas: TabulaPersonarumEntry[];
@@ -246,6 +247,59 @@ export function PersonaeSelector({
                       </p>
                     </div>
                   )}
+
+                  {/* Personality Traits (from taxonomy) */}
+                  {(() => {
+                    const nameLower = persona.everyday_name.toLowerCase();
+                    const maskId = Object.keys(MASK_PERSONALITY_RELATIONS).find((id) =>
+                      nameLower.includes(id),
+                    );
+                    const personalityId = maskId ? MASK_PERSONALITY_RELATIONS[maskId] : undefined;
+                    const personality = personalityId
+                      ? PERSONALITY_TAXONOMY.find((p) => p.id === personalityId)
+                      : undefined;
+                    if (!personality) return null;
+                    return (
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <div
+                          className="label"
+                          style={{ marginBottom: '0.3rem', fontSize: '0.9rem' }}
+                        >
+                          Personality Profile
+                        </div>
+                        <div className="chip-row" style={{ gap: '0.4rem', flexWrap: 'wrap' }}>
+                          {personality.cognitiveStyle && (
+                            <span className="chip" style={{ fontSize: '0.8rem' }}>
+                              {personality.cognitiveStyle}
+                            </span>
+                          )}
+                          {personality.communicationMode && (
+                            <span className="chip" style={{ fontSize: '0.8rem' }}>
+                              {personality.communicationMode}
+                            </span>
+                          )}
+                          {personality.decisionFramework && (
+                            <span className="chip" style={{ fontSize: '0.8rem' }}>
+                              {personality.decisionFramework}
+                            </span>
+                          )}
+                          {personality.leadershipStyle && (
+                            <span className="chip" style={{ fontSize: '0.8rem' }}>
+                              {personality.leadershipStyle}
+                            </span>
+                          )}
+                        </div>
+                        {personality.orientation && (
+                          <p
+                            className="section-subtitle"
+                            style={{ margin: '0.3rem 0 0', fontStyle: 'italic' }}
+                          >
+                            {personality.orientation}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Resonance Details */}
                   {resonance && (
