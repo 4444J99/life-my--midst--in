@@ -1,6 +1,7 @@
 import type { Profile, Skill } from '@in-midst-my-life/schema';
 import { MASK_TAXONOMY } from './taxonomy';
 import { selectWeightedMasks } from './mask-selection';
+import { matchRoleFamily } from './role-families';
 
 export interface JobRequirement {
   skill: string;
@@ -443,7 +444,21 @@ export class CompatibilityAnalyzer {
     fitScore: number;
     reasoning: string;
   }> {
-    // Build context from job metadata + answer content for mask scoring
+    // Try role-family curated path first
+    const roleFamily = matchRoleFamily(interviewer.jobTitle);
+
+    if (roleFamily) {
+      return roleFamily.maskBlend.map((blend) => {
+        const mask = MASK_TAXONOMY.find((m) => m.id === blend.maskId);
+        return {
+          maskName: mask?.name ?? blend.maskId,
+          fitScore: Math.round(blend.weight * 100),
+          reasoning: `${mask?.name ?? blend.maskId} curated for ${roleFamily.name} role family`,
+        };
+      });
+    }
+
+    // Fallback: keyword-based scoring against the full taxonomy
     const contexts = [
       interviewer.jobTitle.toLowerCase(),
       ...interviewer.jobRequirements.map((r) => r.skill.toLowerCase()),

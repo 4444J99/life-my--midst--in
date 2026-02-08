@@ -95,6 +95,9 @@ export * from './json-ld';
 // Compatibility utilities
 export * from './compatibility';
 
+// Role-family taxonomy
+export * from './role-families';
+
 // Tone analysis
 export * from './tone';
 
