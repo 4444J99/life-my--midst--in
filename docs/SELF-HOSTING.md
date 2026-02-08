@@ -342,4 +342,4 @@ Found an issue with self-hosting? Contributions welcome!
 2. Create a feature branch
 3. Submit a pull request
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

@@ -401,7 +401,7 @@ The system uses blockchain concepts as architectural metaphors:
 ## Related Documents
 
 - [CLAUDE.md](../CLAUDE.md) — Development guidelines and patterns
-- [seed.yaml](../seed.yaml) — Repository constraints and growth objectives
+- [seed.yaml](seed.yaml) — Repository constraints and growth objectives
 - [CONSOLIDATED-SPECIFICATIONS.md](archived/CONSOLIDATED-SPECIFICATIONS.md) — Technical specifications
 - [DECISION-LOG.md](DECISION-LOG.md) — Architectural decision records
 - [SECURITY.md](SECURITY.md) — Security guidelines

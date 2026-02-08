@@ -190,7 +190,7 @@ Migrations are idempotent and safe to re-run across environments.
 - Higher thresholds encouraged for schema/core packages
 - Coverage enabled only on CI (`CI=true`)
 
-**File Size Limits** (from `seed.yaml`):
+**File Size Limits** (from `docs/seed.yaml`):
 - Max 1200 LOC per file
 - Max 200 LOC per function
 - Max cyclomatic complexity of 10
@@ -274,7 +274,7 @@ INTEGRATION_REDIS_URL=redis://localhost/1 \
   pnpm integration
 ```
 
-## Design Philosophy (from seed.yaml)
+## Design Philosophy (from docs/seed.yaml)
 
 **Modular monorepo** with these principles:
 - **Schema-first**: Lock data model before UI/business logic
@@ -285,11 +285,11 @@ INTEGRATION_REDIS_URL=redis://localhost/1 \
 
 ## Project Status
 
-The project is **feature-complete** (65+ commits on master, zero open issues/PRs). All roadmap phases (0–7) plus API hardening, polish sprints, and dependency upgrades are done. See `CHANGELOG.md` for full history.
+The project is **feature-complete** (65+ commits on master, zero open issues/PRs). All roadmap phases (0–7) plus API hardening, polish sprints, and dependency upgrades are done. See `docs/CHANGELOG.md` for full history.
 
 ## Useful References
 
-- **[seed.yaml](seed.yaml)** - Repository "genome" with full constraints/standards
+- **[docs/seed.yaml](docs/seed.yaml)** - Repository "genome" with full constraints/standards
 - **[docs/MANIFEST.md](docs/MANIFEST.md)** - Complete file catalog
 - **[docs/archived/CONSOLIDATED-SPECIFICATIONS.md](docs/archived/CONSOLIDATED-SPECIFICATIONS.md)** - Technical specs
 - **[docs/SECURITY.md](docs/SECURITY.md)** - Security checklist for secrets/env isolation

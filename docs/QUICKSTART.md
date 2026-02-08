@@ -45,7 +45,7 @@ brew install gh  # macOS
 cat docs/MANIFEST.md                      # System overview
 cat docs/archived/CONSOLIDATED-SPECIFICATIONS.md  # Technical specs
 cat docs/archived/meta/META-001-project-bible.md  # Complete design
-cat seed.yaml                              # Development constraints
+cat docs/seed.yaml                         # Development constraints
 ```
 
 **Key concepts to internalize**:
@@ -62,7 +62,7 @@ ls -1 {FOUND,SPEC,ARCH,PLAN,WORK,ORCH,META}-*.md | wc -l
 # Should output: 32
 
 # Check key artifacts exist
-ls -1 seed.yaml docs/MANIFEST.md README.md docs/archived/CONSOLIDATED-SPECIFICATIONS.md
+ls -1 docs/seed.yaml docs/MANIFEST.md README.md docs/archived/CONSOLIDATED-SPECIFICATIONS.md
 ```
 
 ### Step 3: Create Implementation Directory
@@ -686,7 +686,7 @@ You'll know you're on track when:
 - **Documentation**: All specs in this repository
 - **Design Rationale**: See META-001 (Project Bible)
 - **Technical Details**: docs/archived/CONSOLIDATED-SPECIFICATIONS.md
-- **Constraints**: seed.yaml (repository root)
+- **Constraints**: docs/seed.yaml
 
 ---
 

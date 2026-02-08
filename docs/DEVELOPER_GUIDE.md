@@ -118,7 +118,7 @@ REDIS_URL=redis://localhost:6379
 **Using 1Password (optional):**
 
 ```bash
-source secrets.env.op.sh
+source scripts/secrets.env.op.sh
 ```
 
 ### Step 5: Run Migrations (1 min)

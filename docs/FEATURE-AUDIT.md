@@ -12,7 +12,7 @@ This audit compared every feature requirement from the following source document
 
 | Document | Role |
 |----------|------|
-| `seed.yaml` | Repository "genome" — growth objectives, constraints, epics |
+| `docs/seed.yaml` | Repository "genome" — growth objectives, constraints, epics |
 | `CONSOLIDATED-SPECIFICATIONS.md` | Technical specs compiled from 33 design conversations |
 | `MANIFEST.md` | Project status and organization overview |
 | `docs/phases/PHASE-ROADMAP.md` | 140 EU implementation roadmap |

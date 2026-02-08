@@ -110,7 +110,7 @@ NODE_ENV=production
 
 ```bash
 # Load secrets from 1Password
-source secrets.env.op.sh
+source scripts/secrets.env.op.sh
 
 # Or use 1Password CLI directly
 export POSTGRES_PASSWORD=$(op read "op://Dev/postgres/password")
@@ -922,7 +922,7 @@ spec:
 
 ```bash
 # Load secrets from 1Password
-source secrets.env.op.sh
+source scripts/secrets.env.op.sh
 
 # Or use op CLI directly
 export DATABASE_URL=$(op read "op://Production/postgres/url")

@@ -221,7 +221,7 @@ See [Developer Guide](./DEVELOPER_GUIDE.md) for complete workflow.
 
 ## Contributing
 
-See the root [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 All architectural changes require an ADR. Use the template in [adr/000-index.md](./adr/000-index.md).
 

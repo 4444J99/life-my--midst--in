@@ -668,7 +668,7 @@ Schedule professional penetration testing before production launch:
 - [DEFINITIONS.md](../DEFINITIONS.md) - Terminology
 - [DECISION-LOG.md](../DECISION-LOG.md) - Architecture decisions
 - [docs/ENVIRONMENT-VARS.md](ENVIRONMENT-VARS.md) - Environment configuration
-- [seed.yaml](../seed.yaml) - Repository constraints
+- [seed.yaml](seed.yaml) - Repository constraints
 
 ---
 

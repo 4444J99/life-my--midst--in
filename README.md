@@ -172,10 +172,12 @@ life-my--midst--in/
 │   ├── operations/           Runbooks & troubleshooting
 │   └── phases/               Completed phase reports
 ├── scripts/                  Dev utilities (dev-up.sh, dev-shell.sh)
-├── seed.yaml                 Repository constraints ("genome")
 ├── CLAUDE.md                 AI development guidance
-├── CONTRIBUTING.md           Contribution guidelines
-└── CHANGELOG.md              Release history
+├── config/                   Tool configs (Lighthouse CI)
+└── docs/
+    ├── seed.yaml             Repository constraints ("genome")
+    ├── CONTRIBUTING.md       Contribution guidelines
+    └── CHANGELOG.md          Release history
 ```
 
 ---
@@ -234,14 +236,14 @@ Infrastructure includes:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. In brief:
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines. In brief:
 
 - TypeScript strict mode, no `any` types
 - 75%+ test coverage, Prettier formatting, ESLint rules
 - Max 1200 LOC per file, max 200 LOC per function
 - Feature branch workflow with PR review
 
-Please also read the [Code of Conduct](CODE_OF_CONDUCT.md) and [Security Policy](.github/SECURITY.md).
+Please also read the [Code of Conduct](docs/CODE_OF_CONDUCT.md) and [Security Policy](.github/SECURITY.md).
 
 ---
 
@@ -250,13 +252,13 @@ Please also read the [Code of Conduct](CODE_OF_CONDUCT.md) and [Security Policy]
 | Document | Purpose |
 |----------|---------|
 | [CLAUDE.md](CLAUDE.md) | Development guidance and architecture patterns |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to contribute |
 | [docs/MANIFEST.md](docs/MANIFEST.md) | Complete project overview and file catalog |
 | [docs/DEFINITIONS.md](docs/DEFINITIONS.md) | Unified terminology glossary |
 | [docs/DECISION-LOG.md](docs/DECISION-LOG.md) | Architecture decision records |
 | [docs/SECURITY.md](docs/SECURITY.md) | Security checklist |
 | [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | In-depth development guide |
-| [seed.yaml](seed.yaml) | Repository constraints |
+| [docs/seed.yaml](docs/seed.yaml) | Repository constraints |
 
 Historical design documents (foundations, specifications, architecture discussions) are preserved in [`docs/archived/`](docs/archived/).
 

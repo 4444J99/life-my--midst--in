@@ -156,7 +156,7 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:3001
 
       - name: Run Lighthouse CI
-        run: npx @lhci/cli autorun
+        run: npx @lhci/cli autorun --config ../../config/.lighthouserc.js
         working-directory: apps/web
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}

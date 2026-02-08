@@ -79,7 +79,7 @@ life-my--midst--in/
 │   └── dev-shell.sh                  # Open DB shells
 │
 ├── 📄 Configuration Files
-│   ├── seed.yaml                     # Repository "genome"
+│   ├── docs/seed.yaml                # Repository "genome"
 │   ├── turbo.json                    # Build orchestration
 │   ├── pnpm-workspace.yaml           # Workspace config
 │   └── tsconfig.json                 # TypeScript config
@@ -148,7 +148,7 @@ FOUND-001 (Blockchain analogy)
 2. **DEFINITIONS.md** - Unified terminology glossary
 3. **DECISION-LOG.md** - Architecture decision records
 4. **packages/schema/** - Data model source of truth
-5. **seed.yaml** - Repository constraints
+5. **docs/seed.yaml** - Repository constraints
 
 ### Tier 2: Implementation Reference
 6. **CONSOLIDATED-SPECIFICATIONS.md** - Technical specs
@@ -264,7 +264,7 @@ See **[DEFINITIONS.md](DEFINITIONS.md)** for complete glossary.
 | [CLAUDE.md](../CLAUDE.md) | Development guidance |
 | [DEFINITIONS.md](DEFINITIONS.md) | Terminology glossary |
 | [DECISION-LOG.md](DECISION-LOG.md) | Architecture decisions |
-| [seed.yaml](../seed.yaml) | Repository constraints |
+| [seed.yaml](seed.yaml) | Repository constraints |
 | [SECURITY.md](SECURITY.md) | Security guidelines |
 | [PHASE-ROADMAP.md](phases/PHASE-ROADMAP.md) | Complete roadmap |
 
