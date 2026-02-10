@@ -31,7 +31,7 @@
     "unzipper": "^0.12.3"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^25",
     "@types/pg": "^8.11.6",
     "@types/unzipper": "^0.10.11",
     "tsx": "^4.7.0",
