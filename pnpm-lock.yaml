@@ -377,8 +377,8 @@ importers:
         specifier: ^13.4.2
         version: 13.4.2
       openai:
-        specifier: ^6.16.0
-        version: 6.16.0(ws@8.18.3)(zod@3.25.76)
+        specifier: ^6.21.0
+        version: 6.21.0(ws@8.18.3)(zod@3.25.76)
       smb2:
         specifier: ^0.2.11
         version: 0.2.11
@@ -5970,8 +5970,8 @@ packages:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
 
-  openai@6.16.0:
-    resolution: {integrity: sha512-fZ1uBqjFUjXzbGc35fFtYKEOxd20kd9fDpFeqWtsOZWiubY8CZ1NAlXHW3iathaFvqmNtCWMIsosCuyeI7Joxg==}
+  openai@6.21.0:
+    resolution: {integrity: sha512-26dQFi76dB8IiN/WKGQOV+yKKTTlRCxQjoi2WLt0kMcH8pvxVyvfdBDkld5GTl7W1qvBpwVOtFcsqktj3fBRpA==}
     hasBin: true
     peerDependencies:
       ws: ^8.18.0
@@ -10708,6 +10708,14 @@ snapshots:
     optionalDependencies:
       vite: 6.4.1(@types/node@20.19.27)(jiti@1.21.7)(tsx@4.21.0)(yaml@2.8.2)
 
+  '@vitest/mocker@4.0.18(vite@6.4.1(@types/node@20.19.27)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))':
+    dependencies:
+      '@vitest/spy': 4.0.18
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 6.4.1(@types/node@20.19.27)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+
   '@vitest/mocker@4.0.18(vite@6.4.1(@types/node@25.2.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@vitest/spy': 4.0.18
@@ -14136,7 +14144,7 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openai@6.16.0(ws@8.18.3)(zod@3.25.76):
+  openai@6.21.0(ws@8.18.3)(zod@3.25.76):
     optionalDependencies:
       ws: 8.18.3
       zod: 3.25.76
@@ -15927,7 +15935,7 @@ snapshots:
   vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.27)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
       '@vitest/expect': 4.0.18
-      '@vitest/mocker': 4.0.18(vite@6.4.1(@types/node@25.2.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
+      '@vitest/mocker': 4.0.18(vite@6.4.1(@types/node@20.19.27)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
       '@vitest/pretty-format': 4.0.18
       '@vitest/runner': 4.0.18
       '@vitest/snapshot': 4.0.18
