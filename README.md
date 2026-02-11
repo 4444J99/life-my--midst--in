@@ -6,6 +6,14 @@
 
 # in–midst–my–life
 
+[![CI](https://github.com/organvm-iii-ergon/life-my--midst--in/actions/workflows/ci.yml/badge.svg)](https://github.com/organvm-iii-ergon/life-my--midst--in/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)](https://github.com/organvm-iii-ergon/life-my--midst--in)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/organvm-iii-ergon/life-my--midst--in/blob/main/LICENSE)
+[![Organ III](https://img.shields.io/badge/Organ-III%20Ergon-F59E0B)](https://github.com/organvm-iii-ergon)
+[![Status](https://img.shields.io/badge/status-active-brightgreen)](https://github.com/organvm-iii-ergon/life-my--midst--in)
+[![TypeScript](https://img.shields.io/badge/lang-TypeScript-informational)](https://github.com/organvm-iii-ergon/life-my--midst--in)
+
+
 > *The employer becomes the interviewee.*
 
 A full-stack interactive CV/resume system that inverts the traditional hiring dynamic. Instead of the candidate submitting a static document and hoping for the best, the employer visits a link, answers questions about their role, team, and culture — and the system assembles a CV view curated specifically for what they are seeking. The candidate's complete professional identity is a structured, immutable ledger; what the employer sees is a dynamically filtered, role-specific snapshot assembled in real time.
