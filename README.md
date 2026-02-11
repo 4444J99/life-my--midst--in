@@ -488,7 +488,7 @@ This repository is part of **ORGAN-III (Ergon)** — the Commerce organ of the [
 
 The mask system's ontological taxonomy (cognitive / expressive / operational categories), the epoch model's temporal structuring, and the Inverted Interview's philosophical framing of identity-as-ledger all draw from theoretical work developed in [ORGAN-I (Theoria)](https://github.com/organvm-i-theoria). Specifically:
 
-- The **recursive identity model** — the idea that professional identity is not a fixed entity but a recursive, self-referential structure that produces different views depending on the observer — originates from ORGAN-I's epistemological research in [recursive-engine](https://github.com/organvm-i-theoria/recursive-engine).
+- The **recursive identity model** — the idea that professional identity is not a fixed entity but a recursive, self-referential structure that produces different views depending on the observer — originates from ORGAN-I's epistemological research in [recursive-engine](https://github.com/organvm-i-theoria/recursive-engine--generative-entity).
 - The **mask taxonomy** draws on ORGAN-I's ontological frameworks for categorizing modes of knowing and acting.
 
 ### Relationship to ORGAN-IV (Taxis)
